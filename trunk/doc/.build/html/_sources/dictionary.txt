@@ -1,0 +1,162 @@
+Dictionary of terms and definitions
+===================================
+
+A dictionary of terms used within the documentation.
+
+
+map
+---
+
+Higher-order map function (related to: imap, functional programming, IMap)
+
+
+imap
+----
+
+Iterated higher-order map function. Papy depends on the imap implementation 
+provided by the standard Python imap from the itertoos module (itertools.imap)
+and the custom IMap
+
+
+IMap
+----
+
+A parallel implementation of a multi-task imap function used within papy. Which
+uses a pool of worker-threads or worker-processes and evaluates functions
+locally or remotely
+(related to: map, imap, functional programming, parallelism, concurrency, RPyC).
+
+worker-function
+---------------
+
+A function with standarized input/output written to be used by a Worker class
+instance. (related to: Worker, RPyC)
+
+
+worker-process/thread
+---------------------
+
+A thread or process inside an IMap instance evaluating a tasklet remotely or
+locally.
+(related to: IMap, RPyC, thread, process)
+
+
+Worker
+------
+
+An object-oriented wrapper for worker-functions, corresponds to
+"function with partially applied arguments"
+
+
+Piper
+-----
+
+An object-oriented wrapper for Worker instances, corresponds to
+"worker with defined mode of evaluation"
+(related to: IMap, Worker)
+
+
+
+Dagger
+------
+
+An directed acyclic graph (DAG) to store and connect piper instances.
+(related to: Plumber, pipeline)
+
+
+Plumber
+-------
+
+A wrapper for the Dagger designed to run and interact with a running pipeline.
+(related to: Dagger, pipeline)
+
+input
+-----
+
+The input has to be a python iterator (or an object with the next method). Any
+sequence (e.g. a list or a tuple) can be made into an iterator using the Python
+built-in iter function e.g::
+
+   sample_sequence = [data_point1, data_point2, data_point3]
+   sample_iterator = iter(sample_sequence)
+
+Files are by default line-iterators i.e.::
+
+   sample_file = open('sample_file.txt')
+   sample_file.next() # returns the first line
+   sample_file.next() # returns the second line
+
+
+
+
+
+input piper
+-----------
+
+The  which is connected to the input iterator is an input node. Such a node
+has no up-stream nodes within the pipeline or in other words no outgoing edges
+in the directed acyclic graph.
+
+
+output
+------
+
+Any data printed returned or otherwisestored by any of the nodes.
+
+
+output node
+-----------
+
+Any node which has no down-stream nodes in the pipeline is an output node. Or in
+other words a node with no incoming edges in the directed acyclic graph is the
+output node.
+
+
+
+
+lazy evaluation
+---------------
+
+
+
+Task
+----
+
+A task is an ordered tuple of objects added to the IMap instance it consists of:
+
+  * a function, which will be evaulated on the input element-wise
+  * an input (a list, tuple or any iterator object like a numpy array)
+  * a tuple of arguments e.g. (arg1, arg2, arg3)
+  * a dictionary of keyword arguments i.e. {'arg1': value_1, 'arg2': value_2}
+
+The optional arguments and keyworded arguments have to match the signature of the
+function. The task will be iteratively split into jobs in the following way::
+
+  tasklet = (func, element_from_iterable, arguments, keyworded_arguments)
+
+(related to: IMap, Tasklet)
+
+
+Tasklet
+-------
+A task is the unit of evaluation of a worker-thread/process within an IMap
+instance. It is constructed from the task arguments with an input element the
+tasklet::
+
+    tasklet = (func, element_from_iterable, argumentns, keyworded_arguments)
+
+Is evaluated as::
+
+    result = func(element_from_iterable, arguments, keyworded_arguments)
+
+
+
+
+
+
+
+
+job
+---
+
+up-stream / down-stream

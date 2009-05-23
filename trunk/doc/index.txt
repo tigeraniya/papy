@@ -1,0 +1,72 @@
+===================================
+Papy - Parallel pipelines in Python
+===================================
+
+Papy is ...::
+
+  # MapReduce example.
+
+
+.. note::
+
+  Code examples and use cases are not meant to be typed into the interactive
+  interpreter console. They should be run from the command line shell.::
+
+    $ python example_file.py
+  
+  A python function can only be communicated to multiple processes only if it
+  can be serialized(pickled) this is not possible if the function is in the same
+  namespace as a child process (created using the multiprocessing library).
+
+.. note::
+
+  The python interpreter exits (returns) if all spawned threads or forked
+  processes return. Papy uses multiple threads to manage the pipeline and
+  evaluates functions in seperate threads or processes. All of them need to be
+  stopped before the parent python process can return. This is done
+  automatically whenever a pipeline finishes or some expected exception happens,
+  in all other cases it required that the user stops the pipeline manually. If
+  this is not done the interpreter will hang on exit.
+
+
+Manual
+======
+
+.. toctree::
+   :maxdepth: 2
+
+   Introduction <introduction>
+   Architecture <architecture>
+   A barebones example <barebones>
+   Parallelism <parallel>
+   Tutorials <tutorials>
+   Examples <examples>
+   Use cases <cases>
+   Benchmarks <benchmark>
+   Terms and Definitions <dictionary>
+   TODO <todo>
+
+
+
+Papy API
+========
+
+This part of the documentation is generated automatically from the source code
+documentation strings. 
+
+.. toctree::
+   :maxdepth: 2
+
+   papyapi
+
+
+
+
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
+

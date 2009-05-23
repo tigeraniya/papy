@@ -1,0 +1,14 @@
+.. automodule:: papy.papy
+   :members:
+
+.. automodule:: papy.workers
+   :members:
+
+.. automodule:: papy.workers.maths
+   :members:
+
+.. automodule:: papy.workers.core
+   :members:
+
+.. automodule:: IMap.IMap
+   :members:

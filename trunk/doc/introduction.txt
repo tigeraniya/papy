@@ -1,0 +1,72 @@
+Introduction
+============
+
+Many programming/scripting tasks require sequential processing of data. Papy allows to 
+create a processing pipeline from functional-units(Pipers), which pass data via directed
+connections(pipes). The data can be processed in parallel if the input is a sequence 
+(or can be split into one) of data-packets (files, messages, objects etc.). Papy is written
+in and for Python this means that the user is expected to write Python functions with 
+defined inputs and outputs. The Pipers are connected to create a directed acyclic graph. The
+papy pipeline automatically logs it's execution and is resistant to exceptions and
+timeouts.
+
+
+First example
+-------------
+
+
+::
+
+  # First example
+
+A small part of the generated log-file looks as follows::
+
+  # First example log-file.
+
+
+In general terms
+----------------
+
+Papy stands for parallel pipelines in Python. It is a module to pipe data through directed
+graphs of arbitrary functions, which are executed in parallel on all availble processors.
+The user defines the functions, which can be as trivial as 'multiply a and b' and
+arbitrarly complex e.g. 'convert from format X to format Y using library Z', and the data-
+flow (topology) i.e. the input (e.g. files in a directory), the order and connection of
+functions and the output. Parallelization is internaly done using a multi-process or
+multi-threaded iterated map function. In future it will be possible to
+distribute computation accross networked machines.
+
+
+What is a pipeline?
+-------------------
+
+Papy understands a pipeline as any directed acyclic graph. The direction of the graph is
+defined by the data-flow (edges, pipes) between the data-processing units (nodes, pipers).
+To be precise the direction of the edges is opposite to the direction of the data stream
+(pipes). Up-stream pipers have incomming edges from down-stream pipers this is represented
+as a pipe with a opposite orientation i.e. up-stream -> down-stream. Papy pipelines can be 
+branched i.e. two down-stream pipers might consume input from the same up-stream piper or 
+one down-stream piper consumes data from several up-stream pipers. Pipers which consume 
+(are connected to) data from outside the directed acyclic graph are input pipers, while 
+pipers to which no other pipers are connected to are output pipers. Papy supports pipelines 
+with multiple inputs and outputs, also several input nodes can consume the same external 
+data.
+
+
+Feature summary
+---------------
+
+This is a list of features of a pipeline constructed using the papy module components.
+
+ * supports multiple inputs/outputs.
+ * data is processed as it is needed down-stream (lazy evaluation).
+ * any directed acyclic graph is a valid pipeline.
+ * tasks can be executed on all availble processors (parallelism).
+ * multiple tasks share the availble processors in an optimal way.
+ * errors are cought and propagated but do not stop the flow.
+ * supports extensive logging.
+ * Small code-base.
+ * supports timeout errors (e.g. skipping) and other exceptions.
+ * Is extensivly tested and documented.
+ * Has no dependancies besides Python 2.6
+
