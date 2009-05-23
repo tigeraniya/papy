@@ -147,14 +147,14 @@ second functions is iteratively applied::
     result = degree(temp_result[2])
     <<return result>>
 
-The results are either returned imediately or stored in a result_list. The
-maximum size of this list is the size of temp_list and the size of the input.
-The reason for this behaviour is the order by which tasks i.e. (function, data)
-tuples are submitted to the pool. If one pool handles two functions first all 
-(radians, *) tuples are submited and then all (degrees, *). The outer function
-is evaluated last so for multiple and computationally expensive functions the
-first result might be availble after a long lag phase followed by a burst of
-results.
+The results are either returned imediately or stored in a result list. The
+maximum size of this list is the size of temporary list and the size of the
+input.  The reason for this behaviour is the order by which tasks i.e.
+(function, data) tuples are submitted to the pool. If one pool handles two
+functions first all (radians, *) tuples are submited and then all (degrees, *).
+The outer function is evaluated last so for multiple and computationally
+expensive functions the first result might be availble after a long lag phase
+followed by a burst of results.
 
 This problem can be solved by having a
 seperate pool for each function.::
@@ -434,7 +434,7 @@ multiple CPUs on the remote computer (not supported on Windows). An IMap which
 connects to remote servers spawns a new process for each thread/process
 spawned/forked remotely (by the RPyC server).
 
-.. info::
+.. note::
 
   IMap has no possiblity to change the thread/process nature of the remote
   server.

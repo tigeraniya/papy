@@ -2,12 +2,9 @@
 Papy - Parallel pipelines in Python
 ===================================
 
-Papy is ...::
-
-  # MapReduce example.
-
-
 .. note::
+
+  *This note is relevant if you want to use the parallel features of PaPy*
 
   Code examples and use cases are not meant to be typed into the interactive
   interpreter console. They should be run from the command line shell.::
@@ -18,7 +15,6 @@ Papy is ...::
   can be serialized(pickled) this is not possible if the function is in the same
   namespace as a child process (created using the multiprocessing library).
 
-.. note::
 
   The python interpreter exits (returns) if all spawned threads or forked
   processes return. Papy uses multiple threads to manage the pipeline and

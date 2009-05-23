@@ -4,10 +4,13 @@
 .. automodule:: papy.workers
    :members:
 
+.. automodule:: papy.workers.core
+   :members:
+
 .. automodule:: papy.workers.maths
    :members:
 
-.. automodule:: papy.workers.core
+.. automodule:: papy.workers.io
    :members:
 
 .. automodule:: IMap.IMap

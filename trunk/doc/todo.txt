@@ -85,8 +85,7 @@ Documentation
 ^^^^^^^^^^^^^
 
   * The hand-written documentation should build automatically into several formats
-  (Sphinx) and be inculded in the repository (tar-balls). 
-
+    (Sphinx) and be inculded in the repository (tar-balls).
   * the documentation should cover installation of dependancies
   * A very simple 10-line example is needed!
   * all API classes and functions should be documented using reStructuredText and Sphinx.
