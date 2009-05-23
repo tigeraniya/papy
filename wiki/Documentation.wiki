@@ -1,1 +1,1 @@
-[http://papy.googlecode.com/svn/trunc/doc/.build/html/index.html Documentation]
+[http://papy.googlecode.com/svn/trunk/doc/.build/html/index.html Documentation]
