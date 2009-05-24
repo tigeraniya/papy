@@ -16,8 +16,6 @@ Installation
 ------------
 
 Papy is written in and for Python and it should run on all platforms which have
-Papy is written in and for Python and it should run on all platforms which have
-
 a full Python 2.6 implementation or Python 2.5 with the multiprocessing module
 backported from 2.6. The multiprocessing module is supported on Linux and MacOSX
 and to a sufficient extent on Windows. Other UNIX systems might not be supported.

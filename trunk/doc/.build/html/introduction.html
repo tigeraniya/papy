@@ -41,7 +41,7 @@
     <link rel="search" title="Search" href="search.html" />
     <link rel="top" title="PaPy v1.0b1 documentation" href="index.html" />
     <link rel="next" title="Architecture" href="architecture.html" />
-    <link rel="prev" title="Papy - Parallel pipelines in Python" href="index.html" />
+    <link rel="prev" title="PaPy - Parallel Pipelines in Python" href="index.html" />
 </head>
 <body class="t6">
  <div id=gaia>
@@ -56,7 +56,7 @@
  <table style="padding:0px; margin: 0px 0px -6px 0; width:100%" cellpadding=0 cellspacing=0>
  <tr>
  <td><a href="/"><img src="http://www.gstatic.com/codesite/ph/images/defaultlogo.png" alt=papy/></a></td>
- <td style="padding-left: 1.5em">
+ <td>
  
  <div id="pname">
  <a href="http://code.google.com/p/papy/" style="text-decoration:none; color:#000">papy</a>
@@ -184,7 +184,7 @@
       accesskey="N">next</a>
  </span> |
  <span>
-   <a href="index.html" title="Papy - Parallel pipelines in Python"
+   <a href="index.html" title="PaPy - Parallel Pipelines in Python"
       accesskey="P">previous</a>
  </span> |
  <span class="inIssueList">
@@ -255,7 +255,7 @@
  <td><ul>
  
  <li>
-   <a href="index.html" title="previous chapter">Papy - Parallel pipelines in Python</a>
+   <a href="index.html" title="previous chapter"><strong>PaPy</strong> - Parallel Pipelines in Python</a>
  </li>
  
 
@@ -298,10 +298,10 @@
   <table class="pmeta toc" cellpadding=5><tr><td>
 	<ul>
 <li><a class="reference external" href="">Introduction</a><ul>
-<li><a class="reference external" href="#first-example">First example</a></li>
-<li><a class="reference external" href="#in-general-terms">In general terms</a></li>
+<li><a class="reference external" href="#where-when-should-papy-be-used">Where/When should <em>PaPy</em> be used?</a></li>
+<li><a class="reference external" href="#where-when-should-papy-not-be-used">Where/When should <em>PaPy</em> <strong>not</strong> be used.</a></li>
 <li><a class="reference external" href="#what-is-a-pipeline">What is a pipeline?</a></li>
-<li><a class="reference external" href="#feature-summary">Feature summary</a></li>
+<li><a class="reference external" href="#feature-summary">Feature summary:</a></li>
 </ul>
 </li>
 </ul>
@@ -327,65 +327,99 @@
      
   <div class="section" id="introduction">
 <h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h1>
-<p>Many programming/scripting tasks require sequential processing of data. Papy allows to
-create a processing pipeline from functional-units(Pipers), which pass data via directed
-connections(pipes). The data can be processed in parallel if the input is a sequence
-(or can be split into one) of data-packets (files, messages, objects etc.). Papy is written
-in and for Python this means that the user is expected to write Python functions with
-defined inputs and outputs. The Pipers are connected to create a directed acyclic graph. The
-papy pipeline automatically logs it&#8217;s execution and is resistant to exceptions and
-timeouts.</p>
-<div class="section" id="first-example">
-<h2>First example<a class="headerlink" href="#first-example" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-python"><div class="highlight"><pre><span class="c"># First example</span>
-</pre></div>
+<p>Many computational tasks require sequential processing of data i.e. the global
+task is split into sub-tasks which are evaluated in some order on the data to be
+processed.</p>
+<p><em>PaPy</em> allows to create a data-processing pipeline intuitive components:</p>
+<blockquote>
+<ul class="simple">
+<li>the function wrapping <em>Pipers</em></li>
+<li>the topology defining <em>Dagger</em></li>
+<li>the parallel executors <em>IMaps</em></li>
+</ul>
+</blockquote>
+<p>The <em>Dagger</em> connects <em>Pipers</em> via pipes into a directed acyclic graph, while
+the <em>IMaps</em> are assigned to <em>Pipers</em> and evaluate their function either locally
+using threads or processes or on remote hosts.</p>
+<p>The input data can be processed in parallel if the input is a collection (or can
+be split into one) of data-items: files, messages, sequences, arrays etc. (in
+general picklable python objects).</p>
+<p><em>PapPy</em> is written in and for Python this means that the user is expected to
+write Python functions with defined call/return semantics, but the function code
+is largely arbitrary e.g. they can call a perl script or import a library.
+<em>PaPy</em> focuses on modularity, functions should be re-used and composed within
+pipelines and <em>Pipers</em>.</p>
+<p>The <em>PaPy</em> pipeline automatically logs it&#8217;s execution is resistant to exceptions
+and timeouts should work on all platforms where <tt class="docutils literal"><span class="pre">multiprocessing</span></tt> is available
+and allows to utilize a cross-platform grid wherever <em>RPyC</em> is supported.</p>
+<div class="section" id="where-when-should-papy-be-used">
+<h2>Where/When should <em>PaPy</em> be used?<a class="headerlink" href="#where-when-should-papy-be-used" title="Permalink to this headline">¶</a></h2>
+<p>It is likely that you will benefit from using PaPy if any of the following is
+true:</p>
+<blockquote>
+<ul class="simple">
+<li>you need to process large collections of data-items.</li>
+<li>your data collection is to large to fit into memory.</li>
+<li>you want to utilize an ad-hoc grid.</li>
+<li>you have to construct a complex data-flow.</li>
+<li>you are likely to deal with timeouts or bogus data.</li>
+<li>the execution of your workflow needs to be logged.</li>
+<li>you want to refactor existing code.</li>
+<li>you want to reuse(wrap) existing code.</li>
+</ul>
+</blockquote>
 </div>
-<p>A small part of the generated log-file looks as follows:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="c"># First example log-file.</span>
-</pre></div>
-</div>
-</div>
-<div class="section" id="in-general-terms">
-<h2>In general terms<a class="headerlink" href="#in-general-terms" title="Permalink to this headline">¶</a></h2>
-<p>Papy stands for parallel pipelines in Python. It is a module to pipe data through directed
-graphs of arbitrary functions, which are executed in parallel on all availble processors.
-The user defines the functions, which can be as trivial as &#8216;multiply a and b&#8217; and
-arbitrarly complex e.g. &#8216;convert from format X to format Y using library Z&#8217;, and the data-
-flow (topology) i.e. the input (e.g. files in a directory), the order and connection of
-functions and the output. Parallelization is internaly done using a multi-process or
-multi-threaded iterated map function. In future it will be possible to
-distribute computation accross networked machines.</p>
+<div class="section" id="where-when-should-papy-not-be-used">
+<h2>Where/When should <em>PaPy</em> <strong>not</strong> be used.<a class="headerlink" href="#where-when-should-papy-not-be-used" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<ul class="simple">
+<li>The parallel features improve performance only if the functions have
+sufficient granularity i.e. computation to communication ratio.</li>
+<li>Your input is not a collection and it does not allow for data parallelism.</li>
+</ul>
+</blockquote>
 </div>
 <div class="section" id="what-is-a-pipeline">
 <h2>What is a pipeline?<a class="headerlink" href="#what-is-a-pipeline" title="Permalink to this headline">¶</a></h2>
-<p>Papy understands a pipeline as any directed acyclic graph. The direction of the graph is
-defined by the data-flow (edges, pipes) between the data-processing units (nodes, pipers).
-To be precise the direction of the edges is opposite to the direction of the data stream
-(pipes). Up-stream pipers have incomming edges from down-stream pipers this is represented
-as a pipe with a opposite orientation i.e. up-stream -&gt; down-stream. Papy pipelines can be
-branched i.e. two down-stream pipers might consume input from the same up-stream piper or
-one down-stream piper consumes data from several up-stream pipers. Pipers which consume
-(are connected to) data from outside the directed acyclic graph are input pipers, while
-pipers to which no other pipers are connected to are output pipers. Papy supports pipelines
-with multiple inputs and outputs, also several input nodes can consume the same external
-data.</p>
+<p><em>PaPy</em> understands a pipeline as any directed acyclic graph. The direction of
+the graph is defined by the data-flow (edges, pipes) between the data-processing
+units (nodes, <em>Pipers</em>).  To be precise the direction of the edges is opposite
+to the direction of the data stream (pipes). Up-stream <em>Pipers</em> have incomming
+edges from down-stream <em>Pipers</em> this is represented as a pipe with a opposite
+orientation i.e. up-stream -&gt; down-stream. <em>PaPy</em> pipelines can be branched i.e.
+two down-stream <em>Pipers</em> might consume input from the same up-stream <em>Piper</em> or
+one down-stream <em>Piper</em> consumes data from several up-stream <em>Pipers</em>. <em>Pipers</em>
+which consume (are connected to) data from outside the directed acyclic graph
+are input <em>Pipers</em>, while <em>Pipers</em> to which no other <em>Pipers</em> are connected to are
+output <em>Pipers</em>. <em>PaPy</em> supports pipelines with multiple inputs and outputs, also
+several input nodes can consume the same external data. You should think of a
+pipeline as an <tt class="docutils literal"><span class="pre">imap</span></tt> function composed <tt class="docutils literal"><span class="pre">imap</span></tt> functions i.e.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># nested imaps as pipelines</span>
+<span class="n">pipeline</span> <span class="o">=</span> <span class="n">imap</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">izip</span><span class="p">([</span><span class="n">imap</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">input_for_f</span><span class="p">),</span> <span class="n">imap</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">input_for_g</span><span class="p">)]))</span>
+</pre></div>
+</div>
+<p>This is a pipeline of three functions f, g, h. Functions f and g are up-stream
+relative to h. Because of the <tt class="docutils literal"><span class="pre">izip</span></tt> function input_for_f and input_for_g have
+to be of the same lenght. In <em>PaPy</em> the lazy <cite>imap</cite> functions is replaced with
+a pool implementation <em>IMap</em>, which allows for a parallelism vs. laziness
+trade-off.</p>
 </div>
 <div class="section" id="feature-summary">
-<h2>Feature summary<a class="headerlink" href="#feature-summary" title="Permalink to this headline">¶</a></h2>
-<p>This is a list of features of a pipeline constructed using the papy module components.</p>
+<h2>Feature summary:<a class="headerlink" href="#feature-summary" title="Permalink to this headline">¶</a></h2>
+<p>This is a list of features of a pipeline constructed using the <em>PaPy</em> module components.</p>
 <blockquote>
 <ul class="simple">
-<li>supports multiple inputs/outputs.</li>
-<li>data is processed as it is needed down-stream (lazy evaluation).</li>
-<li>any directed acyclic graph is a valid pipeline.</li>
-<li>tasks can be executed on all availble processors (parallelism).</li>
-<li>multiple tasks share the availble processors in an optimal way.</li>
-<li>errors are cought and propagated but do not stop the flow.</li>
-<li>supports extensive logging.</li>
-<li>Small code-base.</li>
-<li>supports timeout errors (e.g. skipping) and other exceptions.</li>
-<li>Is extensivly tested and documented.</li>
-<li>Has no dependancies besides Python 2.6</li>
+<li>construction of arbitrarily complex pipelines</li>
+<li>evaluation is lazy (buffered)</li>
+<li>flexible local and remote parallelism</li>
+<li>shared local and remote resources</li>
+<li>robustness to exceptions</li>
+<li>support for time-outs</li>
+<li>real-time logging</li>
+<li>os-independent (really a feature of multiprocessing)</li>
+<li>cross-platform (really a feature of RPyC)</li>
+<li>small code-base</li>
+<li>tested &amp; documented.</li>
 </ul>
 </blockquote>
 </div>

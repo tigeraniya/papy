@@ -1,72 +1,100 @@
 Introduction
 ============
 
-Many programming/scripting tasks require sequential processing of data. Papy allows to 
-create a processing pipeline from functional-units(Pipers), which pass data via directed
-connections(pipes). The data can be processed in parallel if the input is a sequence 
-(or can be split into one) of data-packets (files, messages, objects etc.). Papy is written
-in and for Python this means that the user is expected to write Python functions with 
-defined inputs and outputs. The Pipers are connected to create a directed acyclic graph. The
-papy pipeline automatically logs it's execution and is resistant to exceptions and
-timeouts.
+Many computational tasks require sequential processing of data i.e. the global
+task is split into sub-tasks which are evaluated in some order on the data to be
+processed.
+
+*PaPy* allows to create a data-processing pipeline intuitive components:
+
+  * the function wrapping *Pipers*
+  * the topology defining *Dagger*
+  * the parallel executors *IMaps*
+
+The *Dagger* connects *Pipers* via pipes into a directed acyclic graph, while
+the *IMaps* are assigned to *Pipers* and evaluate their function either locally
+using threads or processes or on remote hosts.
+
+The input data can be processed in parallel if the input is a collection (or can
+be split into one) of data-items: files, messages, sequences, arrays etc. (in
+general picklable python objects).
+
+*PapPy* is written in and for Python this means that the user is expected to
+write Python functions with defined call/return semantics, but the function code
+is largely arbitrary e.g. they can call a perl script or import a library.
+*PaPy* focuses on modularity, functions should be re-used and composed within
+pipelines and *Pipers*.
+
+The *PaPy* pipeline automatically logs it's execution is resistant to exceptions
+and timeouts should work on all platforms where ``multiprocessing`` is available
+and allows to utilize a cross-platform grid wherever *RPyC* is supported.
 
 
-First example
--------------
+Where/When should *PaPy* be used?
+---------------------------------
+
+It is likely that you will benefit from using PaPy if any of the following is
+true:
+
+  * you need to process large collections of data-items.
+  * your data collection is to large to fit into memory.
+  * you want to utilize an ad-hoc grid.
+  * you have to construct a complex data-flow.
+  * you are likely to deal with timeouts or bogus data.
+  * the execution of your workflow needs to be logged.
+  * you want to refactor existing code.
+  * you want to reuse(wrap) existing code.
 
 
-::
+Where/When should *PaPy* **not** be used.
+-----------------------------------------
 
-  # First example
-
-A small part of the generated log-file looks as follows::
-
-  # First example log-file.
-
-
-In general terms
-----------------
-
-Papy stands for parallel pipelines in Python. It is a module to pipe data through directed
-graphs of arbitrary functions, which are executed in parallel on all availble processors.
-The user defines the functions, which can be as trivial as 'multiply a and b' and
-arbitrarly complex e.g. 'convert from format X to format Y using library Z', and the data-
-flow (topology) i.e. the input (e.g. files in a directory), the order and connection of
-functions and the output. Parallelization is internaly done using a multi-process or
-multi-threaded iterated map function. In future it will be possible to
-distribute computation accross networked machines.
+  * The parallel features improve performance only if the functions have
+    sufficient granularity i.e. computation to communication ratio.
+  * Your input is not a collection and it does not allow for data parallelism.
 
 
 What is a pipeline?
 -------------------
 
-Papy understands a pipeline as any directed acyclic graph. The direction of the graph is
-defined by the data-flow (edges, pipes) between the data-processing units (nodes, pipers).
-To be precise the direction of the edges is opposite to the direction of the data stream
-(pipes). Up-stream pipers have incomming edges from down-stream pipers this is represented
-as a pipe with a opposite orientation i.e. up-stream -> down-stream. Papy pipelines can be 
-branched i.e. two down-stream pipers might consume input from the same up-stream piper or 
-one down-stream piper consumes data from several up-stream pipers. Pipers which consume 
-(are connected to) data from outside the directed acyclic graph are input pipers, while 
-pipers to which no other pipers are connected to are output pipers. Papy supports pipelines 
-with multiple inputs and outputs, also several input nodes can consume the same external 
-data.
+*PaPy* understands a pipeline as any directed acyclic graph. The direction of
+the graph is defined by the data-flow (edges, pipes) between the data-processing
+units (nodes, *Pipers*).  To be precise the direction of the edges is opposite
+to the direction of the data stream (pipes). Up-stream *Pipers* have incomming
+edges from down-stream *Pipers* this is represented as a pipe with a opposite
+orientation i.e. up-stream -> down-stream. *PaPy* pipelines can be branched i.e.
+two down-stream *Pipers* might consume input from the same up-stream *Piper* or
+one down-stream *Piper* consumes data from several up-stream *Pipers*. *Pipers*
+which consume (are connected to) data from outside the directed acyclic graph
+are input *Pipers*, while *Pipers* to which no other *Pipers* are connected to are
+output *Pipers*. *PaPy* supports pipelines with multiple inputs and outputs, also
+several input nodes can consume the same external data. You should think of a
+pipeline as an ``imap`` function composed ``imap`` functions i.e.::
+
+  # nested imaps as pipelines
+  pipeline = imap(h, izip([imap(f, input_for_f), imap(g, input_for_g)]))
+
+This is a pipeline of three functions f, g, h. Functions f and g are up-stream
+relative to h. Because of the ``izip`` function input_for_f and input_for_g have
+to be of the same lenght. In *PaPy* the lazy `imap` functions is replaced with
+a pool implementation *IMap*, which allows for a parallelism vs. laziness
+trade-off. 
 
 
-Feature summary
----------------
+Feature summary:
+----------------
 
-This is a list of features of a pipeline constructed using the papy module components.
+This is a list of features of a pipeline constructed using the *PaPy* module components.
 
- * supports multiple inputs/outputs.
- * data is processed as it is needed down-stream (lazy evaluation).
- * any directed acyclic graph is a valid pipeline.
- * tasks can be executed on all availble processors (parallelism).
- * multiple tasks share the availble processors in an optimal way.
- * errors are cought and propagated but do not stop the flow.
- * supports extensive logging.
- * Small code-base.
- * supports timeout errors (e.g. skipping) and other exceptions.
- * Is extensivly tested and documented.
- * Has no dependancies besides Python 2.6
+    * construction of arbitrarily complex pipelines
+    * evaluation is lazy (buffered)
+    * flexible local and remote parallelism
+    * shared local and remote resources
+    * robustness to exceptions
+    * support for time-outs
+    * real-time logging
+    * os-independent (really a feature of multiprocessing)
+    * cross-platform (really a feature of RPyC)
+    * small code-base
+    * tested & documented. 
 

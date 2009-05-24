@@ -55,7 +55,7 @@
  <table style="padding:0px; margin: 0px 0px -6px 0; width:100%" cellpadding=0 cellspacing=0>
  <tr>
  <td><a href="/"><img src="http://www.gstatic.com/codesite/ph/images/defaultlogo.png" alt=papy/></a></td>
- <td style="padding-left: 1.5em">
+ <td>
  
  <div id="pname">
  <a href="http://code.google.com/p/papy/" style="text-decoration:none; color:#000">papy</a>
@@ -281,7 +281,7 @@
   <b>Table of Contents</b><br/>
   <table class="pmeta toc" cellpadding=5><tr><td>
 	<ul>
-<li><a class="reference external" href="">Papy - Parallel pipelines in Python</a><ul>
+<li><a class="reference external" href=""><strong>PaPy</strong> - Parallel Pipelines in Python</a><ul>
 <li><a class="reference external" href="#manual">Manual</a><ul>
 </ul>
 </li>
@@ -313,33 +313,48 @@
    
      
   <div class="section" id="papy-parallel-pipelines-in-python">
-<h1>Papy - Parallel pipelines in Python<a class="headerlink" href="#papy-parallel-pipelines-in-python" title="Permalink to this headline">¶</a></h1>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p><em>This note is relevant if you want to use the parallel features of PaPy</em></p>
-<p>Code examples and use cases are not meant to be typed into the interactive
-interpreter console. They should be run from the command line shell.:</p>
+<h1><strong>PaPy</strong> - Parallel Pipelines in Python<a class="headerlink" href="#papy-parallel-pipelines-in-python" title="Permalink to this headline">¶</a></h1>
+<p>This documentation covers the implementation and usage of <em>PaPy</em>. It consists of a
+hand-written manual and an API-reference. Please refer also to the comments in
+the source code.</p>
+<p>project page: <a class="reference external" href="http://code.google.com/p/papy/">http://code.google.com/p/papy/</a>
+repository lives at: <a class="reference external" href="http://papy.googlecode.com/svn/trunk/">http://papy.googlecode.com/svn/trunk/</a>
+most recent documentation: <a class="reference external" href="http://papy.googlecode.com/svn/trunk/doc/">http://papy.googlecode.com/svn/trunk/doc/</a>
+most recent html documentation: <a class="reference external" href="http://papy.googlecode.com/svn/trunk/doc/.build/html/index.html">http://papy.googlecode.com/svn/trunk/doc/.build/html/index.html</a>
+author email: marcin #d0t# cieslik #at# gmail #d0t# com</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p><strong>parallel features of</strong> <em>PaPy</em> <strong>do not work in the interactive interpreted</strong></p>
+<p>Code snippets, examples and use cases are not meant to be typed into the
+interactive interpreter console. They should be run from the command line
+(this is a limitation of the <tt class="docutils literal"><span class="pre">multiprocessing</span></tt> module):</p>
 <div class="highlight-python"><pre>$ python example_file.py</pre>
 </div>
-<p>A python function can only be communicated to multiple processes only if it
-can be serialized(pickled) this is not possible if the function is in the same
-namespace as a child process (created using the multiprocessing library).</p>
-<p class="last">The python interpreter exits (returns) if all spawned threads or forked
-processes return. Papy uses multiple threads to manage the pipeline and
+<p>The relevant files are available in the doc directory of the source-code
+repository.</p>
+<p>Functions defined in the interactive interpreter will not work (and will hang
+Python) if used with <em>IMap</em> instances!  A python function can only be
+communicated to multiple processes if it can be serialized(i.e. pickled) this
+is not possible if the function is in the same namespace as a child process
+(created using the multiprocessing library).</p>
+<p><strong>The interpreter will hang on exit if a pipeline does not finish or is halted
+abnormaly*</strong></p>
+<p class="last">The Python interpreter exits (returns) if all spawned threads or forked
+processes return. <em>PaPy</em> uses multiple threads to manage the pipeline and
 evaluates functions in seperate threads or processes. All of them need to be
 stopped before the parent python process can return. This is done
-automatically whenever a pipeline finishes or some expected exception happens,
-in all other cases it required that the user stops the pipeline manually. If
-this is not done the interpreter will hang on exit.</p>
+automatically whenever a pipeline finishes or some expected exception occurs,
+in all other cases it is required that the user stops the pipeline manually.</p>
 </div>
 <div class="section" id="manual">
 <h2>Manual<a class="headerlink" href="#manual" title="Permalink to this headline">¶</a></h2>
+<p>Written documentation.</p>
 <ul>
 <li class="toctree-l1"><a class="reference external" href="introduction.html">Introduction</a><ul>
-<li class="toctree-l2"><a class="reference external" href="introduction.html#first-example">First example</a></li>
-<li class="toctree-l2"><a class="reference external" href="introduction.html#in-general-terms">In general terms</a></li>
+<li class="toctree-l2"><a class="reference external" href="introduction.html#where-when-should-papy-be-used">Where/When should <em>PaPy</em> be used?</a></li>
+<li class="toctree-l2"><a class="reference external" href="introduction.html#where-when-should-papy-not-be-used">Where/When should <em>PaPy</em> <strong>not</strong> be used.</a></li>
 <li class="toctree-l2"><a class="reference external" href="introduction.html#what-is-a-pipeline">What is a pipeline?</a></li>
-<li class="toctree-l2"><a class="reference external" href="introduction.html#feature-summary">Feature summary</a></li>
+<li class="toctree-l2"><a class="reference external" href="introduction.html#feature-summary">Feature summary:</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference external" href="architecture.html">Architecture</a><ul>
@@ -421,7 +436,9 @@ this is not done the interpreter will hang on exit.</p>
 <div class="section" id="papy-api">
 <h2>Papy API<a class="headerlink" href="#papy-api" title="Permalink to this headline">¶</a></h2>
 <p>This part of the documentation is generated automatically from the source code
-documentation strings.</p>
+documentation strings. It should be the most up-to-date version. If there is a
+conflict between the hand-written and and generated documentation, please
+contact the author e.g. by adding an issue.</p>
 <ul>
 <li class="toctree-l1"><a class="reference external" href="papyapi.html"><tt class="docutils literal"><span class="pre">papy.papy</span></tt></a></li>
 <li class="toctree-l1"><a class="reference external" href="papyapi.html#papy-workers"><tt class="docutils literal"><span class="pre">papy.workers</span></tt></a></li>
