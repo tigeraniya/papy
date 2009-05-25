@@ -1,0 +1,19 @@
+Metadata-Version: 1.0
+Name: papy
+Version: 1.0b
+Summary: Parallel Pipelines for Python
+Home-page: http://muralab.org/PaPy
+Author: Marcin Cieslik
+Author-email: marcin.cieslik@gmail.com
+License: GPL
+Description: UNKNOWN
+Keywords: multiprocessing parallel pipeline workflow rpc rpyc      multithreading
+Platform: UNKNOWN
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: Intended Audience :: System Administrators
+Classifier: Environment :: Console
+Classifier: License :: OSI Approved :: GNU General Public License (GPL)
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
