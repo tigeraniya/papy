@@ -6,6 +6,7 @@ A collection of input/output worker functions.
 """
 from IMap import imports
 
+
 # Printing
 def print_(inbox):
     """ Prints the first element of the inbox.
@@ -22,7 +23,6 @@ def dump(inbox, handle, delimiter =None):
         delimiter = '\n' + delimiter + '\n'
         handle.write(delimiter)
 
-@imports([['os',[]]])
 def load(handle, delimiter):
     """ Creates a generator from a stream (file handle) containing data
         delimited by delimiter strings.
@@ -41,6 +41,29 @@ def load(handle, delimiter):
             else:
                 temp.append(line)
         yield "".join(temp)
+
+@imports([['time',[]]])
+def load_file(handle, follow =False, wait =0.1):
+    """ Creates a line generator from a stream (file handle).
+
+        Arguments:
+
+          * follow(bool) [default: False]
+
+            If true follows the file after it finishes like 'tail -f'.
+
+          * wait(float) [default: 0.1]
+
+            Time to wait between file polls.
+    """
+    while True:
+        line = handle.readline()
+        if line:
+            yield line
+        elif follow:
+            time.sleep(wait)
+        else:
+            raise StopIteration
 
 # Pickling
 @imports([['cPickle',[]]])
