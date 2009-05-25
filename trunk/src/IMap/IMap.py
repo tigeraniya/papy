@@ -8,10 +8,23 @@ the buffer size. It can use threads and processes.
 """
 # Multiprocessing requires Python 2.6 or the backport of this package to the 2.5 line
 # get it from http://pypi.python.org/pypi/multiprocessing/
-from multiprocessing import Process, Pipe, cpu_count, TimeoutError
-from multiprocessing.synchronize import Lock
-from multiprocessing.forking import assert_spawning
-from multiprocessing.queues import SimpleQueue
+PARALLEL = 0
+try:
+    from multiprocessing import Process, Pipe, cpu_count, TimeoutError
+    from multiprocessing.synchronize import Lock
+    from multiprocessing.forking import assert_spawning
+    from multiprocessing.queues import SimpleQueue
+    PARALLEL += 1
+except ImportError:
+    print 'mutliprocessing not available get it from:' +\
+          'http://pypi.python.org/pypi/multiprocessing/'
+try:
+    import rpyc
+    PARALLEL += 1
+except ImportError:
+    print 'RPyC not available get it from:' +\
+          'http://rpyc.wikidot.com/'
+
 # Threading and Queues
 from threading import Thread, Semaphore, Event
 from threading import Lock as tLock
@@ -21,7 +34,6 @@ from heapq import heappush, heappop
 # Misc.
 from itertools import izip, repeat, cycle, chain
 from inspect import getsource, isbuiltin, isfunction
-import rpyc
 import traceback
 from collections import defaultdict, deque
 import time
@@ -270,11 +282,22 @@ class IMap(object):
                  name =None):
 
         log.debug('%s %s starts initializing' % (self, (name or '')))
+        if not PARALLEL:
+            if worker_type == 'process':
+                log.error('worker_type ="process" requires multiprocessing')
+                raise ImportError('worker_type ="process" requires multiprocessing')
+            else:
+                self.worker_type = 'thread'
+        else:
+            self.worker_type = (worker_type or 'process') # 'thread' or 'process'
+        if worker_remote and not PARALLEL == 2:
+            log.error('worker_remote requires RPyC')
+            raise ImportError('worker_remote requires RPyC')
+
         self._tasks = []
         self._started = Event()               # (if not raise TimeoutError on next)
         self._stopping = Event()              # (starting stopping procedure see stop)
         # pool options
-        self.worker_type = (worker_type or 'process') # 'thread' or 'process'
         self.worker_num = cpu_count() if worker_num is None else worker_num
         self.worker_remote = (worker_remote or [])    # [('host', #workers)]
         self.stride = (stride or self.worker_num + sum([i[1] for i in self.worker_remote]))
