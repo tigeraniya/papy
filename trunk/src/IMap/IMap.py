@@ -90,6 +90,10 @@ class IMap(object):
 
            [['localhost', 2], ['127.0.0.1', 2]]
 
+         the TCP port can also be specified::
+
+           [['localhost:6666']]
+
       * stride(int) [default: worker_num + sum of remote worker_num, min: 1]
 
         The stride argument defines the number of consecutive tasklets which are
@@ -630,7 +634,7 @@ def worker(inqueue, outqueue, host =None):
         inqueue._writer.close()
         outqueue._reader.close()
     if host:
-        conn = rpyc.classic.connect(host)
+        conn = rpyc.classic.connect(*host.split(':'))
         conn.execute(getsource(imports)) # provide @imports on server
 
     while True:

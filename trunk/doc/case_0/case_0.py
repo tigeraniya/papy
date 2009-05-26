@@ -35,8 +35,7 @@ def pipeline(Imap):
 #3. run-time
 if __name__ == '__main__':
     # run it twice in as a parallel process and linear
-    for imap_ in (IMap(ordered =False, worker_num =4), IMap(ordered =False,
-        worker_num =0, worker_remote=[('localhost', 4)]),):
+    for imap_ in (IMap(ordered =False, worker_num =2), None):
         # make input input 
         numbers = xrange(int(1e8),int(1e8+50))
         # get pipeline instance
