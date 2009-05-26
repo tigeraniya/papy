@@ -45,16 +45,16 @@ class IMap(object):
     """
     Parallel (thread- or process-based), buffered, multi-task, itertools.imap or Pool.imap
     function replacment. Like imap it evaluates a function on elements of an iterable, and
-    it does so layzily.
+    it does so layzily(with adjusted buffer via the stride and buffer arguments).
 
     optional arguments:
 
       * func, iterable, args, kwargs
 
-        Defines the the first and only tasks, starts the IMap pool and returns an IMap
+        Defines the the first and only task, it *starts* the IMap pool and returns an IMap
         iterator. For a description of the args, kwargs and iterable input please see
-        the add_task function. Either both or none func *and* iterable have to be
-        given. Arguments are optional.
+        the add_task function. Either *both* or *none* func **and** iterable have to be
+        specified. Arguments and keyworded arguments are optional.
 
       * worker_type('process' or 'thread') [default: 'process']
 
@@ -672,55 +672,75 @@ def inject_func(func, conn):
         conn.execute(inject_code)
     return conn.namespace[name]
 
-def imports(modules):
-    """Function to be used as a decorator to attach import statments to function
-       definitions. Two forms of import statements are supported::
+def imports(modules, forgive =False):
+    """ Should be used as a decorator to attach import statments to function
+        definitions. And import them in the in the global namespace of the 
+        function. 
+        
+        Two forms of import statements are supported::
 
          import module                    # e.q. to ['module', []]
          from module import sub1, func2   # e.q. to ['module', ['sub1', func2]]
 
-       The imported modules are in general availble only inside the decorated functions.
+        The imported modules should be considered as availble only inside the 
+        decorated functions. 
 
-       Arguments:
+        Arguments:
 
-         * modules(list)
+          * modules(list)
 
-           A list of modules in the following forms::
+            A list of modules in the following forms::
 
-             ['module',['sub_module1', ... ,'sub_module2']]
+              ['module',['sub_module1', ... ,'sub_module2']]
 
-             ['module',[]]
+            or::
 
-           If a list of sub-modules is specified they will be availble in the local
-           name-space of the function i.e::
+              ['module',[]]
 
-             # re module availble in the namespace
-             @imports([['re',[]]])
-               def need_re(some_string):
-                   res = re.search('pattern',some_string)
-                   return res.group()
+            If a list of sub-modules is specified they will be availble in the
+            globals of the function i.e::
 
-             # search function availble in the namespace
-             @imports([['re',['search']]])
-               def need_re(some_string):
-                   res = search('pattern',some_string) #!
-                   return res.group()
+              # re module availble in the namespace
+              @imports([['re',[]]])
+                def need_re(some_string):
+                    res = re.search('pattern',some_string)
+                    return res.group()
+
+              # search function availble in the namespace
+              @imports([['re',['search']]])
+                def need_re(some_string):
+                    res = search('pattern',some_string) #!
+                    # but re.search will also work.
+                    return res.group()
+          
+          * forgive(bool)
+
+            If True will not raise exception on ImportError.
     """
     def wrap(f):
         if modules:
             setattr(f, 'imports', modules)
-            for mod, sub in modules:
-                module = __import__(mod)
-                for submod in sub:
-                    f.func_globals[submod] = getattr(module, submod)
-                else:
+            try:
+                for mod, sub in modules:
+                    module = __import__(mod, fromlist=sub)
                     f.func_globals[mod] = module
+                    for submod in sub:
+                        f.func_globals[submod] = getattr(module, submod)
+            except ImportError:
+                if not forgive:
+                    raise
         return f
     return wrap
 
 
 class Weave(object):
-    """
+    """ Weaves a sequence of iterators, which can be stopped if the same number
+        of results has been consumed from all iterators. 
+
+        Arguments:
+
+        TODO: refactor iterables -> iterators
+
     """
     def __init__(self, iterables, repeats =1):
         self.iterables = iterables          # sequence of iterables
@@ -757,9 +777,28 @@ class Weave(object):
 
 
 class IMapTask(object):
-    """ Is returned by the get_task method of IMap instances.
-        It is a wrapper around an IMap instance which returns
-        results only for a specified task_id.
+    """ Object returned by the get_task method of IMap instances.
+        It is a wrapper around an *IMap* instance which returns
+        results only for specified arguments: task, timeout, block.
+
+        Arguments:
+
+          * iterator(IMap instance)
+
+            *IMap* instance to wrap, usually this is called by the get_task method
+            of the *IMap* instance itself.
+
+          * task(integer)
+
+            Id of the task from the *IMap* instance.
+
+          * timeout
+            
+            see documentation for: *IMap.next*
+
+          * block
+
+            see documentation for: *IMap.next*
     """
     def __init__(self, iterator, task, timeout, block):
         self.timeout = timeout
@@ -772,7 +811,7 @@ class IMapTask(object):
 
     def next(self):
         """ Returns a result if availble within timeout else raises
-            a TimeoutError.
+            a TimeoutError. See documentation for *IMap.next*
         """
         return self.iterator.next(task =self.task, timeout =self.timeout,
                                                      block =self.block)

@@ -4,7 +4,7 @@ from IMap import IMap
 
 
 #1. functions definitions
-@imports([['MMTK.Trajectory', ['Trajectory']]])
+@imports([['MMTK', ['Trajectory']]])
 def arrays_from_netcdf(file_name):
     trajectory = Trajectory.Trajectory(None, file_name)
     steps = len(trajectory)

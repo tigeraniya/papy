@@ -95,13 +95,13 @@ def load_pickle(handle):
             raise StopIteration
 
 # JSON
-@imports([['simplejson',[]]])
+@imports([['simplejson',[]]], forgive =True)
 def json_dumps(inbox):
     """ Serializes the first element of the input using the JSON protocol.
     """ 
     return simplejson.dumps(inbox[0])
 
-@imports([['simplejson',[]]])
+@imports([['simplejson',[]]], forgive =True)
 def json_loads(inbox):
     """ De-serializes the first element of the input using the JSON protocol.
     """     
