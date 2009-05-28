@@ -813,6 +813,20 @@ class Worker(object):
     def _inject(self, conn):
         """ Inject/replace all functions into a rpyc connection object.
         """
+        # provide partial remotely
+        conn.execute('from functools import partial')
+        # inject compose function
+        inject_func(compose, conn)
+        # inject all functions
+        for f in self.task:
+            inject_func(f, conn)
+        # make partial of composed function
+        conn.execute('comp_func = partial(compose, funcs =%s)' %\
+                        str(tuple([i.__name__ for i in [a, b]])).replace("'","")
+        comp_func = conn.namespace['comp_func']
+
+
+
         self.task = tuple([inject_func(f, conn) for f in self.task])
         return self
 
@@ -866,11 +880,11 @@ def inspect(piper):
     is_iterable_w = is_iterable and isinstance(piper[0], Worker)
     return (is_piper, is_worker, is_function, is_iterable_p, is_iterable_w, is_iterable_f)
 
-def compose(inbox, task_name, args):
-    """ Composes function by name.
+def compose(inbox, args, funcs):
+    """ Composes functions.
     """
-    for f, a in zip(task_name, args):
-        inbox = (eval(f)(inbox, *a),)
+    for f, a in izip(funcs, args):
+        inbox = f(inbox, *a)
     return inbox
 
 class Consume(object):

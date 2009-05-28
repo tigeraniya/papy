@@ -9,10 +9,11 @@ import operator
 from numpy import mean
 from multiprocessing import TimeoutError
 from papy import *
-from papy.papy import imports, Produce, Consume, Chain
+from papy.papy import compose, imports, Produce, Consume, Chain
 from IMap import *
 import logging
 from papy.utils import logger
+from functools import partial
 logger.start_logger(log_level =logging.DEBUG, log_to_screen =False, log_rotate =True)
 
 
@@ -296,6 +297,16 @@ class test_Worker(GeneratorTest):
         def pr(i):
             return (re, sys)
         pr(1)
+
+    def test_compose(self):
+        def plus(i):
+            return i+1
+        def minus(i):
+            return i-1
+        assert 0 == compose(0, ((),()), funcs =(plus, minus))
+        plus_minus = partial(compose, funcs =(plus, minus))
+        assert 0 == plus_minus(0, ((),()))
+
 
     def test_sys_ver(self):
         assert [('sys',['version'])] == sys_ver.imports
