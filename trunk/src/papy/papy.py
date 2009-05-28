@@ -822,12 +822,11 @@ class Worker(object):
             inject_func(f, conn)
         # make partial of composed function
         conn.execute('comp_func = partial(compose, funcs =%s)' %\
-                        str(tuple([i.__name__ for i in [a, b]])).replace("'","")
+                      str(tuple([i.__name__ for i in self.task])).replace("'",""))
+                        # ['func1', 'func2'] -> "(func1, func2)"
         comp_func = conn.namespace['comp_func']
-
-
-
-        self.task = tuple([inject_func(f, conn) for f in self.task])
+        self.task = [comp_func]
+        self.args = [[self.args]]
         return self
 
     def __call__(self, inbox):
@@ -883,9 +882,9 @@ def inspect(piper):
 def compose(inbox, args, funcs):
     """ Composes functions.
     """
-    for f, a in izip(funcs, args):
-        inbox = f(inbox, *a)
-    return inbox
+    for f, a in zip(funcs, args):
+        inbox = (f(inbox, *a),)
+    return inbox[0]
 
 class Consume(object):
     """ This iterator-wrapper consumes n results from the input iterator and zips the

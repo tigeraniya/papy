@@ -300,12 +300,12 @@ class test_Worker(GeneratorTest):
 
     def test_compose(self):
         def plus(i):
-            return i+1
+            return i[0]+1
         def minus(i):
-            return i-1
-        assert 0 == compose(0, ((),()), funcs =(plus, minus))
+            return i[0]-1
+        assert 0 == compose([0], ((),()), funcs =(plus, minus))
         plus_minus = partial(compose, funcs =(plus, minus))
-        assert 0 == plus_minus(0, ((),()))
+        assert 0 == plus_minus([0], ((),()))
 
 
     def test_sys_ver(self):
