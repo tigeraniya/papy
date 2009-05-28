@@ -1,14 +1,15 @@
 About the Parallelism of PaPy
 ===============================
 
-This document explains and shows how to use the parallel features of papy. The
-first paragraphs introduce the parallel IMap function and types of parallelism,
-in later sections optimizations of pipelines are explained. 
+This document explains and shows how to use the parallel features of *PaPy*. The
+first paragraphs introduce the ``map`` and ``imap`` functions and the *IMap* object. 
+The types of parallelism, are explained in the later sections where also typical 
+optimizations of pipelines are covered. 
 
-Parallel functionality is provided by the IMap class. In the most basic mode of
-operation it can be called exactly like itertools.imap or the multiprocessing
-Pool imap method. Setting additional options allows to parallelise the
-evaluation using workers of threads, processes or remote processes and share
+Parallel functionality is provided by the *IMap* class. In the most basic mode of
+operation it can be called exactly like ``itertools.imap`` or the
+``multiprocessing`` *Pool* ``imap`` method. Setting additional options allows to parallelise the
+evaluation using *Workers* of threads, processes or remote processes and share
 those workers among multiple functions and inputs. A unique feature of IMap is
 that it allows to fine-tune the memory-consumption, parallelism and layziness
 trade-off of nested function maps.
@@ -190,7 +191,7 @@ inefficient.
 The Task and the tasklet.
 -------------------------
 
-The imap implementation in papy (IMap) is different as it allows to control the
+The imap implementation in *PaPy* (*IMap*) is different as it allows to control the
 order by which function and data tuples are submitted to the worker pool. It
 introduces the concept of a task which is a function, input, arguments tuple.
 The input is a python iterator i.e. an object which has a next method it
@@ -285,7 +286,7 @@ order.::
     # second stride
     function0(input_data[n .. n+n]) # where n is stride 
     function1(out1[n .. n+n])
-    function2(other_data[n .. n+n])
+    function2(other_data[n .. n+n])1
 
     # and so on
 
