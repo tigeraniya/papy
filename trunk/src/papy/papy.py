@@ -827,6 +827,8 @@ class Worker(object):
         comp_func = conn.namespace['comp_func']
         self.task = [comp_func]
         self.args = [[self.args]]
+        # instead of multiple remote back and the combined functions is
+        # evaluated remotely.
         return self
 
     def __call__(self, inbox):
@@ -879,10 +881,11 @@ def inspect(piper):
     is_iterable_w = is_iterable and isinstance(piper[0], Worker)
     return (is_piper, is_worker, is_function, is_iterable_p, is_iterable_w, is_iterable_f)
 
+@imports([['itertools',['izip']]])
 def compose(inbox, args, funcs):
     """ Composes functions.
     """
-    for f, a in zip(funcs, args):
+    for f, a in izip(funcs, args):
         inbox = (f(inbox, *a),)
     return inbox[0]
 
