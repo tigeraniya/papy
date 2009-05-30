@@ -1,38 +1,54 @@
-""" This is a prototype of a pipeline, use it as a start-point
+""" This is a prototype of a pipeline, use it as a start-point to construct
+    your own pipeline. It shows you how to define your own functions and how
+    to use built-in workerf functions. It also uses layout, which allows
+    function definitions and pipeline code to be contained in the same file.
 """
-# Part 0
-# This is almost "from papy import *"
+## Part 0 Explicit import of all needed classes and the workers sub-module
+# In most pipelines a "from papy import *" is appropriate.
 from papy import Plumber, Piper, Worker
-from papy import PlumberError, DaggerError, PiperError, WorkerError
-# papy comes with some bundled workers
+# papy comes with some built-in workers
 from papy import workers
 
-# Part 1 function definitions
-# e.g.:
+## Part 1 function definitions
+# We define a function which returns the arg-th power of the
+# first input in the inbox. 
 def pow_(inbox, arg):
     """ This function wraps the built-in function pow.
     """
     return pow(inbox[0], arg)
 
-def pipeline():
-    # Part 2. Define input data (any iterator)
-    data = xrange(10)               # e.g. a generator
-
-    # Part 3. Initialize Worker instances (i.e. wrap the functions)
-    pwr = Worker(pow_, (2,))    # 1 arg: a list of functions (or single function),
-                                # 2 arg: a list of lists of arguments (or single list of arguments)
+## Part 2 topology definitions.
+def pipeline(imap_):
+    # Part 2a) Initialize Worker instances (i.e. wrap the functions).
+    # the first worker uses a user-define function.
+    # the second worker a built-in function.
+    pow2 = Worker(pow_, (2,))    
+    # first arg: a list of functions (or single function),
+    # second arg: a list of lists of arguments (or single list of arguments)
     mul3 = Worker(workers.math.mul, (3,))
 
-    # Part 4. Initialize Piper instances (i.e. define worker behaviour: parallelis, timeouts)
-    p_pwr = Piper(pwr, parallel =1) # a parallel but order preserving piper
-    p_mul3 = Piper(mul3, parallel =0)
+    # Part 2b. Initialize Piper instances (i.e. how to run the functions).
+    # We define both functions to be run using the same IMap instance which will
+    # be created at run-time and is an argument to the pipeline function.
+    pow2_piper = Piper(pow2, parallel =imap_)
+    mul3_piper = Piper(mul3, parallel =imap_)
 
-    # Part 5. Initialize the pipeline (e.g.: what and where to log)
-    pipes = Plumber(log_file ='papy_pipeline_run.log')
+    # Part 2c. Define the topology (i.e. how are pipers connected).
+    pipes = Plumber()
 
-    # Part 6. Define the pipeline (i.e. how are the pipers connected)
-    pipes.add_pipe((p_pwr, p_mul3))
-    pipes.set_input([data],p_pwr)
+    # Part 2d. Define the pipeline (i.e. how are the pipers connected)
+    pipes.add_pipe((pow2_piper, mul3_piper))
+    return pipes
+
+
+## Part 3. Run-time
+# at this stage we have a pipeline definition which only need to be 
+# connected to some input and some computational resources.
+if __name__ == '__main__':
+
+    imap_ = IMap
+
+
 
     # Part 7. Start the pipeline
     pipes.plunge()                      # a little bit of magic
@@ -41,5 +57,10 @@ def pipeline():
         # do something with the data (e.g. print it)
         print '%s -> is:%5s   should be:%5s' % (j,i, ((j*j)*3))
 
+# run time.
 if __name__ == '__main__':
+        # Part 2. Define input data (any iterator)
+    data = xrange(10)               # e.g. a generator
+
+
     pipeline()
