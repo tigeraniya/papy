@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 RPYCD_CONFIG_FILE = 'rpycd_config'
-
+RPYCD_PID_FILE = 'rpycd.pid'
 
 # CONFIG
 import sys
@@ -59,6 +59,9 @@ def file_options(file):
 
 def line_options():
     parser = OptionParser()
+    parser.add_option("--config", action="store", dest="config", type="str",       
+    metavar="FILE", default=None, help="specify the configuration file, "       
+    "default is stderr")
     parser.add_option("-m", "--mode", action="store", dest="mode", metavar="MODE",
     default="threaded", type="string", help="mode can be 'threaded', 'forking', "
     "or 'stdio' to operate over the standard IO pipes (for inetd, etc.). "       
@@ -94,6 +97,8 @@ def line_options():
     if args:                           
         parser.error("does not take positional arguments: %r" % (args,))
     options.mode = options.mode.lower()
+    if options.config:
+        options = file_options(options.config)
     return options
 
 def validate(options):
@@ -122,13 +127,23 @@ def validate(options):
     return options  
 
 def main():
-    options = validate(file_options(RPYCD_CONFIG_FILE))
+    pidfile = open(RPYCD_PID_FILE, 'w')
+    pidfile.write("%s" % os.getpid())
+    pidfile.write("%s" % os.getcwd())
+    pidfile.close()
+    if len(sys.argv) > 1:
+        options = validate(line_options())
+    else:
+        options = validate(file_options(RPYCD_CONFIG_FILE))
     handler = globals()[options.handler]
     handler(options)
 
 if __name__ == "__main__":
-    context = daemon.DaemonContext(stdout =sys.stdout, stderr =sys.stderr,
-    working_directory ='.')
+    print sys.argv
+    context = daemon.DaemonContext(stdout =sys.stdout,
+                                   stderr =sys.stderr,
+                                   working_directory =os.getcwd()
+                                   )
     with context:
         main()
     

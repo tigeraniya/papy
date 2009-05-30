@@ -2,8 +2,8 @@
 # RPyCd - The RPyC daemon.
 
 [options]
-#mode = forking
-#port = 18813
+mode = forking
+port = 18813
 host = 127.0.0.1
 #logfile = /tmp/rpycd_log
 #quiet = False
