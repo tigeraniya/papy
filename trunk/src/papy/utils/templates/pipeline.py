@@ -1,66 +1,66 @@
-""" This is a prototype of a pipeline, use it as a start-point to construct
-    your own pipeline. It shows you how to define your own functions and how
-    to use built-in workerf functions. It also uses layout, which allows
-    function definitions and pipeline code to be contained in the same file.
-"""
-## Part 0 Explicit import of all needed classes and the workers sub-module
-# In most pipelines a "from papy import *" is appropriate.
-from papy import Plumber, Piper, Worker
-# papy comes with some built-in workers
-from papy import workers
+#!/usr/bin/env python
+""" This is a prototype of a pipeline, use it as a start-point to construct your
+    own. The construction of a pipeline is split into parts, this has several
+    reasons. First it makes your code modular as it detaches the definition of a
+    work-flow from the runtime i.e. the real data and computational resources
+    and it allows to group all the elements into a single-file executable
+    script.
 
-## Part 1 function definitions
-# We define a function which returns the arg-th power of the
-# first input in the inbox. 
+    All the steps are as explicit as possible. If you prefer the less flexible
+    but shorter implicit API features please refer to the documentation.
+    # Add links 
+"""
+# Part 0: import the PaPy infrastructure.
+# interface of the API: 
+from papy import Plumber, Dagger, Piper, Worker
+# parallel IMap function: 
+from IMap import IMap
+# all example workers
+from papy import workers
+from papy.utils import logger
+from functools import partial
+logger.start_logger(log_to_screen =False, log_rotate =True)
+
+# Part 1: Define user functions
 def pow_(inbox, arg):
     """ This function wraps the built-in function pow.
     """
     return pow(inbox[0], arg)
 
-## Part 2 topology definitions.
-def pipeline(imap_):
-    # Part 2a) Initialize Worker instances (i.e. wrap the functions).
-    # the first worker uses a user-define function.
-    # the second worker a built-in function.
-    pow2 = Worker(pow_, (2,))    
-    # first arg: a list of functions (or single function),
-    # second arg: a list of lists of arguments (or single list of arguments)
-    mul3 = Worker(workers.math.mul, (3,))
-
-    # Part 2b. Initialize Piper instances (i.e. how to run the functions).
-    # We define both functions to be run using the same IMap instance which will
-    # be created at run-time and is an argument to the pipeline function.
+# Part 2: Define the topology
+def pipeline(runtime_):
+    input_data, imap_ = runtime_
+    # initialize Worker instances (i.e. wrap the functions).
+    pow2 = Worker(pow_, (2,))
+    mul3 = Worker(workers.maths.mul_, (3,))
+    prnt = Worker(workers.io.print_)
+    # initialize Piper instances (i.e. attach functions to runtime)
     pow2_piper = Piper(pow2, parallel =imap_)
     mul3_piper = Piper(mul3, parallel =imap_)
-
-    # Part 2c. Define the topology (i.e. how are pipers connected).
+    prnt_piper = Piper(prnt)
     pipes = Plumber()
-
-    # Part 2d. Define the pipeline (i.e. how are the pipers connected)
-    pipes.add_pipe((pow2_piper, mul3_piper))
+    pipes.add_pipe((pow2_piper, mul3_piper, prnt_piper))
+    pipes.set_inputs([input_data])
     return pipes
 
+# Part 3: Define the run-time
+def runtime(options):
+    size = int(options['--size'])
+    input_data = xrange(size)
+    return input_data
 
-## Part 3. Run-time
-# at this stage we have a pipeline definition which only need to be 
-# connected to some input and some computational resources.
+# Execute:
 if __name__ == '__main__':
-
-    imap_ = IMap
-
-
-
-    # Part 7. Start the pipeline
-    pipes.plunge()                      # a little bit of magic
-    pull_me = pipes.get_output()[0]     # this pipeline has only one output
-    for i,j in zip(pull_me, data):
-        # do something with the data (e.g. print it)
-        print '%s -> is:%5s   should be:%5s' % (j,i, ((j*j)*3))
-
-# run time.
-if __name__ == '__main__':
-        # Part 2. Define input data (any iterator)
-    data = xrange(10)               # e.g. a generator
-
-
-    pipeline()
+    # get command-line options using getopt 
+    import sys
+    from getopt import getopt
+    options = dict(getopt(sys.argv[1:], '',['size=', 'worker_num='])[0])
+    # initialize runtime
+    input_data = runtime(options)
+    worker_num = int(options['--worker_num'])
+    imap_ = IMap(worker_num =worker_num)
+    # initialize the pipeline
+    pipes = pipeline((input_data, imap_))
+    # start the pipeline 
+    pipes.plunge()
+    
