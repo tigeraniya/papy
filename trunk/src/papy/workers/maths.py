@@ -66,21 +66,21 @@ def mod(inbox, b):
 def modstar(inbox):
     return operator.mod(*inbox)
 
-@imports([['operator',['sub']]])
+@imports([['operator',[]]])
 def sub(inbox, b):
-    return sub(inbox[0], b)
+    return operator.mub(inbox[0], b)
 
-@imports([['operator',['sub']]])
+@imports([['operator',[]]])
 def substar(inbox):
-    return sub(*inbox)
+    return operator.sub(*inbox)
 
-@imports([['operator',['mul']]])
-def mul(inbox, b):
-    return mul(inbox[0], b)
+@imports([['operator',[]]])
+def mul_(inbox, b):
+    return operator.mul(inbox[0], b)
 
-@imports([['operator',['mul']]])
+@imports([['operator',[]]])
 def mulstar(inbox):
-    return mul(*inbox)
+    return operator.mul(*inbox)
 
 
 # math module

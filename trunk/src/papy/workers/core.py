@@ -34,6 +34,22 @@ def spasser(inbox, s =None):
     s = (s or range(len(inbox)))
     return [input for i, input in enumerate(inbox) if i in s] 
 
+def nzipper(inbox, n =None):
+    """ 
+    """
+    return zip(*inbox[:None])[0]
 
+def ijoiner(inbox, i =0, join =""):
+    """ Joins and returns the elements of the input with index i.
+    """
+    return join.join(inbox[i])
 
+def njoiner(inbox, n =None, join =""):
+    """ Joins and returns the first n inputs.
+    """
+    return join.join(inbox[:n])
 
+def sjoiner(inbox, s =None, join =""):
+    """ Joins and returns the first input with indices in s.
+    """
+    return join.join([input for i, input in enumerate(inbox) if i in s])
