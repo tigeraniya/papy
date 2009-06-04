@@ -65,6 +65,22 @@ def load_file(handle, follow =False, wait =0.1):
         else:
             raise StopIteration
 
+@imports([['mmap', []], ['os',[]]])
+def mmap_file(handle, chunk):
+    fd = handle.fileno()
+    file_size = os.fstat(fd).st_size
+    mmaped = mmap.mmap(fd, file_size, access=mmap.ACCESS_READ)
+    start = 0
+    stop = chunk
+    while True:
+        stop = mmaped.rfind('\n', start, stop)
+        yield(fd, start, stop)
+        start = stop
+        stop = start + chunk
+
+
+
+
 # Pickling
 @imports([['cPickle',[]]])
 def pickle_dumps(inbox):
