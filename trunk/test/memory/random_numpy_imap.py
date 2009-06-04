@@ -1,9 +1,11 @@
+# The idea od this test is to make big numpy arrays as input
+# and push them through the IMap to see if memory gets recycled
 from IMap import IMap, imports
 
 @imports([['numpy.random', ['random']]])
 def make_random():
     while True:
-        a = random(10000000)
+        a = random(200000)
         yield a
 
 def returner(i):

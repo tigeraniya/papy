@@ -17,6 +17,7 @@ from types import FunctionType
 from inspect import isbuiltin, getsource
 from logging import getLogger
 from time import time
+import gc
 
 class WorkerError(Exception):
     """ Exceptions raised or related to Worker instances.
@@ -349,6 +350,7 @@ class Plumber(Dagger):
                 tasks.stop()
             try:
                 tasks.next()
+                gc.collect()
                 frame_finished = tasks.i == tasks.lenght -1
                 stats(frame_finished)
             except StopIteration:
