@@ -324,6 +324,22 @@ class test_Worker(GeneratorTest):
     def test_exceptions(self):
         self.assertRaises(TypeError, Worker, 1)
         self.assertRaises(TypeError, Worker, [1])
+    def test_chunk(self):
+        fh = open('chunks.txt','rb')
+        chunker = workers.io.chunk_file(fh, 4000)
+        mmapc = Worker(workers.io.mmap_chunk)
+        output = ""
+        for chunk in chunker:
+            fillike = mmapc([chunk])
+            while True:
+                line = fillike.readline()
+                if line:
+                    output += line
+                else:
+                    break
+        assert output == fh.read()
+                
+
 
 class test_Piper(GeneratorTest):
 

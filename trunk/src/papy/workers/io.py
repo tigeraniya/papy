@@ -66,20 +66,62 @@ def load_file(handle, follow =False, wait =0.1):
             raise StopIteration
 
 @imports([['mmap', []], ['os',[]]])
-def mmap_file(handle, chunk):
+def chunk_file(handle, size):
+    """ Creates a file chunk generator. A chunk is a tuple (handle, first_byte,
+        last_byte). The size of each chunk i.e. last_byte - first_byte is
+        *approximately* the ``size`` argument. The first byte points always to
+        the first character in a line the last byte is a new-line character or
+        EOF.
+    
+        Arguments:
+
+          * size(int) [default: mmap.ALLOCATIONGRANULARITY]
+
+            on windows: 64KBytes
+            on linux: 4KBytes
+
+            Approximate chunk size in bytes.
+    """
     fd = handle.fileno()
     file_size = os.fstat(fd).st_size
+    size = (size or mmap.ALLOCATIONGRANULARITY)
     mmaped = mmap.mmap(fd, file_size, access=mmap.ACCESS_READ)
-    start = 0
-    stop = chunk
+    # start at the beginning of file
+    start, stop = 0, 0
     while True:
-        stop = mmaped.rfind('\n', start, stop)
-        yield(fd, start, stop)
-        start = stop
-        stop = start + chunk
+        # stop can be 0 if at the beginning or after a chunk
+        # or some value if size was to small to contain a new-line 
+        stop = (stop or start) + size
+        # reached end of file
+        if stop >= file_size:
+            yield (fd, start, file_size - 1)
+            break
+        # try to get a chunk
+        last_n = mmaped.rfind('\n', start, stop)
+        if last_n != -1:
+            yield (fd, start, last_n)
+            start = last_n + 1
+            stop = 0
+        # if no chunk the chunk size will be start, start+size+size in next
+        # round.
 
-
-
+@imports([['mmap', []], ['os',[]]])
+def mmap_chunk(inbox):
+    """ Given a chunk i.e. (handle, first_byte, last_byte) creates a mmap object
+        which contains the chunk. The last byte of the mmap object is the last
+        byte of the chunk, but the first byte of the object *is not* the first
+        byte of the chunk. The position of the pointer is the start of the
+        chunk.
+    """
+    fd, start, stop = inbox[0]
+    offset = start - (start % mmap.ALLOCATIONGRANULARITY)
+    start = start - offset
+    stop = stop - offset + 1
+    mmaped = mmap.mmap(fd, stop, access=mmap.ACCESS_READ, offset =offset)
+    mmaped.seek(start)
+    print 'mapped id: %s' % id(mmaped)
+    print mmaped[0:10]
+    return mmaped
 
 # Pickling
 @imports([['cPickle',[]]])

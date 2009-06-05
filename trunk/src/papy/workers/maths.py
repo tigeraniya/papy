@@ -75,7 +75,7 @@ def substar(inbox):
     return operator.sub(*inbox)
 
 @imports([['operator',[]]])
-def mul_(inbox, b):
+def mul(inbox, b):
     return operator.mul(inbox[0], b)
 
 @imports([['operator',[]]])
