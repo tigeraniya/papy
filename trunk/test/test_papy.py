@@ -324,6 +324,7 @@ class test_Worker(GeneratorTest):
     def test_exceptions(self):
         self.assertRaises(TypeError, Worker, 1)
         self.assertRaises(TypeError, Worker, [1])
+
     def test_chunk(self):
         fh = open('chunks.txt','rb')
         chunker = workers.io.chunk_file(fh, 4000)

@@ -23,6 +23,26 @@ def dump(inbox, handle, delimiter =None):
         delimiter = '\n' + delimiter + '\n'
         handle.write(delimiter)
 
+def dump_iter(inbox, handle):
+    """ Saves the first element of the inbox to the provided stream (file
+        handle), the first element is assumed to be a sequence and each item
+        of the sequence is written as a separate line.
+    """
+    for item in inbox[0]:
+        handle.write("%s\n" % item)
+
+@imports([['tempfile',['mkstemp']], ['os', ['fdopen', 'getcwd']]])
+def dump_chunk(inbox, prefix ='chunk', suffix ='', dir =None):
+    """ Saves the first element of the inbox as a new file given
+    """
+    dir = dir or os.getcwd()
+    fd, name = mkstemp(suffix, prefix, dir)
+    handle = fdopen(fd, 'wb')
+    handle.write(inbox[0])
+    return name
+
+
+
 def load(handle, delimiter):
     """ Creates a generator from a stream (file handle) containing data
         delimited by delimiter strings.
@@ -126,7 +146,7 @@ def mmap_chunk(inbox):
 def pickle_dumps(inbox):
     """ Serializes the first element of the input using the pickle protocol.
     """
-    return cPickle.dumps(inbox[0])
+    return cPickle.dumps(inbox[0], cPickle.HIGHEST_PROTOCOL)
 
 @imports([['cPickle',[]]])
 def pickle_loads(inbox):

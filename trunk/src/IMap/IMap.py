@@ -651,11 +651,12 @@ def worker(inqueue, outqueue, host =None):
             put(task)
             continue
 
-        job, func, args, kwargs, (i, data) = task
-        
+        job, func, args, kwargs, (i, data) = task 
         if host:
             func = func._inject(conn) if hasattr(func, '_inject') else\
                    inject_func(func, conn)
+        #if hasattr(func, 'func_globals'):
+        #    func.func_globals['i'] = i
         try:
             ok, result = (True, func(data, *args, **kwargs))
         except Exception, e:
@@ -664,7 +665,7 @@ def worker(inqueue, outqueue, host =None):
         put((job, i, ok, result))
         
         
-def inject_func(func, conn):
+def inject_func(func, conn, i):
     """ Injects a function object into a rpyc connection object
     """
     name = func.__name__
