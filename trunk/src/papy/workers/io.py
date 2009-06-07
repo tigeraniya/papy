@@ -15,8 +15,22 @@ def print_(inbox):
 
 # Dumping to file-handle
 def dump(inbox, handle, delimiter =None):
-    """ Saves the first element of the inbox to the provided stream (file
+    """ Writes the first element of the inbox to the provided stream (file
         handle) delimiting the input by the optional delimiter string.
+
+        Note that only a single process can have access to a file handle open
+        for writing.
+
+        Arguments:
+
+          * handle(stream)
+
+            File handle open for writing.
+          
+          * delimiter(string) [default: None]
+
+            A string which will seperate the written items. e.g:
+            "END" becomes "\nEND\n" in the output stream
     """
     handle.write(inbox[0])
     if delimiter:
@@ -24,7 +38,7 @@ def dump(inbox, handle, delimiter =None):
         handle.write(delimiter)
 
 def dump_iter(inbox, handle):
-    """ Saves the first element of the inbox to the provided stream (file
+    """ Writes the first element of the inbox to the provided stream (file
         handle), the first element is assumed to be a sequence and each item
         of the sequence is written as a separate line.
     """
@@ -33,7 +47,7 @@ def dump_iter(inbox, handle):
 
 @imports([['tempfile',['mkstemp']], ['os', ['fdopen', 'getcwd']]])
 def dump_chunk(inbox, prefix ='chunk', suffix ='', dir =None):
-    """ Saves the first element of the inbox as a new file given
+    """ Saves the first element of the inbox as a new file.
     """
     dir = dir or os.getcwd()
     fd, name = mkstemp(suffix, prefix, dir)
@@ -41,7 +55,15 @@ def dump_chunk(inbox, prefix ='chunk', suffix ='', dir =None):
     handle.write(inbox[0])
     return name
 
-
+@imports([['os', ['stat']]])
+def load_chunk(inbox):
+    """ Creates a chunk from a file name.
+    """
+    file_name = inbox[0]
+    file_size = os.stat(file_name)
+    handle = open(file_name, 'rb')
+    fd = handle.fileno()
+    return (fd, 0, file_size - 1)
 
 def load(handle, delimiter):
     """ Creates a generator from a stream (file handle) containing data
@@ -125,7 +147,7 @@ def chunk_file(handle, size):
         # if no chunk the chunk size will be start, start+size+size in next
         # round.
 
-@imports([['mmap', []], ['os',[]]])
+@imports([['mmap', []]])
 def mmap_chunk(inbox):
     """ Given a chunk i.e. (handle, first_byte, last_byte) creates a mmap object
         which contains the chunk. The last byte of the mmap object is the last
@@ -141,6 +163,18 @@ def mmap_chunk(inbox):
     mmaped.seek(start)
     return mmaped
 
+@imports([['os', ['fdopen', 'remove']]])
+def read_chunk(inbox, lines =False, delete =False):
+    """ Reads out data from a chunk either as a string or as a list of lines.
+        Optionally deletes the associated file.
+    """
+    fd, start, stop = inbox[0]
+    handle = fdopen(fd, 'rb')
+    readout = handle.readlines() if lines else handle.read()
+    handle.close()
+    if delete:
+        remove(handle.name)
+    
 # Pickling
 @imports([['cPickle',[]]])
 def pickle_dumps(inbox):
