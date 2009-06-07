@@ -119,8 +119,6 @@ def mmap_chunk(inbox):
     stop = stop - offset + 1
     mmaped = mmap.mmap(fd, stop, access=mmap.ACCESS_READ, offset =offset)
     mmaped.seek(start)
-    print 'mapped id: %s' % id(mmaped)
-    print mmaped[0:10]
     return mmaped
 
 # Pickling
