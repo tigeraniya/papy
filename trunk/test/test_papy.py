@@ -325,6 +325,36 @@ class test_Worker(GeneratorTest):
         self.assertRaises(TypeError, Worker, 1)
         self.assertRaises(TypeError, Worker, [1])
 
+    def test_dump_stream(self):
+        fh = open('test_dump_stream', 'wb')
+        dump_work = Worker(workers.io.dump_stream, (fh, ''))
+        dumper = Piper(dump_work)
+        inbox = [['first1\nfirst2\n', 'second1\nsecond2\n', 'third\n']]
+        dumper(inbox)
+        assert list(dumper) == ['test_dump_stream', 'test_dump_stream', 'test_dump_stream']
+        fh.close()
+        fh = open('test_dump_stream', 'rb')
+        assert fh.read() == "\n\n".join(inbox[0]) + "\n\n"
+
+    def test_load_stream(self):
+        fh = open('test_load_stream', 'wb')
+        dump_work = Worker(workers.io.dump_stream, (fh, 'SOME_STRING'))
+        dumper = Piper(dump_work)
+        inbox = [['first1\nfirst2\n', 'second1\nsecond2\n', 'third\n']]
+        dumper(inbox)
+        assert list(dumper)
+        fh.close()
+        fh = open('test_load_stream', 'rb')
+        load_work = workers.io.load_stream(fh, 'SOME_STRING')
+        assert list(load_work) == inbox[0]
+
+
+        
+        
+
+
+
+
     def test_chunk(self):
         fh = open('chunks.txt','rb')
         chunker = workers.io.chunk_file(fh, 4000)
