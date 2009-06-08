@@ -13,13 +13,15 @@ def print_(inbox):
     """
     print inbox[0]
 
-# Dumping to file-handle
-def dump(inbox, handle, delimiter =None):
+# LINEAR 
+def dump_stream(inbox, handle, delimiter =None):
     """ Writes the first element of the inbox to the provided stream (file
-        handle) delimiting the input by the optional delimiter string.
+        handle) delimiting the input by the optional delimiter string. Returns
+        the name of the file being written.
 
         Note that only a single process can have access to a file handle open
-        for writing.
+        for writing. Therefore this worker function should only be used by a
+        linear piper.
 
         Arguments:
 
@@ -30,52 +32,33 @@ def dump(inbox, handle, delimiter =None):
           * delimiter(string) [default: None]
 
             A string which will seperate the written items. e.g:
-            "END" becomes "\nEND\n" in the output stream
+            "END" becomes "\\nEND\\n" in the output stream. The default is an
+            empty string which means that items will be seperated by a blank
+            line i.e.: '\\n\\n'
     """
     handle.write(inbox[0])
-    if delimiter:
-        delimiter = '\n' + delimiter + '\n'
-        handle.write(delimiter)
+    delimiter = '\n%s\n' % (delimiter or '')
+    handle.write(delimiter)
+    return handle.name    
 
-def dump_iter(inbox, handle):
-    """ Writes the first element of the inbox to the provided stream (file
-        handle), the first element is assumed to be a sequence and each item
-        of the sequence is written as a separate line.
-    """
-    for item in inbox[0]:
-        handle.write("%s\n" % item)
+def load_stream(handle, delimiter =None):
+    """ Creates a string generator from a stream (file handle) containing
+        data delimited by the delimiter strings.
 
-@imports([['tempfile',['mkstemp']], ['os', ['fdopen', 'getcwd']]])
-def dump_chunk(inbox, prefix ='chunk', suffix ='', dir =None):
-    """ Saves the first element of the inbox as a new file.
-    """
-    dir = dir or os.getcwd()
-    fd, name = mkstemp(suffix, prefix, dir)
-    handle = fdopen(fd, 'wb')
-    handle.write(inbox[0])
-    return name
+        Arguments:
 
-@imports([['os', ['stat']]])
-def load_chunk(inbox):
-    """ Creates a chunk from a file name.
-    """
-    file_name = inbox[0]
-    file_size = os.stat(file_name)
-    handle = open(file_name, 'rb')
-    fd = handle.fileno()
-    return (fd, 0, file_size - 1)
+          * delimiter(string) [default: None]
 
-def load(handle, delimiter):
-    """ Creates a generator from a stream (file handle) containing data
-        delimited by delimiter strings.
+            The default means that items will be separated by 
+            a blank line i.e.: '\\n\\n'
     """
-    delimiter = delimiter + '\n'
+    delimiter = (delimiter or '') + '\n'
     while True:
         temp = []
         while True:
             line = handle.readline()
             if line == delimiter:
-                # remove introduced '\n'
+                # remove introduced first '\n'
                 temp[-1] = temp[-1][:-1]
                 break
             elif line == '':
@@ -84,9 +67,118 @@ def load(handle, delimiter):
                 temp.append(line)
         yield "".join(temp)
 
+# PARALLEL
+@imports([['tempfile',['mkstemp']], ['os', ['fdopen', 'getcwd']]])
+def dump_chunk(inbox, prefix ='tmp', suffix ='', dir =None):
+    """ Writes the first element of the inbox as a chunk file. Returns the name
+        of the file written. By default creates the file in the current working
+        directory. A chunk file is a file which is a single chunk.
+
+        This worker is useful to persistantly store data and communicate
+        parallel pipers without the overhead of using queues.
+
+        For a description of the chunk see ``get_chunks``.
+
+        Arguments:
+
+          * prefix(string) [default: 'tmp']
+
+            Prefix of the file to be created. Should probably identify the
+            worker and piper.
+
+          * suffix(string) [default: '']
+
+            Suffix of the file to be created. Should probably identify the file
+            format of the chunk.
+
+          * dir(string) [default: current working directory]
+
+            Directory where the file will be created.
+    """
+    dir = dir or getcwd()
+    fd, name = mkstemp(suffix, prefix, dir)
+    handle = fdopen(fd, 'wb')
+    handle.write(inbox[0])
+    handle.close()
+    return name
+
+@imports([['os', ['stat', 'open']]])
+def load_chunk(inbox):
+    """ Creates a chunk from a chunk file. The whole file will be a single chunk.
+
+        For a dsecription of the chunk file see ``dump_chunk``.
+        For a description of the chunk see ``get_chunks``.
+    """
+    file_name = inbox[0]
+    file_size = stat(file_name)
+    handle = open(file_name, 'rb')
+    fd = handle.fileno()
+    return (fd, 0, file_size - 1)
+
+@imports([['glob', ['glob']],['os',['getcwd', 'path']]])
+def find_chunks(prefix ='tmp', suffix ='', dir =None):
+    """ Creates a file name generator from files matching the supplied
+        arguments. Matches the same files as those created by ``dump_chunk``
+        for the same arguments.
+
+        Arguments:
+
+          * prefix(string) [default: 'tmp']
+
+            Mandatory first chars of the files to find.
+
+          * suffix(string) [default: '']
+
+            Mandatory last chars of the files to find.
+
+          * dir(string) [default: current working directory]
+
+            Directory where the files should be located.
+    """
+    dir = dir or getcwd()
+    pattern = path.join(dir, prefix + '*' + suffix)
+    chunk_files = glob(pattern)
+    while True:
+        yield chunk_files.next()
+    
+@imports([['mmap', []]])
+def mmap_chunk(inbox):
+    """ Returns a mmap object (memory mapped file) from a chunk which should be
+        the first and only element of the inbox. This can be faster then reading
+        the chunk. You should **not** call the ``seek`` method of the mmap
+        object as the beginning of the object is **not** the beginning of the
+        chunk. The index returned ``tell`` is the first byte of the chunk, the
+        last byte is the last byte of the mmap object. 
+
+        For a description of the chunk see ``get_chunks``.
+    """
+    fd, start, stop = inbox[0]
+    offset = start - (start % mmap.ALLOCATIONGRANULARITY)
+    start = start - offset
+    stop = stop - offset + 1
+    mmaped = mmap.mmap(fd, stop, access=mmap.ACCESS_READ, offset =offset)
+    mmaped.seek(start)
+    return mmaped
+
+@imports([['os', ['fdopen']]])
+def read_chunk(inbox):
+    """ Reads out a string from a chunk which should be the first and only
+        element in the inbox. This might be slower then memmory mapping the
+        chunk. The first and last bytes of the string are the first and last
+        bytes of the chunk.
+
+        For a description of the chunk see ``get_chunks``.
+    """
+    fd, start, stop = inbox[0]
+    handle = fdopen(fd, 'rb')
+    handle.seek(start)
+    return handle.read(stop - start + 1)
+
+#EXTERNAL
 @imports([['time',[]]])
-def load_file(handle, follow =False, wait =0.1):
-    """ Creates a line generator from a stream (file handle).
+def get_lines(handle, follow =False, wait =0.1):
+    """ Creates a line generator from a file handle. This worker is useful if
+        working with  
 
         Arguments:
 
@@ -108,13 +200,17 @@ def load_file(handle, follow =False, wait =0.1):
             raise StopIteration
 
 @imports([['mmap', []], ['os',[]]])
-def chunk_file(handle, size):
-    """ Creates a file chunk generator. A chunk is a tuple (handle, first_byte,
-        last_byte). The size of each chunk i.e. last_byte - first_byte is
-        *approximately* the ``size`` argument. The first byte points always to
-        the first character in a line the last byte is a new-line character or
-        EOF.
-    
+def get_chunks(handle, size):
+    """ Creates a generator of chunks from a file handle. The size argument is
+        the approximate size of the generated chunks in bytes.
+        
+        A chunk is a 3-tuple (file descriptor, first_byte, last_byte), which 
+        defines the position of chunk within a file. The size of a chunk i.e. 
+        last_byte - first_byte is **approximately** the ``size`` argument. The
+        last byte in a chunk is always a '\\n'. The first byte points 
+        always to the first character in a line. A chunk can also be a whole
+        file i.e. the first byte is 0 and the last byte is 
+
         Arguments:
 
           * size(int) [default: mmap.ALLOCATIONGRANULARITY]
@@ -147,33 +243,6 @@ def chunk_file(handle, size):
         # if no chunk the chunk size will be start, start+size+size in next
         # round.
 
-@imports([['mmap', []]])
-def mmap_chunk(inbox):
-    """ Given a chunk i.e. (handle, first_byte, last_byte) creates a mmap object
-        which contains the chunk. The last byte of the mmap object is the last
-        byte of the chunk, but the first byte of the object *is not* the first
-        byte of the chunk. The position of the pointer is the start of the
-        chunk.
-    """
-    fd, start, stop = inbox[0]
-    offset = start - (start % mmap.ALLOCATIONGRANULARITY)
-    start = start - offset
-    stop = stop - offset + 1
-    mmaped = mmap.mmap(fd, stop, access=mmap.ACCESS_READ, offset =offset)
-    mmaped.seek(start)
-    return mmaped
-
-@imports([['os', ['fdopen', 'remove']]])
-def read_chunk(inbox, lines =False, delete =False):
-    """ Reads out data from a chunk either as a string or as a list of lines.
-        Optionally deletes the associated file.
-    """
-    fd, start, stop = inbox[0]
-    handle = fdopen(fd, 'rb')
-    readout = handle.readlines() if lines else handle.read()
-    handle.close()
-    if delete:
-        remove(handle.name)
     
 # Pickling
 @imports([['cPickle',[]]])
