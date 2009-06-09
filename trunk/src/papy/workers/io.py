@@ -29,7 +29,50 @@ def print_(inbox):
 #
 # INPUT OUTPUT
 #
-# STREAMS 
+# STREAMS
+@imports([['posix_ipc', ['SharedMemory']], ['mmap',[]], ['os',[]]])
+def open_shm(name):
+    """ Equivalent to the built in open function, but creates 
+    """
+    # The class is defined within a function to allow
+    # it to be injected together with the import statments
+    # on a remote RPyC host.
+    class ShmHandle(SharedMemory):
+        """
+        """
+        # to avoid recursive mapfile lookup 
+        def __init__(self, name):
+            # try to make some shared memory
+            try:
+                # create new file (won't create if exist)
+                SharedMemory.__init__(self, name, flags =posix_ipc.O_CREX)
+            except posix_ipc.ExistentialError:
+                # or open existing file (won't open if not exist)
+                SharedMemory.__init__(self, name)
+            try:
+                self.mapfile = mmap.mmap(self.fd, 0)
+            except mmap.error:
+                # tried to open empty file
+                self.mapfile = None
+
+        def __getattr__(self, name):
+            # cannot multiple inheritance using two C-classes.
+            return getattr(self.mapfile, name)
+
+        def write(self, str):
+            try:
+                bytes = len(str)
+                bytes_needed = self.mapfile.tell() - self.size + bytes
+                self.mapfile.resize(self.size + bytes_needed)
+            except AttributeError:
+                os.ftruncate(self.fd, bytes)
+                # the default is shared memory, ACCESS_WRITE
+                # needs file to be opened as r+ 
+                self.mapfile = mmap.mmap(self.fd, 0)
+            self.mapfile.write(str)
+    return ShmHandle(name)
+
+
 def dump_stream(inbox, handle, delimiter =None):
     """ Writes the first element of the inbox to the provided stream (file
         handle) delimiting the input by the optional delimiter string. Returns
@@ -89,9 +132,7 @@ def load_stream(handle, delimiter =None):
 @imports([['cPickle',[]]])
 def load_pickle_stream(handle):
     """ Creates an object generator from a stream (file handle) containing data
-        in pickles. This is equivalnet to ``load_stream`` and ``pickle_loads``,
-        but possibly faster.
-
+        in pickles. To be used with the ``dump_pickle_stream``
         .. warning::
 
             File handles should not be read by different processes.
@@ -99,9 +140,14 @@ def load_pickle_stream(handle):
     while True:
         try:
             yield cPickle.load(handle)
-            handle.read(2) # read '\n\n'
         except EOFError:
             raise StopIteration
+
+def dump_pickle_stream(inbox, handle):
+    """ Writes the first element of the inbox to the provided stream (data
+        handle) as a pickle. To be used with the ``load_pickle_stream`` worker.
+    """
+    cPickle.dump(inbox[0], handle, -1)
 
 # ITEMS
 @imports([['tempfile',['mkstemp']], ['os', ['fdopen', 'getcwd']]])
@@ -211,6 +257,7 @@ def loadshm_item(inbox, remove =True):
     if remove:
         memory.unlink()
     return ((memory.fd, n), 0, memory.size - 1)
+
 # FILES
 @imports([['time',[]]])
 def make_lines(handle, follow =False, wait =0.1):

@@ -354,12 +354,22 @@ class test_Worker(GeneratorTest):
         a = ['aaa\n', (1,2,3), 'abc', {}]
         for i in a:
             cPickle.dump(i, fh)
-            fh.write('\n\n')
         fh.close()
         fh = open('pickle_stream', 'rb')
         b = workers.io.load_pickle_stream(fh)
         assert a == list(b)
-        
+
+    def test_load_pickle_shm_stream(self):
+        import cPickle, os
+        fh = workers.io.open_shm('stream')
+        a = ['aaa\n', (1,2,3), 'abc', {}]
+        for i in a:
+            cPickle.dump(i, fh)
+        fh =  workers.io.open_shm('stream')
+        b = workers.io.load_pickle_stream(fh)
+        assert a == list(b)
+        fh.unlink()
+
     def test_dump_load_read_item(self):
         import os
         a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
@@ -413,6 +423,48 @@ class test_Worker(GeneratorTest):
                 else:
                     break
         assert output == fh.read()
+
+    def test_pickle(self):
+        a = ['aaaaaa','bbbbbbbm\n','ccccccccccc']
+        for i in a:
+            b = workers.io.pickle_dumps([i])
+            c = workers.io.pickle_loads([b])
+            assert i == c
+
+    def test_json(self):
+        a = ['aaaaaa','bbbbbbbm\n','ccccccccccc']
+        for i in a:
+            b = workers.io.json_dumps([i])
+            c = workers.io.json_loads([b])
+            assert i == c
+
+    def test_pickle_stream(self):
+        a = ['aa\naaaa','bbbbbbbm\n','cccccc\nccccc']
+        fh = open('test_pickle_stream2', 'wb')
+        for i in a:
+            workers.io.dump_pickle_stream([i], fh)
+        fh.close()
+        fh = open('test_pickle_stream2', 'rb')
+        b = workers.io.load_pickle_stream(fh)
+        import os
+        os.remove('test_pickle_stream2')
+        assert a == list(b)
+
+
+    def test_pickle_stream_shm(self):
+        a = ['aa\naaaa','bbbbbbbm\n','cccccc\nccccc']
+        fh = workers.io.open_shm('test_pickle_stream2')
+        for i in a:
+            workers.io.dump_pickle_stream([i], fh)
+        fh.close()
+        fh = workers.io.open_shm('test_pickle_stream2')
+        b = workers.io.load_pickle_stream(fh)
+        fh.unlink()
+        assert a == list(b)
+            
+        
+
+
 
 class test_Piper(GeneratorTest):
 
@@ -534,34 +586,33 @@ class test_Piper(GeneratorTest):
         handle = os.tmpfile()
         data = [{1:1},{2:2}]
         pickler = Worker(workers.io.pickle_dumps)
-        dumper = Worker(workers.io.dump, (handle,))
+        dumper = Worker(workers.io.dump_stream, (handle,))
         pickle_piper = Piper(pickler)
         dump_piper = Piper(dumper)
         pickle_piper([data])
         dump_piper([pickle_piper])     
         list(dump_piper)
         handle.seek(0)
-        input = workers.io.load_pickle(handle)
-        passer = Piper(workers.core.ipasser)
-        passer([input])
-        a = list(passer)
+        input = workers.io.load_stream(handle)
+        depickler = Piper(workers.io.pickle_loads)
+        depickler([input])
+        a = list(depickler)
         assert a == [{1: 1}, {2: 2}]
         handle.close()
-
 
     def xtest_output_simplejson(self):
         import os
         handle = os.tmpfile()
         data = [{'1':1},{'2':2}]
         sj = Worker(workers.io.json_dumps)
-        dumper = Worker(workers.io.dump, (handle, '---'))
+        dumper = Worker(workers.io.dump_stream, (handle, '---'))
         sj_piper = Piper(sj, debug =True)
         dump_piper = Piper(dumper)
         sj_piper([data])
         dump_piper([sj_piper])     
         list(dump_piper)
         handle.seek(0)
-        input = workers.io.load(handle, '---')
+        input = workers.io.load_stream(handle, '---')
         passer = Piper(workers.io.json_loads)
         passer([input])
         a = list(passer)
@@ -570,11 +621,15 @@ class test_Piper(GeneratorTest):
 
     def xtest_connect_pickle(self):
         handle = open('test_pick', 'rb')
-        input = workers.io.load_pickle(handle)
+        input = workers.io.load_pickle_stream(handle)
         passer = Piper(workers.core.ipasser)
         assert list(passer([input])) == [[1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3],\
         [4, 5, 6], [4, 5, 6], [4, 5, 6], [4, 5, 6], [4, 5, 6], [4, 5, 6], [4, 5, 6],\
         [4, 5, 6], [4, 5, 6], [4, 5, 6], [4, 5, 6], [4, 5, 6]]
+
+    def xtest_posixshm(self):
+        pass
+
 
     def xtest_sort(self):
         p2 = Piper(workers.core.ipasser, ornament =2)
