@@ -348,17 +348,61 @@ class test_Worker(GeneratorTest):
         load_work = workers.io.load_stream(fh, 'SOME_STRING')
         assert list(load_work) == inbox[0]
 
-
+    def test_load_pickle_stream(self):
+        import cPickle
+        fh = open('pickle_stream', 'wb')
+        a = ['aaa\n', (1,2,3), 'abc', {}]
+        for i in a:
+            cPickle.dump(i, fh)
+            fh.write('\n\n')
+        fh.close()
+        fh = open('pickle_stream', 'rb')
+        b = workers.io.load_pickle_stream(fh)
+        assert a == list(b)
         
+    def test_dump_load_read_item(self):
+        import os
+        a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
+        for i in a:
+            file = workers.io.dump_item([i])
+            item = workers.io.load_item([file], remove =True)
+            ii = workers.io.read_item([item])
+            assert ii == i
+        
+    def test_dump_load_mmap_item(self):
+        a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
+        for i in a:
+            file = workers.io.dump_item([i])
+            item = workers.io.load_item([file])
+            ii = workers.io.mmap_item([item])
+            assert ii.read(10000000) == i
+
+    def test_dump_load_shm_read_item(self):
+        a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
+        for i in a:
+            file = workers.io.dumpshm_item([i])
+            item = workers.io.loadshm_item([file])
+            ii = workers.io.mmap_item([item])
+            assert ii.read(10000000) == i
+
+    def test_find_items(self):
+        a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
+        b = []
+        for i in a:
+            workers.io.dump_item([i], 'test', '.string')
+        abc = workers.io.find_items('test', '.string')
+        for z in abc:
+            ii = workers.io.load_item([z])
+            iii = workers.io.read_item([ii])
+            b.append(iii)
+        assert sorted(b) == sorted(a)
+            
         
 
-
-
-
-    def test_chunk(self):
+    def test_make_items(self):
         fh = open('chunks.txt','rb')
-        chunker = workers.io.chunk_file(fh, 4000)
-        mmapc = Worker(workers.io.mmap_chunk)
+        chunker = workers.io.make_items(fh, 4000)
+        mmapc = Worker(workers.io.mmap_item)
         output = ""
         for chunk in chunker:
             fillike = mmapc([chunk])
@@ -369,8 +413,6 @@ class test_Worker(GeneratorTest):
                 else:
                     break
         assert output == fh.read()
-                
-
 
 class test_Piper(GeneratorTest):
 
