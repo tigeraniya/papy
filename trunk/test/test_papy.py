@@ -390,8 +390,8 @@ class test_Worker(GeneratorTest):
     def test_dump_load_shm_read_item(self):
         a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
         for i in a:
-            file = workers.io.dumpshm_item([i])
-            item = workers.io.loadshm_item([file])
+            file = workers.io.dump_shm_item([i])
+            item = workers.io.load_shm_item([file])
             ii = workers.io.mmap_item([item])
             assert ii.read(10000000) == i
 
@@ -412,7 +412,7 @@ class test_Worker(GeneratorTest):
     def test_make_items(self):
         fh = open('chunks.txt','rb')
         chunker = workers.io.make_items(fh, 4000)
-        mmapc = Worker(workers.io.mmap_item)
+        mmapc = Worker(workers.io.mmap_item, (False,))
         output = ""
         for chunk in chunker:
             fillike = mmapc([chunk])
@@ -628,7 +628,47 @@ class test_Piper(GeneratorTest):
         [4, 5, 6], [4, 5, 6], [4, 5, 6], [4, 5, 6], [4, 5, 6]]
 
     def xtest_posixshm(self):
-        pass
+        data = xrange(100)
+        handle1 = workers.io.open_shm('posixshm')
+        handle2 = workers.io.open_shm('posixshm')
+        dumper = Worker(workers.io.dump_pickle_stream, (handle1,))
+        loader = workers.io.load_pickle_stream(handle2)
+        p_dumper = Piper(dumper)
+        p_dumper([data])
+        p_dumper.start()
+        list(p_dumper)
+        assert list(loader) == list(data)
+        handle1.unlink()
+
+    def xtest_posixshm_items(self):
+        imap1 = IMap()
+        imap2 = IMap()
+        imap3 = IMap()
+        for i1, i2 in ((imap1, imap2), (imap3, imap3), (None, None)):
+            data = xrange(1000)
+            pickler = Worker(workers.io.pickle_dumps)
+            dumper = Worker(workers.io.dump_shm_item)
+            loader = Worker((workers.io.load_shm_item, workers.io.read_item))
+            unpickler = Worker(workers.io.pickle_loads)
+
+            p_pickler = Piper(pickler)
+            p_dumper = Piper(dumper, parallel =i1)
+            p_loader = Piper(loader, parallel =i2)
+            p_unpickler = Piper(unpickler)
+
+            p_pickler([data])
+            p_dumper([p_pickler])
+            p_loader([p_dumper])
+            p_unpickler([p_loader])
+
+            p_dumper.start(forced =True)
+            p_loader.start(forced =True)
+            assert list(data) == list(p_unpickler)
+
+
+
+
+
 
 
     def xtest_sort(self):

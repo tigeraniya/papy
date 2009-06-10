@@ -37,6 +37,9 @@ def open_shm(name):
     # The class is defined within a function to allow
     # it to be injected together with the import statments
     # on a remote RPyC host.
+    # TODO: closed, ?encoding?, isatty, mode, ?newlines?, next, readlines,
+    # xreadlines, writelines, readinto
+    # TODO: ??name
     class ShmHandle(SharedMemory):
         """
         """
@@ -57,6 +60,10 @@ def open_shm(name):
 
         def __getattr__(self, name):
             # cannot multiple inheritance using two C-classes.
+            if not self.mapfile:
+                # if we opened the handle when it was empty 
+                # no mapfile was created. 
+                self.mapfile = mmap.mmap(self.fd, 0)
             return getattr(self.mapfile, name)
 
         def write(self, str):
@@ -70,6 +77,13 @@ def open_shm(name):
                 # needs file to be opened as r+ 
                 self.mapfile = mmap.mmap(self.fd, 0)
             self.mapfile.write(str)
+
+        def fileno(self):
+            return self.fd
+
+        def truncate(self, size =None):
+            self.mapfile.resize(size or self.tell()) 
+        
     return ShmHandle(name)
 
 
@@ -194,7 +208,7 @@ def load_item(inbox, remove =True):
     return ((fd, name), 0, size - 1)
 
 @imports([['mmap', []], ['os',[]]])
-def mmap_item(inbox):
+def mmap_item(inbox, close =True):
     """ Returns a mmap object (memory mapped file) from a chunk which should be
         the first and only element of the inbox. This can be faster then reading
         the chunk. You should **not** call the ``seek`` method of the mmap
@@ -210,10 +224,12 @@ def mmap_item(inbox):
     stop = stop - offset + 1
     mmaped = mmap.mmap(fd, stop, access=mmap.ACCESS_READ, offset =offset)
     mmaped.seek(start)
+    if close:
+        os.close(fd) # closing the fh from load
     return mmaped
 
-@imports([['os', ['read', 'lseek', 'unlink']]])
-def read_item(inbox):
+@imports([['os', []]])
+def read_item(inbox, close =True):
     """ Reads out a string from a chunk which should be the first and only
         element in the inbox. This might be slower then memmory mapping the
         chunk. The first and last bytes of the string are the first and last
@@ -222,12 +238,14 @@ def read_item(inbox):
         For a description of the chunk see ``get_chunks``.
     """
     (fd, name), start, stop = inbox[0]
-    lseek(fd, start, 0)
-    return read(fd, stop - start + 1)
+    os.lseek(fd, start, 0)
+    out = os.read(fd, stop - start + 1)
+    if close:
+        os.close(fd) # closing the fh from load
+    return out
 
-
-@imports([['tempfile', []], ['mmap', []], ['posix_ipc', []]], forgive =True)
-def dumpshm_item(inbox):
+@imports([['tempfile', []], ['mmap', []], ['posix_ipc', []], ['os',[]]], forgive =True)
+def dump_shm_item(inbox):
     """ Writes the first element of the inbox as POSIX shared memory. Returns
         the name of the file written in /dev/shm/.
 
@@ -241,21 +259,24 @@ def dumpshm_item(inbox):
         try: # try to create new shared memory for filename
             memory = posix_ipc.SharedMemory(n, size =len(inbox[0]), flags =posix_ipc.O_CREX)
             break
-        except posix_ipc.ExistentialError:
+        except (posix_ipc.ExistentialError,):
+            # The OSError is raised if the number of open files per process
             pass
     mapfile = mmap.mmap(memory.fd, memory.size)
     mapfile.write(inbox[0])
-    mapfile.close() # file-handle needs still to be unlinked
+    mapfile.close()     # filename needs still to be unlinked
+    os.close(memory.fd) # ... and the handle closed
     return n
 
 @imports([['posix_ipc', []]], forgive =True)
-def loadshm_item(inbox, remove =True):
-    """ Creates an item from a POSIX shared memory file.
+def load_shm_item(inbox, remove =True):
+    """ Creates an item from a POSIX shared memory file. By default unlinks the
+        associated (temporary) file.
     """
     n = inbox[0]
     memory = posix_ipc.SharedMemory(n)
     if remove:
-        memory.unlink()
+        memory.unlink() # unlinking the dump
     return ((memory.fd, n), 0, memory.size - 1)
 
 # FILES
