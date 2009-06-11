@@ -32,7 +32,18 @@ def print_(inbox):
 # STREAMS
 @imports([['posix_ipc', ['SharedMemory']], ['mmap',[]], ['os',[]]])
 def open_shm(name):
-    """ Equivalent to the built in open function, but creates 
+    """ Equivalent to the built in open function but opens a file in shared
+        memory. A single file can be opened multiple times. Only the name of the
+        file is necessary not the absolute location (most likely /dev/shm/).
+
+        Arguments:
+
+          * name(string)
+
+            The name of the file to open e.g. 'my_file' not /dev/shm/my_file
+            
+
+
     """
     # The class is defined within a function to allow
     # it to be injected together with the import statments
@@ -41,7 +52,8 @@ def open_shm(name):
     # xreadlines, writelines, readinto
     # TODO: ??name
     class ShmHandle(SharedMemory):
-        """
+        """ This is wrapper around memory mapped shared memory provided by
+            posix shm. 
         """
         # to avoid recursive mapfile lookup 
         def __init__(self, name):
@@ -217,6 +229,8 @@ def mmap_item(inbox, close =True):
         last byte is the last byte of the mmap object. 
 
         For a description of the chunk see ``get_chunks``.
+
+        This is one O(1)
     """
     (fd, name), start, stop = inbox[0]
     offset = start - (start % mmap.ALLOCATIONGRANULARITY)
@@ -228,7 +242,7 @@ def mmap_item(inbox, close =True):
         os.close(fd) # closing the fh from load
     return mmaped
 
-@imports([['os', []]])
+@imports([['os', []],  ['time',[]]])
 def read_item(inbox, close =True):
     """ Reads out a string from a chunk which should be the first and only
         element in the inbox. This might be slower then memmory mapping the
@@ -239,7 +253,7 @@ def read_item(inbox, close =True):
     """
     (fd, name), start, stop = inbox[0]
     os.lseek(fd, start, 0)
-    out = os.read(fd, stop - start + 1)
+    out = os.read(fd, stop - start + 1) 
     if close:
         os.close(fd) # closing the fh from load
     return out
@@ -269,6 +283,7 @@ def dump_shm_item(inbox):
     return n
 
 @imports([['posix_ipc', []]], forgive =True)
+
 def load_shm_item(inbox, remove =True):
     """ Creates an item from a POSIX shared memory file. By default unlinks the
         associated (temporary) file.
@@ -381,30 +396,42 @@ def find_items(prefix ='tmp', suffix ='', dir =None):
 # SERIALIZATION
 #
 # cPickle
-@imports([['cPickle',[]]])
+@imports([['cPickle',[]], ['gc',[]]])
 def pickle_dumps(inbox):
     """ Serializes the first element of the input using the pickle protocol.
     """
-    return cPickle.dumps(inbox[0], cPickle.HIGHEST_PROTOCOL)
+    # http://bugs.python.org/issue4074
+    gc.disable()
+    str = cPickle.dumps(inbox[0], cPickle.HIGHEST_PROTOCOL)
+    gc.enable()
+    return str
 
-@imports([['cPickle',[]]])
+@imports([['cPickle',[]], ['gc',[]]])
 def pickle_loads(inbox):
     """ De-serializes the first element of the input using the pickle protocol.
     """
-    return cPickle.loads(inbox[0])
-
+    gc.disable()
+    obj = cPickle.loads(inbox[0])
+    gc.enable()
+    return obj 
 # JSON
-@imports([['simplejson',[]]], forgive =True)
+@imports([['simplejson',[]], ['gc',[]]], forgive =True)
 def json_dumps(inbox):
     """ Serializes the first element of the input using the JSON protocol.
     """ 
-    return simplejson.dumps(inbox[0])
+    gc.disable()
+    str = simplejson.dumps(inbox[0])
+    gc.enable()
+    return str
 
-@imports([['simplejson',[]]], forgive =True)
+@imports([['simplejson',[]], ['gc',[]]], forgive =True)
 def json_loads(inbox):
     """ De-serializes the first element of the input using the JSON protocol.
-    """     
-    return simplejson.loads(inbox[0])
+    """
+    gc.disable()
+    obj = simplejson.loads(inbox[0])
+    gc.enable()
+    return obj
 
 # CSV
 @imports([['csv',[]]])

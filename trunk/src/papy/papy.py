@@ -350,7 +350,7 @@ class Plumber(Dagger):
                 tasks.stop()
             try:
                 tasks.next()
-                gc.collect()
+                #gc.collect()
                 frame_finished = tasks.i == tasks.lenght -1
                 stats(frame_finished)
             except StopIteration:

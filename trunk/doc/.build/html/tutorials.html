@@ -41,7 +41,7 @@
     <link rel="search" title="Search" href="search.html" />
     <link rel="top" title="PaPy v1.0b1 documentation" href="index.html" />
     <link rel="next" title="Examples" href="examples.html" />
-    <link rel="prev" title="About the Parallelism of PaPy" href="parallel.html" />
+    <link rel="prev" title="About the Parallelism in PaPy" href="parallel.html" />
 </head>
 <body class="t6">
  <div id=gaia>
@@ -184,7 +184,7 @@
       accesskey="N">next</a>
  </span> |
  <span>
-   <a href="parallel.html" title="About the Parallelism of PaPy"
+   <a href="parallel.html" title="About the Parallelism in PaPy"
       accesskey="P">previous</a>
  </span> |
  <span class="inIssueList">
@@ -255,7 +255,7 @@
  <td><ul>
  
  <li>
-   <a href="parallel.html" title="previous chapter">About the Parallelism of PaPy</a>
+   <a href="parallel.html" title="previous chapter">About the Parallelism in PaPy</a>
  </li>
  
 
@@ -348,12 +348,13 @@
      
   <div class="section" id="tutorials">
 <h1>Tutorials<a class="headerlink" href="#tutorials" title="Permalink to this headline">¶</a></h1>
-<p>In this section practical aspects of papy usage are covered especially creating,
-running and monitoring a papy pipeline. The tutorials cover:</p>
+<p>In this section practical aspects of <em>PaPy</em> usage are covered especially
+creating, running and monitoring a <em>PaPy</em> pipeline. The tutorials cover:</p>
 <blockquote>
 <ul class="simple">
 <li>installation</li>
 <li>writing functions for Workers</li>
+<li>working with inputs.</li>
 <li>writing functions for output Workers</li>
 <li>creating a pipeline skeleton</li>
 <li>optimizing parallelism</li>
@@ -362,10 +363,11 @@ running and monitoring a papy pipeline. The tutorials cover:</p>
 </blockquote>
 <div class="section" id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
-<p>Papy is written in and for Python and it should run on all platforms which have
-a full Python 2.6 implementation or Python 2.5 with the multiprocessing module
-backported from 2.6. The multiprocessing module is supported on Linux and MacOSX
-and to a sufficient extent on Windows. Other UNIX systems might not be supported.</p>
+<p><em>PaPy</em> is written in and for Python and it should run on all platforms which
+have a full Python 2.6 implementation or Python 2.5 with the <tt class="docutils literal"><span class="pre">multiprocessing</span></tt>
+module backported from 2.6. The multiprocessing module is supported on Linux and
+MacOSX and to a sufficient extent on Windows. Other UNIX systems might not be
+supported.</p>
 <div class="section" id="dependancies">
 <h3>Dependancies<a class="headerlink" href="#dependancies" title="Permalink to this headline">¶</a></h3>
 <blockquote>
@@ -380,7 +382,20 @@ untested.</li>
 </div>
 <div class="section" id="distribution">
 <h3>Distribution<a class="headerlink" href="#distribution" title="Permalink to this headline">¶</a></h3>
-<p>Papy is distributed via the Python Package Index.</p>
+<p><em>PaPy</em> source code can be obtained from the code google repository:</p>
+<p><a class="reference external" href="http://papy.googlecode.com/svn/trunk/">http://papy.googlecode.com/svn/trunk/</a></p>
+<p>To get the code it is necessary to check it out using a subversion client e.g.
+<tt class="docutils literal"><span class="pre">svn</span></tt>:</p>
+<div class="highlight-python"><pre>$ svn checkout http://papy.googlecode.com/svn/trunk/ papy</pre>
+</div>
+<p>The next steps are: 1) build 2) install 3) test if it worked</p>
+<blockquote>
+<p>1a. build (on UNIX):</p>
+<div class="highlight-python"><pre>$ cd papy
+$ python setup.py build</pre>
+</div>
+<p>1b. build</p>
+</blockquote>
 <div class="section" id="source">
 <h4>Source<a class="headerlink" href="#source" title="Permalink to this headline">¶</a></h4>
 <blockquote>

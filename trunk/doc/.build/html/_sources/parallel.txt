@@ -1,17 +1,18 @@
-About the Parallelism of PaPy
-===============================
+About the Parallelism in PaPy
+=============================
 
-This document explains and shows how to use the parallel features of papy. The
-first paragraphs introduce the parallel IMap function and types of parallelism,
-in later sections optimizations of pipelines are explained. 
+This document explains and shows how to use the parallel features of *PaPy*. The
+first paragraphs introduce the ``map`` and ``imap`` functions and the *IMap* object. 
+The types of parallelism, are explained in the later sections where also typical 
+optimizations of pipelines are covered. 
 
-Parallel functionality is provided by the IMap class. In the most basic mode of
-operation it can be called exactly like itertools.imap or the multiprocessing
-Pool imap method. Setting additional options allows to parallelise the
-evaluation using workers of threads, processes or remote processes and share
-those workers among multiple functions and inputs. A unique feature of IMap is
-that it allows to fine-tune the memory-consumption, parallelism and layziness
-trade-off of nested function maps.
+Parallel functionality is provided by the *IMap* class. In the most basic mode
+of operation it can be called exactly like ``itertools.imap`` or the
+``multiprocessing`` *Pool* ``imap`` method. Setting additional options allows to
+parallelise the evaluation using *Workers* of threads, processes or remote
+processes and share those workers among multiple functions and inputs. A unique
+feature of IMap is that it allows to fine-tune the memory-consumption,
+parallelism and layziness trade-off of nested function maps.
 
 
 Map basics
@@ -187,22 +188,22 @@ significantly exceeds the number of availble CPUs or CPU-cores, which is
 inefficient.
 
 
-The Task and the tasklet.
--------------------------
+The task and the tasklet
+------------------------
 
-The imap implementation in papy (IMap) is different as it allows to control the
+The imap implementation in *PaPy* (*IMap*) is different as it allows to control the
 order by which function and data tuples are submitted to the worker pool. It
-introduces the concept of a task which is a function, input, arguments tuple.
+introduces the concept of a task which is a function, input and arguments tuple.
 The input is a python iterator i.e. an object which has a next method it
 obviously should return data to be calculated next. The argument is a tuple of
-parameters which is given to the function i.e.::
+parameters which is given to the function for example::
 
     (function, data_iterator, ('rome', 1.17, some_object))   # a task 
 
-The IMap role is to evaluate tasks. To evaluate a task means to evaluate a
-tasklet::
+The IMap role is to evaluate tasks. To evaluate a task means to evaluate all 
+tasklets::
 
-    (function, 'rome', 1.17, someobject) # a tasklet
+    (function, data_iterator.next(), 'rome', 1.17, someobject) # a tasklet
     result = function(data_iterator.next(), 'rome', 1.17, someobject) # evaluation
 
 Until the data_iterator is empty.
@@ -212,9 +213,9 @@ IMaps parallelism is defined by a stride
 ----------------------------------------
 
 IMap allows to control the order in which tasklets are evaluated. This is
-accomplished by the stride parameter. A stride is the number of tasklets from of
-one task submitted before the next. The default stride is equal to the number of
-pool workers and it should not be smaller.::
+accomplished by the stride parameter. A stride is the number of tasklets from 
+one task submitted before any tasklet from the next task. The default stride is
+equal to the number of pool workers and should not be smaller.::
 
     from IMap import IMap
     from math import radians, degrees
@@ -285,7 +286,7 @@ order.::
     # second stride
     function0(input_data[n .. n+n]) # where n is stride 
     function1(out1[n .. n+n])
-    function2(other_data[n .. n+n])
+    function2(other_data[n .. n+n])1
 
     # and so on
 

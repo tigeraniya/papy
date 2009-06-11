@@ -5,6 +5,10 @@
 A collection of core workers-functions to use in Worker instances.
 """
 
+def plugger(inbox):
+    """ Returns nothing.
+    """
+    return None
 
 def ipasser(inbox, i =0):
     """ Passes the i-th input from inbox. By default passes the first input.

@@ -723,8 +723,8 @@ exception </em><tt class="descclassname">papy.papy.</tt><tt class="descname">Wor
 
 <dl class="function">
 <dt id="papy.papy.compose">
-<tt class="descclassname">papy.papy.</tt><tt class="descname">compose</tt><big>(</big><em>inbox</em>, <em>task_name</em>, <em>args</em><big>)</big><a class="headerlink" href="#papy.papy.compose" title="Permalink to this definition">¶</a></dt>
-<dd>Composes function by name.</dd></dl>
+<tt class="descclassname">papy.papy.</tt><tt class="descname">compose</tt><big>(</big><em>inbox</em>, <em>args</em>, <em>funcs</em><big>)</big><a class="headerlink" href="#papy.papy.compose" title="Permalink to this definition">¶</a></dt>
+<dd>Composes functions.</dd></dl>
 
 <dl class="function">
 <dt id="papy.papy.inspect">
@@ -747,6 +747,11 @@ It returns a tuple of boolean variables. (is_piper, is_worker, is_function, is_i
 <span id="module-papy.workers.core"></span><h1><tt class="xref docutils literal"><span class="pre">papy.workers.core</span></tt><a class="headerlink" href="#papy-workers-core" title="Permalink to this headline">¶</a></h1>
 <p>A collection of core workers-functions to use in Worker instances.</p>
 <dl class="function">
+<dt id="papy.workers.core.ijoiner">
+<tt class="descclassname">papy.workers.core.</tt><tt class="descname">ijoiner</tt><big>(</big><em>inbox</em>, <em>i=0</em>, <em>join=''</em><big>)</big><a class="headerlink" href="#papy.workers.core.ijoiner" title="Permalink to this definition">¶</a></dt>
+<dd>Joins and returns the elements of the input with index i.</dd></dl>
+
+<dl class="function">
 <dt id="papy.workers.core.ipasser">
 <tt class="descclassname">papy.workers.core.</tt><tt class="descname">ipasser</tt><big>(</big><em>inbox</em>, <em>i=0</em><big>)</big><a class="headerlink" href="#papy.workers.core.ipasser" title="Permalink to this definition">¶</a></dt>
 <dd><p>Passes the i-th input from inbox. By default passes the first input.</p>
@@ -759,6 +764,11 @@ It returns a tuple of boolean variables. (is_piper, is_worker, is_function, is_i
 </dd></dl>
 
 <dl class="function">
+<dt id="papy.workers.core.njoiner">
+<tt class="descclassname">papy.workers.core.</tt><tt class="descname">njoiner</tt><big>(</big><em>inbox</em>, <em>n=None</em>, <em>join=''</em><big>)</big><a class="headerlink" href="#papy.workers.core.njoiner" title="Permalink to this definition">¶</a></dt>
+<dd>Joins and returns the first n inputs.</dd></dl>
+
+<dl class="function">
 <dt id="papy.workers.core.npasser">
 <tt class="descclassname">papy.workers.core.</tt><tt class="descname">npasser</tt><big>(</big><em>inbox</em>, <em>n=None</em><big>)</big><a class="headerlink" href="#papy.workers.core.npasser" title="Permalink to this definition">¶</a></dt>
 <dd><p>Passes n first inputs from inbox. By default passes the whole inbox.</p>
@@ -769,6 +779,21 @@ It returns a tuple of boolean variables. (is_piper, is_worker, is_function, is_i
 </ul>
 </blockquote>
 </dd></dl>
+
+<dl class="function">
+<dt id="papy.workers.core.nzipper">
+<tt class="descclassname">papy.workers.core.</tt><tt class="descname">nzipper</tt><big>(</big><em>inbox</em>, <em>n=None</em><big>)</big><a class="headerlink" href="#papy.workers.core.nzipper" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="papy.workers.core.plugger">
+<tt class="descclassname">papy.workers.core.</tt><tt class="descname">plugger</tt><big>(</big><em>inbox</em><big>)</big><a class="headerlink" href="#papy.workers.core.plugger" title="Permalink to this definition">¶</a></dt>
+<dd>Returns nothing.</dd></dl>
+
+<dl class="function">
+<dt id="papy.workers.core.sjoiner">
+<tt class="descclassname">papy.workers.core.</tt><tt class="descname">sjoiner</tt><big>(</big><em>inbox</em>, <em>s=None</em>, <em>join=''</em><big>)</big><a class="headerlink" href="#papy.workers.core.sjoiner" title="Permalink to this definition">¶</a></dt>
+<dd>Joins and returns the first input with indices in s.</dd></dl>
 
 <dl class="function">
 <dt id="papy.workers.core.spasser">
@@ -804,12 +829,107 @@ inputs.</p>
 </div>
 <div class="section" id="papy-workers-io">
 <span id="module-papy.workers.io"></span><h1><tt class="xref docutils literal"><span class="pre">papy.workers.io</span></tt><a class="headerlink" href="#papy-workers-io" title="Permalink to this headline">¶</a></h1>
-<p>A collection of input/output worker functions.</p>
+<p>A collection of input/output worker functions. Functions dealing with stream
+inputs are normal functions i.e. they cannot be used within a worker. 
+Four types of functions are provided.</p>
+<blockquote>
+<ul class="simple">
+<li>logging functions - currently only stdout printing.</li>
+<li>stream function - load or save the input stream from or into a single file,
+therefore they can only be used at the beginnings or ends of a pipeline.
+Stream loaders are not worker functions.</li>
+<li>item functions - load, save or process data items.</li>
+<li>file functions - create streams from the contents of a file or several
+files. These are not worker functions.</li>
+</ul>
+</blockquote>
 <dl class="function">
-<dt id="papy.workers.io.dump">
-<tt class="descclassname">papy.workers.io.</tt><tt class="descname">dump</tt><big>(</big><em>inbox</em>, <em>handle</em>, <em>delimiter=None</em><big>)</big><a class="headerlink" href="#papy.workers.io.dump" title="Permalink to this definition">¶</a></dt>
-<dd>Saves the first element of the inbox to the provided stream (file
-handle) delimiting the input by the optional delimiter string.</dd></dl>
+<dt id="papy.workers.io.dump_item">
+<tt class="descclassname">papy.workers.io.</tt><tt class="descname">dump_item</tt><big>(</big><em>inbox</em>, <em>prefix='tmp'</em>, <em>suffix=''</em>, <em>dir=None</em><big>)</big><a class="headerlink" href="#papy.workers.io.dump_item" title="Permalink to this definition">¶</a></dt>
+<dd><p>Writes the first element of the inbox as a file. Returns the name
+of the file written. By default creates the file in the current working
+directory.</p>
+<p>This worker is useful to persistantly store data and communicate
+parallel pipers without the overhead of using queues.</p>
+<p>Arguments:</p>
+<blockquote>
+<ul>
+<li><p class="first">prefix(string) [default: &#8216;tmp&#8217;]</p>
+<p>Prefix of the file to be created. Should probably identify the
+worker and piper.</p>
+</li>
+<li><p class="first">suffix(string) [default: &#8216;&#8217;]</p>
+<p>Suffix of the file to be created. Should probably identify the file
+format of the chunk.</p>
+</li>
+<li><p class="first">dir(string) [default: current working directory]</p>
+<p>Directory where the file will be created.</p>
+</li>
+</ul>
+</blockquote>
+</dd></dl>
+
+<dl class="function">
+<dt id="papy.workers.io.dump_pickle_stream">
+<tt class="descclassname">papy.workers.io.</tt><tt class="descname">dump_pickle_stream</tt><big>(</big><em>inbox</em>, <em>handle</em><big>)</big><a class="headerlink" href="#papy.workers.io.dump_pickle_stream" title="Permalink to this definition">¶</a></dt>
+<dd>Writes the first element of the inbox to the provided stream (data
+handle) as a pickle. To be used with the <tt class="docutils literal"><span class="pre">load_pickle_stream</span></tt> worker.</dd></dl>
+
+<dl class="function">
+<dt id="papy.workers.io.dump_shm_item">
+<tt class="descclassname">papy.workers.io.</tt><tt class="descname">dump_shm_item</tt><big>(</big><em>inbox</em><big>)</big><a class="headerlink" href="#papy.workers.io.dump_shm_item" title="Permalink to this definition">¶</a></dt>
+<dd><p>Writes the first element of the inbox as POSIX shared memory. Returns
+the name of the file written in /dev/shm/.</p>
+<p>This worker is useful to temporarily communicate parallel pipers without
+the overhead of using queues or on-disk files.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="papy.workers.io.dump_stream">
+<tt class="descclassname">papy.workers.io.</tt><tt class="descname">dump_stream</tt><big>(</big><em>inbox</em>, <em>handle</em>, <em>delimiter=None</em><big>)</big><a class="headerlink" href="#papy.workers.io.dump_stream" title="Permalink to this definition">¶</a></dt>
+<dd><p>Writes the first element of the inbox to the provided stream (file
+handle) delimiting the input by the optional delimiter string. Returns
+the name of the file being written.</p>
+<p>Note that only a single process can have access to a file handle open
+for writing. Therefore this worker function should only be used by a
+linear piper.</p>
+<p>Arguments:</p>
+<blockquote>
+<ul>
+<li><p class="first">handle(stream)</p>
+<p>File handle open for writing.</p>
+</li>
+<li><p class="first">delimiter(string) [default: None]</p>
+<p>A string which will seperate the written items. e.g:
+&#8220;END&#8221; becomes &#8220;nENDn&#8221; in the output stream. The default is an
+empty string which means that items will be seperated by a blank
+line i.e.: &#8216;nn&#8217;</p>
+</li>
+</ul>
+</blockquote>
+</dd></dl>
+
+<dl class="function">
+<dt id="papy.workers.io.find_items">
+<tt class="descclassname">papy.workers.io.</tt><tt class="descname">find_items</tt><big>(</big><em>prefix='tmp'</em>, <em>suffix=''</em>, <em>dir=None</em><big>)</big><a class="headerlink" href="#papy.workers.io.find_items" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a file name generator from files matching the supplied
+arguments. Matches the same files as those created by <tt class="docutils literal"><span class="pre">dump_chunk</span></tt>
+for the same arguments.</p>
+<p>Arguments:</p>
+<blockquote>
+<ul>
+<li><p class="first">prefix(string) [default: &#8216;tmp&#8217;]</p>
+<p>Mandatory first chars of the files to find.</p>
+</li>
+<li><p class="first">suffix(string) [default: &#8216;&#8217;]</p>
+<p>Mandatory last chars of the files to find.</p>
+</li>
+<li><p class="first">dir(string) [default: current working directory]</p>
+<p>Directory where the files should be located.</p>
+</li>
+</ul>
+</blockquote>
+</dd></dl>
 
 <dl class="function">
 <dt id="papy.workers.io.json_dumps">
@@ -822,21 +942,114 @@ handle) delimiting the input by the optional delimiter string.</dd></dl>
 <dd>De-serializes the first element of the input using the JSON protocol.</dd></dl>
 
 <dl class="function">
-<dt id="papy.workers.io.load">
-<tt class="descclassname">papy.workers.io.</tt><tt class="descname">load</tt><big>(</big><em>handle</em>, <em>delimiter</em><big>)</big><a class="headerlink" href="#papy.workers.io.load" title="Permalink to this definition">¶</a></dt>
-<dd>Creates a generator from a stream (file handle) containing data
-delimited by delimiter strings.</dd></dl>
+<dt id="papy.workers.io.load_item">
+<tt class="descclassname">papy.workers.io.</tt><tt class="descname">load_item</tt><big>(</big><em>inbox</em>, <em>remove=True</em><big>)</big><a class="headerlink" href="#papy.workers.io.load_item" title="Permalink to this definition">¶</a></dt>
+<dd>Creates an item from a on-disk file.</dd></dl>
 
 <dl class="function">
-<dt id="papy.workers.io.load_pickle">
-<tt class="descclassname">papy.workers.io.</tt><tt class="descname">load_pickle</tt><big>(</big><em>handle</em><big>)</big><a class="headerlink" href="#papy.workers.io.load_pickle" title="Permalink to this definition">¶</a></dt>
-<dd><p>Creates a generator from a stream (file handle) containing pickles of
-objects. This is faster than load + pickle_loads.</p>
-<div class="admonition warning">
-<p class="first admonition-title">Warning</p>
-<p class="last">The file handle should not be used by any other
-object/thread/process.</p>
+<dt id="papy.workers.io.load_pickle_stream">
+<tt class="descclassname">papy.workers.io.</tt><tt class="descname">load_pickle_stream</tt><big>(</big><em>handle</em><big>)</big><a class="headerlink" href="#papy.workers.io.load_pickle_stream" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates an object generator from a stream (file handle) containing data
+in pickles. To be used with the <tt class="docutils literal"><span class="pre">dump_pickle_stream</span></tt>
+.. warning:</p>
+<div class="highlight-python"><pre>File handles should not be read by different processes.</pre>
 </div>
+</dd></dl>
+
+<dl class="function">
+<dt id="papy.workers.io.load_shm_item">
+<tt class="descclassname">papy.workers.io.</tt><tt class="descname">load_shm_item</tt><big>(</big><em>inbox</em>, <em>remove=True</em><big>)</big><a class="headerlink" href="#papy.workers.io.load_shm_item" title="Permalink to this definition">¶</a></dt>
+<dd>Creates an item from a POSIX shared memory file. By default unlinks the
+associated (temporary) file.</dd></dl>
+
+<dl class="function">
+<dt id="papy.workers.io.load_stream">
+<tt class="descclassname">papy.workers.io.</tt><tt class="descname">load_stream</tt><big>(</big><em>handle</em>, <em>delimiter=None</em><big>)</big><a class="headerlink" href="#papy.workers.io.load_stream" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a string generator from a stream (file handle) containing
+data delimited by the delimiter strings.</p>
+<p>This is a stand-alone function and should be used to feed external data
+into a pipeline.</p>
+<p>Arguments:</p>
+<blockquote>
+<ul>
+<li><p class="first">delimiter(string) [default: None]</p>
+<p>The default means that items will be separated by 
+two new-line characters i.e.: &#8216;nn&#8217;</p>
+</li>
+</ul>
+</blockquote>
+</dd></dl>
+
+<dl class="function">
+<dt id="papy.workers.io.make_items">
+<tt class="descclassname">papy.workers.io.</tt><tt class="descname">make_items</tt><big>(</big><em>handle</em>, <em>size</em><big>)</big><a class="headerlink" href="#papy.workers.io.make_items" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a generator of items from a file handle. The size argument is
+the approximate size of the generated chunks in bytes. The main purpose
+of this worker function is to allow multiple worker processes/threads to
+read from the same file handle.</p>
+<p>A chunk is a 3-tuple (file descriptor, first_byte, last_byte), which 
+defines the position of chunk within a file. The size of a chunk i.e. 
+last_byte - first_byte is <strong>approximately</strong> the <tt class="docutils literal"><span class="pre">size</span></tt> argument. The
+last byte in a chunk is always a &#8216;n&#8217;. The first byte points 
+always to the first character in a line. A chunk can also be a whole
+file i.e. the first byte is 0 and the last byte is</p>
+<p>Arguments:</p>
+<blockquote>
+<ul>
+<li><p class="first">size(int) [default: mmap.ALLOCATIONGRANULARITY]</p>
+<p>on windows: 64KBytes
+on linux: 4KBytes</p>
+<p>Approximate chunk size in bytes.</p>
+</li>
+</ul>
+</blockquote>
+</dd></dl>
+
+<dl class="function">
+<dt id="papy.workers.io.make_lines">
+<tt class="descclassname">papy.workers.io.</tt><tt class="descname">make_lines</tt><big>(</big><em>handle</em>, <em>follow=False</em>, <em>wait=0.10000000000000001</em><big>)</big><a class="headerlink" href="#papy.workers.io.make_lines" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a line generator from a stream (file handle) containing data in
+lines.</p>
+<p>Arguments:</p>
+<blockquote>
+<ul>
+<li><p class="first">follow(bool) [default: False]</p>
+<p>If true follows the file after it finishes like &#8216;tail -f&#8217;.</p>
+</li>
+<li><p class="first">wait(float) [default: 0.1]</p>
+<p>Time to wait between file polls.</p>
+</li>
+</ul>
+</blockquote>
+</dd></dl>
+
+<dl class="function">
+<dt id="papy.workers.io.mmap_item">
+<tt class="descclassname">papy.workers.io.</tt><tt class="descname">mmap_item</tt><big>(</big><em>inbox</em>, <em>close=True</em><big>)</big><a class="headerlink" href="#papy.workers.io.mmap_item" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a mmap object (memory mapped file) from a chunk which should be
+the first and only element of the inbox. This can be faster then reading
+the chunk. You should <strong>not</strong> call the <tt class="docutils literal"><span class="pre">seek</span></tt> method of the mmap
+object as the beginning of the object is <strong>not</strong> the beginning of the
+chunk. The index returned <tt class="docutils literal"><span class="pre">tell</span></tt> is the first byte of the chunk, the
+last byte is the last byte of the mmap object.</p>
+<p>For a description of the chunk see <tt class="docutils literal"><span class="pre">get_chunks</span></tt>.</p>
+<p>This is one O(1)</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="papy.workers.io.open_shm">
+<tt class="descclassname">papy.workers.io.</tt><tt class="descname">open_shm</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#papy.workers.io.open_shm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Equivalent to the built in open function but opens a file in shared
+memory. A single file can be opened multiple times. Only the name of the
+file is necessary not the absolute location (most likely /dev/shm/).</p>
+<p>Arguments:</p>
+<blockquote>
+<ul>
+<li><p class="first">name(string)</p>
+<p>The name of the file to open e.g. &#8216;my_file&#8217; not /dev/shm/my_file</p>
+</li>
+</ul>
+</blockquote>
 </dd></dl>
 
 <dl class="function">
@@ -854,6 +1067,16 @@ object/thread/process.</p>
 <tt class="descclassname">papy.workers.io.</tt><tt class="descname">print_</tt><big>(</big><em>inbox</em><big>)</big><a class="headerlink" href="#papy.workers.io.print_" title="Permalink to this definition">¶</a></dt>
 <dd>Prints the first element of the inbox.</dd></dl>
 
+<dl class="function">
+<dt id="papy.workers.io.read_item">
+<tt class="descclassname">papy.workers.io.</tt><tt class="descname">read_item</tt><big>(</big><em>inbox</em>, <em>close=True</em><big>)</big><a class="headerlink" href="#papy.workers.io.read_item" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads out a string from a chunk which should be the first and only
+element in the inbox. This might be slower then memmory mapping the
+chunk. The first and last bytes of the string are the first and last
+bytes of the chunk.</p>
+<p>For a description of the chunk see <tt class="docutils literal"><span class="pre">get_chunks</span></tt>.</p>
+</dd></dl>
+
 </div>
 <div class="section" id="imap-imap">
 <span id="module-IMap.IMap"></span><h1><tt class="xref docutils literal"><span class="pre">IMap.IMap</span></tt><a class="headerlink" href="#imap-imap" title="Permalink to this headline">¶</a></h1>
@@ -866,15 +1089,15 @@ the buffer size. It can use threads and processes.</p>
 class </em><tt class="descclassname">IMap.IMap.</tt><tt class="descname">IMap</tt><big>(</big><em>func=None</em>, <em>iterable=None</em>, <em>args=None</em>, <em>kwargs=None</em>, <em>worker_type=None</em>, <em>worker_num=None</em>, <em>worker_remote=None</em>, <em>stride=None</em>, <em>buffer=None</em>, <em>ordered=True</em>, <em>skip=False</em>, <em>name=None</em><big>)</big><a class="headerlink" href="#IMap.IMap.IMap" title="Permalink to this definition">¶</a></dt>
 <dd><p>Parallel (thread- or process-based), buffered, multi-task, itertools.imap or Pool.imap
 function replacment. Like imap it evaluates a function on elements of an iterable, and
-it does so layzily.</p>
+it does so layzily(with adjusted buffer via the stride and buffer arguments).</p>
 <p>optional arguments:</p>
 <blockquote>
 <ul>
 <li><p class="first">func, iterable, args, kwargs</p>
-<p>Defines the the first and only tasks, starts the IMap pool and returns an IMap
+<p>Defines the the first and only task, it <em>starts</em> the IMap pool and returns an IMap
 iterator. For a description of the args, kwargs and iterable input please see
-the add_task function. Either both or none func <em>and</em> iterable have to be
-given. Arguments are optional.</p>
+the add_task function. Either <em>both</em> or <em>none</em> func <strong>and</strong> iterable have to be
+specified. Arguments and keyworded arguments are optional.</p>
 </li>
 <li><p class="first">worker_type(&#8216;process&#8217; or &#8216;thread&#8217;) [default: &#8216;process&#8217;]</p>
 <p>Defines the type of internally spawned pool workers. For multiprocessing Process
@@ -905,6 +1128,10 @@ these are Thread-based workers and the evaluated functions are IO-bound.</p>
 <p>Specify the rpyc hosts and number of workers as a sequence of tuples
 (&#8220;host_ip_etc&#8221;, worker_num). For example:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="p">[[</span><span class="s">&#39;localhost&#39;</span><span class="p">,</span> <span class="mf">2</span><span class="p">],</span> <span class="p">[</span><span class="s">&#39;127.0.0.1&#39;</span><span class="p">,</span> <span class="mf">2</span><span class="p">]]</span>
+</pre></div>
+</div>
+<p>the TCP port can also be specified:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">[[</span><span class="s">&#39;localhost:6666&#39;</span><span class="p">]]</span>
 </pre></div>
 </div>
 </blockquote>
@@ -1067,14 +1294,32 @@ will not exit cleanly.</p>
 <dt id="IMap.IMap.IMapTask">
 <em class="property">
 class </em><tt class="descclassname">IMap.IMap.</tt><tt class="descname">IMapTask</tt><big>(</big><em>iterator</em>, <em>task</em>, <em>timeout</em>, <em>block</em><big>)</big><a class="headerlink" href="#IMap.IMap.IMapTask" title="Permalink to this definition">¶</a></dt>
-<dd><p>Is returned by the get_task method of IMap instances.
-It is a wrapper around an IMap instance which returns
-results only for a specified task_id.</p>
+<dd><p>Object returned by the get_task method of IMap instances.
+It is a wrapper around an <em>IMap</em> instance which returns
+results only for specified arguments: task, timeout, block.</p>
+<p>Arguments:</p>
+<blockquote>
+<ul>
+<li><p class="first">iterator(IMap instance)</p>
+<p><em>IMap</em> instance to wrap, usually this is called by the get_task method
+of the <em>IMap</em> instance itself.</p>
+</li>
+<li><p class="first">task(integer)</p>
+<p>Id of the task from the <em>IMap</em> instance.</p>
+</li>
+<li><p class="first">timeout</p>
+<p>see documentation for: <em>IMap.next</em></p>
+</li>
+<li><p class="first">block</p>
+<p>see documentation for: <em>IMap.next</em></p>
+</li>
+</ul>
+</blockquote>
 <dl class="method">
 <dt id="IMap.IMap.IMapTask.next">
 <tt class="descname">next</tt><big>(</big><big>)</big><a class="headerlink" href="#IMap.IMap.IMapTask.next" title="Permalink to this definition">¶</a></dt>
 <dd>Returns a result if availble within timeout else raises
-a TimeoutError.</dd></dl>
+a TimeoutError. See documentation for <em>IMap.next</em></dd></dl>
 
 </dd></dl>
 
@@ -1089,30 +1334,39 @@ This Queue is thread but not process safe.</dd></dl>
 <dt id="IMap.IMap.Weave">
 <em class="property">
 class </em><tt class="descclassname">IMap.IMap.</tt><tt class="descname">Weave</tt><big>(</big><em>iterables</em>, <em>repeats=1</em><big>)</big><a class="headerlink" href="#IMap.IMap.Weave" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Weaves a sequence of iterators, which can be stopped if the same number
+of results has been consumed from all iterators.</p>
+<p>Arguments:</p>
+<p>TODO: refactor iterables -&gt; iterators</p>
+</dd></dl>
 
 <dl class="function">
 <dt id="IMap.IMap.imports">
-<tt class="descclassname">IMap.IMap.</tt><tt class="descname">imports</tt><big>(</big><em>modules</em><big>)</big><a class="headerlink" href="#IMap.IMap.imports" title="Permalink to this definition">¶</a></dt>
-<dd><p>Function to be used as a decorator to attach import statments to function
-definitions. Two forms of import statements are supported:</p>
+<tt class="descclassname">IMap.IMap.</tt><tt class="descname">imports</tt><big>(</big><em>modules</em>, <em>forgive=False</em><big>)</big><a class="headerlink" href="#IMap.IMap.imports" title="Permalink to this definition">¶</a></dt>
+<dd><p>Should be used as a decorator to attach import statments to function
+definitions. And import them in the in the global namespace of the 
+function.</p>
+<p>Two forms of import statements are supported:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">module</span>                    <span class="c"># e.q. to [&#39;module&#39;, []]</span>
 <span class="kn">from</span> <span class="nn">module</span> <span class="kn">import</span> <span class="n">sub1</span><span class="p">,</span> <span class="n">func2</span>   <span class="c"># e.q. to [&#39;module&#39;, [&#39;sub1&#39;, func2]]</span>
 </pre></div>
 </div>
-<p>The imported modules are in general availble only inside the decorated functions.</p>
+<p>The imported modules should be considered as availble only inside the 
+decorated functions.</p>
 <p>Arguments:</p>
 <blockquote>
 <ul>
 <li><p class="first">modules(list)</p>
 <p>A list of modules in the following forms:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="p">[</span><span class="s">&#39;module&#39;</span><span class="p">,[</span><span class="s">&#39;sub_module1&#39;</span><span class="p">,</span> <span class="o">...</span> <span class="p">,</span><span class="s">&#39;sub_module2&#39;</span><span class="p">]]</span>
-
-<span class="p">[</span><span class="s">&#39;module&#39;</span><span class="p">,[]]</span>
 </pre></div>
 </div>
-<p>If a list of sub-modules is specified they will be availble in the local
-name-space of the function i.e:</p>
+<p>or:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">[</span><span class="s">&#39;module&#39;</span><span class="p">,[]]</span>
+</pre></div>
+</div>
+<p>If a list of sub-modules is specified they will be availble in the
+globals of the function i.e:</p>
 <div class="highlight-python"><pre># re module availble in the namespace
 @imports([['re',[]]])
   def need_re(some_string):
@@ -1123,8 +1377,12 @@ name-space of the function i.e:</p>
 @imports([['re',['search']]])
   def need_re(some_string):
       res = search('pattern',some_string) #!
+      # but re.search will also work.
       return res.group()</pre>
 </div>
+</li>
+<li><p class="first">forgive(bool)</p>
+<p>If True will not raise exception on ImportError.</p>
 </li>
 </ul>
 </blockquote>
@@ -1132,7 +1390,7 @@ name-space of the function i.e:</p>
 
 <dl class="function">
 <dt id="IMap.IMap.inject_func">
-<tt class="descclassname">IMap.IMap.</tt><tt class="descname">inject_func</tt><big>(</big><em>func</em>, <em>conn</em><big>)</big><a class="headerlink" href="#IMap.IMap.inject_func" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">IMap.IMap.</tt><tt class="descname">inject_func</tt><big>(</big><em>func</em>, <em>conn</em>, <em>i</em><big>)</big><a class="headerlink" href="#IMap.IMap.inject_func" title="Permalink to this definition">¶</a></dt>
 <dd>Injects a function object into a rpyc connection object</dd></dl>
 
 <dl class="function">

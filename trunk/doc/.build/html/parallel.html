@@ -297,10 +297,10 @@
   <b>Table of Contents</b><br/>
   <table class="pmeta toc" cellpadding=5><tr><td>
 	<ul>
-<li><a class="reference external" href="">About the Parallelism of PaPy</a><ul>
+<li><a class="reference external" href="">About the Parallelism in PaPy</a><ul>
 <li><a class="reference external" href="#map-basics">Map basics</a></li>
 <li><a class="reference external" href="#a-pipeline-is-a-nested-imap">A pipeline is a nested imap</a></li>
-<li><a class="reference external" href="#the-task-and-the-tasklet">The Task and the tasklet.</a></li>
+<li><a class="reference external" href="#the-task-and-the-tasklet">The task and the tasklet</a></li>
 <li><a class="reference external" href="#imaps-parallelism-is-defined-by-a-stride">IMaps parallelism is defined by a stride</a></li>
 <li><a class="reference external" href="#imap-needs-tasks-in-the-right-order">IMap needs tasks in the right order</a></li>
 <li><a class="reference external" href="#imap-can-limit-the-memory-consumption">IMap can limit the memory consumption.</a></li>
@@ -331,18 +331,19 @@
  <div style="padding:0 3em 1.2em 0">
    
      
-  <div class="section" id="about-the-parallelism-of-papy">
-<h1>About the Parallelism of PaPy<a class="headerlink" href="#about-the-parallelism-of-papy" title="Permalink to this headline">¶</a></h1>
-<p>This document explains and shows how to use the parallel features of papy. The
-first paragraphs introduce the parallel IMap function and types of parallelism,
-in later sections optimizations of pipelines are explained.</p>
-<p>Parallel functionality is provided by the IMap class. In the most basic mode of
-operation it can be called exactly like itertools.imap or the multiprocessing
-Pool imap method. Setting additional options allows to parallelise the
-evaluation using workers of threads, processes or remote processes and share
-those workers among multiple functions and inputs. A unique feature of IMap is
-that it allows to fine-tune the memory-consumption, parallelism and layziness
-trade-off of nested function maps.</p>
+  <div class="section" id="about-the-parallelism-in-papy">
+<h1>About the Parallelism in PaPy<a class="headerlink" href="#about-the-parallelism-in-papy" title="Permalink to this headline">¶</a></h1>
+<p>This document explains and shows how to use the parallel features of <em>PaPy</em>. The
+first paragraphs introduce the <tt class="docutils literal"><span class="pre">map</span></tt> and <tt class="docutils literal"><span class="pre">imap</span></tt> functions and the <em>IMap</em> object.
+The types of parallelism, are explained in the later sections where also typical
+optimizations of pipelines are covered.</p>
+<p>Parallel functionality is provided by the <em>IMap</em> class. In the most basic mode
+of operation it can be called exactly like <tt class="docutils literal"><span class="pre">itertools.imap</span></tt> or the
+<tt class="docutils literal"><span class="pre">multiprocessing</span></tt> <em>Pool</em> <tt class="docutils literal"><span class="pre">imap</span></tt> method. Setting additional options allows to
+parallelise the evaluation using <em>Workers</em> of threads, processes or remote
+processes and share those workers among multiple functions and inputs. A unique
+feature of IMap is that it allows to fine-tune the memory-consumption,
+parallelism and layziness trade-off of nested function maps.</p>
 <div class="section" id="map-basics">
 <h2>Map basics<a class="headerlink" href="#map-basics" title="Permalink to this headline">¶</a></h2>
 <p>A map function applies a function to the items of a sequence. This is in
@@ -506,19 +507,19 @@ significantly exceeds the number of availble CPUs or CPU-cores, which is
 inefficient.</p>
 </div>
 <div class="section" id="the-task-and-the-tasklet">
-<h2>The Task and the tasklet.<a class="headerlink" href="#the-task-and-the-tasklet" title="Permalink to this headline">¶</a></h2>
-<p>The imap implementation in papy (IMap) is different as it allows to control the
+<h2>The task and the tasklet<a class="headerlink" href="#the-task-and-the-tasklet" title="Permalink to this headline">¶</a></h2>
+<p>The imap implementation in <em>PaPy</em> (<em>IMap</em>) is different as it allows to control the
 order by which function and data tuples are submitted to the worker pool. It
-introduces the concept of a task which is a function, input, arguments tuple.
+introduces the concept of a task which is a function, input and arguments tuple.
 The input is a python iterator i.e. an object which has a next method it
 obviously should return data to be calculated next. The argument is a tuple of
-parameters which is given to the function i.e.:</p>
+parameters which is given to the function for example:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="p">(</span><span class="n">function</span><span class="p">,</span> <span class="n">data_iterator</span><span class="p">,</span> <span class="p">(</span><span class="s">&#39;rome&#39;</span><span class="p">,</span> <span class="mf">1.17</span><span class="p">,</span> <span class="n">some_object</span><span class="p">))</span>   <span class="c"># a task</span>
 </pre></div>
 </div>
-<p>The IMap role is to evaluate tasks. To evaluate a task means to evaluate a
-tasklet:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="p">(</span><span class="n">function</span><span class="p">,</span> <span class="s">&#39;rome&#39;</span><span class="p">,</span> <span class="mf">1.17</span><span class="p">,</span> <span class="n">someobject</span><span class="p">)</span> <span class="c"># a tasklet</span>
+<p>The IMap role is to evaluate tasks. To evaluate a task means to evaluate all
+tasklets:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">(</span><span class="n">function</span><span class="p">,</span> <span class="n">data_iterator</span><span class="o">.</span><span class="n">next</span><span class="p">(),</span> <span class="s">&#39;rome&#39;</span><span class="p">,</span> <span class="mf">1.17</span><span class="p">,</span> <span class="n">someobject</span><span class="p">)</span> <span class="c"># a tasklet</span>
 <span class="n">result</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">data_iterator</span><span class="o">.</span><span class="n">next</span><span class="p">(),</span> <span class="s">&#39;rome&#39;</span><span class="p">,</span> <span class="mf">1.17</span><span class="p">,</span> <span class="n">someobject</span><span class="p">)</span> <span class="c"># evaluation</span>
 </pre></div>
 </div>
@@ -527,9 +528,9 @@ tasklet:</p>
 <div class="section" id="imaps-parallelism-is-defined-by-a-stride">
 <h2>IMaps parallelism is defined by a stride<a class="headerlink" href="#imaps-parallelism-is-defined-by-a-stride" title="Permalink to this headline">¶</a></h2>
 <p>IMap allows to control the order in which tasklets are evaluated. This is
-accomplished by the stride parameter. A stride is the number of tasklets from of
-one task submitted before the next. The default stride is equal to the number of
-pool workers and it should not be smaller.:</p>
+accomplished by the stride parameter. A stride is the number of tasklets from
+one task submitted before any tasklet from the next task. The default stride is
+equal to the number of pool workers and should not be smaller.:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">IMap</span> <span class="kn">import</span> <span class="n">IMap</span>
 <span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">radians</span><span class="p">,</span> <span class="n">degrees</span>
 <span class="n">Imap</span> <span class="o">=</span> <span class="n">IMap</span><span class="p">(</span><span class="n">worker_num</span> <span class="o">=</span><span class="mf">2</span><span class="p">)</span>
@@ -595,7 +596,7 @@ function2(other_data[0 .. n])
 # second stride
 function0(input_data[n .. n+n]) # where n is stride
 function1(out1[n .. n+n])
-function2(other_data[n .. n+n])
+function2(other_data[n .. n+n])1
 
 # and so on</pre>
 </div>
