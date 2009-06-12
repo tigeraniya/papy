@@ -283,16 +283,101 @@ def dump_shm_item(inbox):
     return n
 
 @imports([['posix_ipc', []]], forgive =True)
-
 def load_shm_item(inbox, remove =True):
     """ Creates an item from a POSIX shared memory file. By default unlinks the
         associated (temporary) file.
+
+        Arguments:
+
+          * remove(bool) [default: True]
+
+            Remove the loaded item from the table (temporary storage).
+
     """
     n = inbox[0]
     memory = posix_ipc.SharedMemory(n)
     if remove:
         memory.unlink() # unlinking the dump
     return ((memory.fd, n), 0, memory.size - 1)
+
+@imports([['sqlite3', ['dbapi2']]])
+def dump_sqlite_item(inbox, name, table ='papy'):
+    """ Writes the first element of the inbox as a value in a sqlite database.
+        Returns the name of the database file, table name and row id for the 
+        inserted item.
+
+        Arguments:
+
+          * name(str)
+
+            Name of the database file to use. A new file will be created only if
+            it does not exist.
+
+          * table(str) [default: 'papy']
+
+            Name of the table to insert the item into. Can be unique per-piper
+            or shared.
+    """
+    # Under Unix, you should not carry an open SQLite database across a fork() 
+    # system call into the child process. Problems will result if you do.
+    while True:
+        try:
+        # Calling this routine with an argument less than or equal to zero turns
+        # off all busy handlers.  "isolation_level=None" does not actually mean
+        # "provide a lower isolation level", it means "use SQLite's inherent
+        # isolation /concurrency primitives rather than those in PySQLite".  By
+        # default, SQLite version 3 operates in autocommit mode. In autocommit
+        # mode, all changes to the database are committed as soon as all
+        # operations associated with the current database connection complete.
+        # http://www.sqlite.org/lang_transaction.html
+        # After a BEGIN IMMEDIATE, you are guaranteed that no other thread or
+        # process will be able to write to the database or do a BEGIN IMMEDIATE
+        # or BEGIN EXCLUSIVE. 
+            con = dbapi2.connect(name, isolation_level ="IMMEDIATE")
+            cur = con.cursor()
+            cur.execute("create table if not exists %s (id integer primary key\
+                         autoincrement, value blob)" % (table,))
+            break
+        except dbapi2.OperationalError, e:
+            # if locked wait ... forever
+            if not e.args[0] == 'database is locked':
+                raise e 
+    id_ = con.execute("insert into %s (value) values (?)"
+                     % table, (dbapi2.Binary(inbox[0]),)).lastrowid
+    con.commit()
+    con.close()
+    return (name, table, id_)
+
+
+
+@imports([['sqlite3', ['dbapi2']]])
+def load_read_sqlite_item(inbox, remove =True):
+    """ Loads an item from a sqlite database. Returns the stored string.
+
+        Arguments:
+
+          * remove(bool) [default: True]
+
+            Remove the loaded item from the table (temporary storage).
+    """
+    name, table, id_ = inbox[0]
+    while True:
+        try:
+             con = dbapi2.connect(name)
+             break
+        except dbapi2.OperationalError, e:
+            if not e.args[0] == 'database is locked':
+                raise e
+    get_item = 'select value from %s where id = ?' % table
+    item = str(con.execute(get_item, (id_,)).fetchone()[0])
+    if remove:
+        del_item = 'delete from %s where id = ?' % table
+        con.execute(del_item, (id_,))
+    con.close()
+    return item
+
+        
+
 
 # FILES
 @imports([['time',[]]])
