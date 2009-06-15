@@ -17,7 +17,6 @@ from types import FunctionType
 from inspect import isbuiltin, getsource
 from logging import getLogger
 from time import time
-import gc
 
 class WorkerError(Exception):
     """ Exceptions raised or related to Worker instances.
@@ -134,16 +133,12 @@ class Dagger(Graph):
         postorder = self.postorder()
         for piper in postorder:
             piper.start(forced =True)
-    
+
     def get_inputs(self):
         start_pipers = [p for p in self.postorder() if not self.outgoing_edges(p)]
         self.log.info('%s got input pipers %s' % (repr(self), start_pipers))
         return start_pipers
 
-    def set_inputs(self, inputs):
-        for piper, input in izip(self.get_inputs(), inputs):
-            piper.connect([input])
-    
     def get_outputs(self):
         end_pipers = [p for p in self.postorder() if not self.incoming_edges(p)]
         self.log.info('%s got output pipers %s' % (repr(self), end_pipers))
@@ -298,8 +293,8 @@ class Dagger(Graph):
 I_SIG = '    %s = IMap(worker_type ="%s", worker_num =%s, stride =%s, buffer =%s,'  +\
                   'ordered =%s, skip =%s, name ="%s")\n'
 # piper call signature
-P_SIG = '    %s = Piper(%s, parallel =%s, consume =%s, produce =%s, timeout =%s,'   +\
-                   'sort =%s, ornament =%s, debug =%s, name ="%s")\n'
+P_SIG = '    %s = Piper(%s, parallel =%s, consume =%s, produce =%s, timeout =%s, '  +\
+                   'cmp =%s, ornament =%s, debug =%s, name ="%s")\n'
 # worker call signature
 W_SIG = 'Worker((%s,), %s)'
 # list signature
@@ -327,17 +322,19 @@ class Plumber(Dagger):
     """
 
     def _finish(self, isstopped):
-        """ Executes when plumber finishes.
+        """ Executes when last output piper raises StopIteration.
         """
         self.stats['run_time'] = time() - self.stats['start_time'] 
         self.log.info('%s finished, stopped: %s.' % (repr(self), isstopped))
         self._is_finished.set()
 
     def _stats(self, frame_finished):
-        """ Executes when plumber gets a result.
+        """ Executes when last output piper returns something.
         """
+        # this should be fixed to monitor not only the last!
         if frame_finished:
             self.stats['last_frame'] += 1
+            self.log.info('%s finished tasklet %s' % (repr(self), self.stats['last_frame']))
 
     @staticmethod
     def _plunge(tasks, is_stopping, stats, finish):
@@ -350,18 +347,13 @@ class Plumber(Dagger):
                 tasks.stop()
             try:
                 tasks.next()
-                #gc.collect()
-                frame_finished = tasks.i == tasks.lenght -1
+                frame_finished = (tasks.i == (tasks.lenght - 1))
                 stats(frame_finished)
             except StopIteration:
                 finish(is_stopping())
                 break
 
     def __init__(self, dagger =None, **kwargs):
-        # initialize logging
-        # kwargs.get('')
-        # logger.start_logger()
-        # initialize
         self._is_stopping = Event()
         self._is_finished = Event()
 
@@ -370,7 +362,9 @@ class Plumber(Dagger):
         self.stats['last_frame'] = -1
         self.stats['start_time'] = None
         self.stats['run_time'] = None
-        Dagger.__init__(self, **kwargs)
+
+        # init
+        Dagger.__init__((dagger or self), **kwargs)
 
     def _code(self):
         """ Generates imports, code and runtime calls.
@@ -389,15 +383,18 @@ class Plumber(Dagger):
                                   i.buffer, i.ordered, i.skip, in_)
                 idone.append(in_)
             ws =  W_SIG % (",".join([t.__name__ for t in w.task]), w.args)
+            cmp_ = p.cmp__name__ if p.cmp else None
             pcall += P_SIG % (p.name, ws, in_, p.consume, p.produce, p.timeout,\
-                               p.sort.__name__, p.ornament, p.debug, p.name)
-            for t in chain(w.task, [p.sort]):
-                if t in tdone:
+                              cmp_, p.ornament, p.debug, p.name)
+            for t in chain(w.task, [p.cmp]):
+                if (t in tdone) or not t:
                     continue
                 tm, tn = t.__module__, t.__name__
+                if (tm == '__builtin__') or hasattr(p, tn):
+                    continue
                 if tm == '__main__':
                     tcode += getsource(t)
-                elif tm != '__builtin__':
+                else:
                     icode += 'from %s import %s\n' % (tm, tn)
                 tdone.append(t)
 
@@ -419,7 +416,8 @@ class Plumber(Dagger):
     def load(self, filename):
         """ Load pipeline.
         """
-        pass
+        execfile(filename)
+        self.__init__(pipeline())
 
     def save(self, filename):
         """ Save pipeline.
@@ -434,19 +432,19 @@ class Plumber(Dagger):
 
             Arguments:
 
-              Warning! If you change those arguments you should better know what you are
-              doing. The order of the tasks in the sequence and the stride size defined
-              here must be compatible with the buffer_size and stride of the IMap
-              instances used by the pipers.
+            Warning! If you change those arguments you should better know what you are
+            doing. The order of the tasks in the sequence and the stride size defined
+            here must be compatible with the buffer_size and stride of the IMap
+            instances used by the pipers.
 
               * tasks(sequence of IMapTask instances) [default: None]
 
-               If no sequence is give all output pipers are plunged in correct order.
+                If no sequence is give all output pipers are plunged in correct order.
 
               * stride(int) [default: 1]
 
-               By default take only one result from each output piper. As a general rule
-               the stride cannot be bigger then the stride of the IMap instances.
+                By default take only one result from each output piper. As a general rule
+                the stride cannot be bigger then the stride of the IMap instances.
         """
         self.stats['start_time'] = time()
         self.connect()
@@ -524,7 +522,7 @@ class Piper(object):
              this will most-likely hang the python interpreter.
     """
     @staticmethod
-    def _cmp_ornament(x, y):
+    def _cmp(x, y):
         """ Compares pipers by ornament.
         """
         return cmp(x.ornament, y.ornament)
@@ -548,9 +546,9 @@ class Piper(object):
         self.log.info('Creating a new Piper from %s' % worker)
 
         self.imap = parallel if parallel else imap
-        # _cmp_orament is a static method.
-        self.cmp = (cmp or self._cmp_ornament)
-        self.ornament = (ornament or self)
+
+        self.cmp = cmp if cmp else None
+        self.ornament = ornament if ornament else None
 
         is_p, is_w, is_f, is_ip, is_iw, is_if = inspect(worker)
         if is_p:
@@ -608,7 +606,7 @@ class Piper(object):
             raise PiperError('Piper %s is connected and cannot connect to %s' % (self, inbox))
         else:
             # sort input
-            inbox.sort(self.cmp)
+            inbox.sort((self.cmp or self._cmp))
             self.log.info('Piper %s connects to %s' % (self, inbox))
             # Make input
             stride = self.imap.stride if hasattr(self.imap, 'stride') else 1

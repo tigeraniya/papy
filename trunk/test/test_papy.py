@@ -29,6 +29,9 @@ def power(i):
 def sqrr(i):
     return sqrt(i[0])
 
+def args_and_kwargs(inbox, arg1, arg2, frame):
+    return frame
+
 def passer(i):
     return i[0]
 def double(i):
@@ -52,7 +55,7 @@ def ss(i):
 def retre_yes(i):
     return re
 
-@imports([('sys',['version'])])
+@imports([['sys',['version']]])
 def sys_ver(i):
     return version
 
@@ -292,6 +295,12 @@ class test_Worker(GeneratorTest):
         for i,j in izip(imap, [[1],[2],[3],[4]]):
             self.assertEqual(i,j[0] * j[0])
 
+    def test_imap_kwargs(self):
+        imap = IMap()
+
+
+
+
     def test_imports(self):
         @imports([('re',[]), ('sys',[])])
         def pr(i):
@@ -309,7 +318,7 @@ class test_Worker(GeneratorTest):
 
 
     def test_sys_ver(self):
-        assert [('sys',['version'])] == sys_ver.imports
+        assert [['sys',['version']]] == sys_ver.imports
         assert sys_ver.func_globals.get('version')
         rr = Worker(sys_ver)
         assert rr([1]) == __import__('sys').version
@@ -462,7 +471,18 @@ class test_Worker(GeneratorTest):
         fh.unlink()
         assert a == list(b)
             
-        
+    #def test_dump_load_read_redis(self):
+    #    import os
+    #    a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
+    #    for i in a:
+    #        file = workers.io.dump_redis_item([i])
+    #        ii = workers.io.load_read_redis_item([file], remove =True)
+    #        assert ii == i
+    #   
+    
+
+
+
 
 
 
@@ -675,7 +695,7 @@ class test_Piper(GeneratorTest):
         p2 = Piper(workers.core.ipasser, ornament =2)
         p1 = Piper(workers.core.ipasser, ornament =1)
         a = [p2, p1]
-        a.sort(cmp =Piper._cmp_ornament)
+        a.sort(cmp =Piper._cmp)
         assert a == [p1, p2]
 
     def xtest_failure(self):
@@ -1245,7 +1265,10 @@ class test_Plumber(GeneratorTest):
         self.plum.add_piper(self.pwrp)
         self.plum.add_piper(pr)
         self.plum.add_pipe((self.mul, self.pwr))
-        #print self.plum.save('test.py')
+        self.plum.save('test.py')
+        
+
+
 
     def test_pluge1(self):
         #imap

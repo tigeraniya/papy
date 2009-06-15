@@ -376,8 +376,8 @@ def load_read_sqlite_item(inbox, remove =True):
     con.close()
     return item
 
-        
-
+def dump_redis_item(inbox, name):
+    pass
 
 # FILES
 @imports([['time',[]]])

@@ -43,17 +43,39 @@ def nzipper(inbox, n =None):
     """
     return zip(*inbox[:None])[0]
 
-def ijoiner(inbox, i =0, join =""):
-    """ Joins and returns the elements of the input with index i.
+def szipper(inbox, s =None):
     """
-    return join.join(inbox[i])
+    """
+    pass
 
 def njoiner(inbox, n =None, join =""):
     """ Joins and returns the first n inputs.
+    
+        Arguments:
+
+          * n(int) [default: None]
+
+            All elements in the inbox smaller then this number will be joined.
+    
+          * join(string) [default: ""]
+
+            String which will join the elements of the inbox i.e.
+            join.join().
     """
     return join.join(inbox[:n])
 
 def sjoiner(inbox, s =None, join =""):
     """ Joins and returns the first input with indices in s.
+
+        Arguments:
+
+          * s(sequence) [default: None]
+
+            Sequence (tuple or list) of indices
+
+          * join(string) [default: ""]
+
+            String which will join the elements of the inbox i.e.
+            join.join().
     """
     return join.join([input for i, input in enumerate(inbox) if i in s])

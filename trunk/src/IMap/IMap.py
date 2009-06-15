@@ -655,13 +655,10 @@ def worker(inqueue, outqueue, host =None):
         if host:
             func = func._inject(conn) if hasattr(func, '_inject') else\
                    inject_func(func, conn)
-        #if hasattr(func, 'func_globals'):
-        #    func.func_globals['i'] = i
         try:
             ok, result = (True, func(data, *args, **kwargs))
         except Exception, e:
-            ok, result = (False, e)
-            
+            ok, result = (False, e)         
         put((job, i, ok, result))
         
         
