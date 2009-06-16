@@ -328,7 +328,7 @@ class Plumber(Dagger):
         self.log.info('%s finished, stopped: %s.' % (repr(self), isstopped))
         self._is_finished.set()
 
-    def _stats(self, frame_finished):
+    def _track(self, frame_finished):
         """ Executes when last output piper returns something.
         """
         # this should be fixed to monitor not only the last!
@@ -337,7 +337,7 @@ class Plumber(Dagger):
             self.log.info('%s finished tasklet %s' % (repr(self), self.stats['last_frame']))
 
     @staticmethod
-    def _plunge(tasks, is_stopping, stats, finish):
+    def _plunge(tasks, is_stopping, track, finish):
         """ Calls the next method of weaved tasks until they are finished or
             The Plumber instance is chinkedup.
         """
@@ -348,7 +348,7 @@ class Plumber(Dagger):
             try:
                 tasks.next()
                 frame_finished = (tasks.i == (tasks.lenght - 1))
-                stats(frame_finished)
+                track(frame_finished)
             except StopIteration:
                 finish(is_stopping())
                 break
@@ -447,12 +447,19 @@ class Plumber(Dagger):
                 the stride cannot be bigger then the stride of the IMap instances.
         """
         self.stats['start_time'] = time()
+        self.stats['pipers_tracked'] = {}
         self.connect()
+
+        for p in self.postorder():
+            if hasattr(p.imap, '_tasks_tracked') and p.track:
+                self.stats['pipers_tracked'][p.name] =\
+                [p.imap._tasks_tracked[t.task] for t in p.imap_tasks]
+
         self.start()
         tasks = (tasks or self.get_outputs())
         wtasks = Weave(tasks, repeats =stride)
-        self._plunger = Thread(target =self._plunge, args =(wtasks, self._is_stopping.isSet,\
-                                                            self._stats, self._finish))
+        self._plunger = Thread(target =self._plunge, args =(wtasks,\
+                        self._is_stopping.isSet, self._track, self._finish))
         self._plunger.deamon = True
         self._plunger.start()
 
@@ -527,8 +534,9 @@ class Piper(object):
         """
         return cmp(x.ornament, y.ornament)
 
-    def __init__(self, worker, parallel =False, consume =1, produce =1, spawn =1,\
-                 timeout =None, cmp =None, ornament =None, debug =False, name =None):
+    def __init__(self, worker, parallel =False, consume =1, produce =1,\
+                 spawn =1, timeout =None, cmp =None, ornament =None,\
+                 debug =False, name =None, track =False):
         self.inbox = None
         self.outbox = None
         self.connected = False
@@ -541,11 +549,12 @@ class Piper(object):
         self.timeout = timeout
         self.debug = debug
         self.name =  (name or 'piper_%s' % id(self))
+        self.track = track
 
         self.log = getLogger('papy')
         self.log.info('Creating a new Piper from %s' % worker)
 
-        self.imap = parallel if parallel else imap
+        self.imap = parallel if parallel else imap # this is itetools.imap
 
         self.cmp = cmp if cmp else None
         self.ornament = ornament if ornament else None
@@ -617,7 +626,8 @@ class Piper(object):
             for i in xrange(self.spawn):
                 self.imap_tasks.append(\
                     self.imap(self.worker, self.inbox) if self.imap is imap else\
-                    self.imap(self.worker, self.inbox, timeout =self.timeout))
+                    self.imap(self.worker, self.inbox, timeout =self.timeout,\
+                    track =self.track))
             outbox = Chain(self.imap_tasks, stride =stride)
             # Make output
             self.outbox = outbox if self.produce == 1 else\

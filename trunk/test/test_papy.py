@@ -5,6 +5,7 @@ from time import sleep, time
 from random import randint
 from math import ceil, sqrt
 import unittest
+import os
 import operator
 from numpy import mean
 from multiprocessing import TimeoutError
@@ -555,6 +556,16 @@ class test_Piper(GeneratorTest):
         assert ppr_busy.next() == 1
         ppr_busy.stop()
         self.assertRaises(RuntimeError, ppr_busy.imap.next)
+
+    def xtest_track(self):
+        inpt = xrange(100)
+        pool = IMap()
+        ppr_instance = Piper(power, parallel =pool, track =True)
+        ppr_instance([inpt])
+        ppr_instance.start()
+        list(ppr_instance)
+        assert ppr_instance.imap._tasks_tracked[0].values() == [i*i for i in
+        ppr_instance.imap._tasks_tracked[0].keys()]
 
     def xtest_connects2(self):
         pool = IMap()
@@ -1267,9 +1278,6 @@ class test_Plumber(GeneratorTest):
         self.plum.add_pipe((self.mul, self.pwr))
         self.plum.save('test.py')
         
-
-
-
     def test_pluge1(self):
         #imap
         self.plum.add_pipe([self.pwr, self.dbl])
@@ -1282,6 +1290,20 @@ class test_Plumber(GeneratorTest):
         self.pwrp([[1,2,3]])
         self.plum.plunge()
         self.plum.chinkup()
+
+    def test_track(self):
+        inpt = xrange(100)
+        imap_ = IMap()
+        wrkr = Worker((power, workers.io.json_dumps, workers.io.dump_shm_item))
+        pipr = Piper(wrkr, parallel =imap_, track =True)
+        self.plum.add_piper(pipr)
+        pipr([inpt])
+        self.plum.plunge()
+        self.plum._is_finished.wait()
+        dct = self.plum.stats['pipers_tracked'].values()[0][0]
+        assert len(dct) == 100
+        for i in dct.values():
+            os.unlink('/dev/shm/%s' % i)
 
 
 suite_Graph = unittest.makeSuite(test_Graph,'test')

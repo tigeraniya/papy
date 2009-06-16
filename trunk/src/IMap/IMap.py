@@ -299,6 +299,7 @@ class IMap(object):
             raise ImportError('worker_remote requires RPyC')
 
         self._tasks = []
+        self._tasks_tracked = {}
         self._started = Event()               # (if not raise TimeoutError on next)
         self._stopping = Event()              # (starting stopping procedure see stop)
         # pool options
@@ -390,7 +391,8 @@ class IMap(object):
             w.start()
         log.debug('%s started the pool' % self)
 
-    def add_task(self, func, iterable, args =None, kwargs =None, timeout =None, block =True):
+    def add_task(self, func, iterable, args =None, kwargs =None, timeout =None,\
+                block =True, track =False):
         """ Adds a task to evaluate. A task is made of a function an iterable and optional
             arguments and keyworded arguments. The iterable can be the result iterator of
             a previously added task. A tasklet is a (func, iterable.next(), args, kwargs).
@@ -415,13 +417,21 @@ class IMap(object):
                 the variable argument from the iterable and the constant arguments in the
                 args tuple.
 
+              * track(bool) [default =False]
+
+                If true the results (or exceptions) of task are saved withing
+                self._tasks_tracked[%task_id%] as a {index:result} dictionary.
+                This is only useful if the task function involves creation of
+                persistant data. The dictionary can be used to restore the
+                correct order of the data.
+
             .. note::
 
-               The order in which tasks are added to the IMap instance is important. It
-               affects the order in which tasks are submited to the pool and consequently
-               the order in which results should be retrieved. If the tasks are chained
-               then the order should be a valid topological sort (reverse topological
-               oreder).
+               The order in which tasks are added to the IMap instance is
+               important. It affects the order in which tasks are submited to
+               the pool and consequently the order in which results should be
+               retrieved. If the tasks are chained then the order should be a
+               valid topological sort (reverse topological oreder).
         """
 
         if not self._started.isSet():
@@ -429,6 +439,8 @@ class IMap(object):
                         repeat((kwargs or {})), enumerate(iterable))
             task_id = len(self._tasks)
             self._tasks.append(task)
+            if track:
+                self._tasks_tracked[task_id] = {} # result:index
             return self.get_task(task =task_id, timeout =timeout, block =block)
         else:
             log.error('%s cannot add tasks (is started).' % self)
@@ -613,6 +625,8 @@ class IMap(object):
             self._pool_semaphore.release()
             log.debug('%s has finished task %s for the first time' % (self, task))
             raise StopIteration
+        if task in self._tasks_tracked:
+            self._tasks_tracked[task][index] = real_result
         if is_valid:
             log.debug('%s returns %s for task %s' % (self, index, task))
             self._pool_semaphore.release()
