@@ -18,6 +18,16 @@ Four types of functions are provided.
     files. These are not worker functions.
 """
 from IMap import imports
+from multiprocessing.managers import BaseManager, DictProxy
+
+SHAREDDICT = {}
+class DictServer(BaseManager):
+    pass
+DictServer.register('dict', lambda: SHAREDDICT, DictProxy)
+
+class DictClient(BaseManager):
+    pass
+DictClient.register('dict')
 
 #
 # LOGGING
@@ -30,7 +40,7 @@ def print_(inbox):
 # INPUT OUTPUT
 #
 # STREAMS
-@imports([['posix_ipc', ['SharedMemory']], ['mmap',[]], ['os',[]]])
+@imports([['posix_ipc', ['SharedMemory']], ['mmap',[]], ['os',[]]], forgive =True)
 def open_shm(name):
     """ Equivalent to the built in open function but opens a file in shared
         memory. A single file can be opened multiple times. Only the name of the
@@ -209,7 +219,7 @@ def dump_item(inbox, prefix ='tmp', suffix ='', dir =None):
     return name
 
 @imports([['os', ['stat', 'open', 'unlink']]])
-def load_item(inbox, remove =True):
+def fd_item(inbox, remove =True):
     """ Creates an item from a on-disk file.
     """
     name = inbox[0]
@@ -243,7 +253,7 @@ def mmap_item(inbox, close =True):
     return mmaped
 
 @imports([['os', []],  ['time',[]]])
-def read_item(inbox, close =True):
+def load_item(inbox, close =True):
     """ Reads out a string from a chunk which should be the first and only
         element in the inbox. This might be slower then memmory mapping the
         chunk. The first and last bytes of the string are the first and last
@@ -292,7 +302,6 @@ def load_shm_item(inbox, remove =True):
           * remove(bool) [default: True]
 
             Remove the loaded item from the table (temporary storage).
-
     """
     n = inbox[0]
     memory = posix_ipc.SharedMemory(n)
@@ -300,15 +309,74 @@ def load_shm_item(inbox, remove =True):
         memory.unlink() # unlinking the dump
     return ((memory.fd, n), 0, memory.size - 1)
 
+@imports([['papy', []], ['tempfile', []], ['multiprocessing',[]],\
+          ['threading', []]], forgive = True)
+def dump_manager_item(inbox, address =('127.0.0.1', 46779), authkey ='papy'):
+    """ Writes the first element of the inbox as a shared object. The object is
+        stored as a value in a shared dictionary served by a *Manager* process.
+        Returns the key for the object value the address and the authentication
+        key.
+
+        To use this worker a *DictServer* instance has to be running. 
+        (see also: Plumber)
+
+        Arguments:
+
+          * address(2-tuple) [default: ('127.0.0.1', 46779)]
+
+            A 2-tuple identifying the server(string) and port(integer).
+
+          * authkey(string) [default: 'papy']
+
+            Authentication string to connect to the server.           
+    """
+    # get database 
+    manager = papy.workers.io.DictClient(address, authkey)
+    manager.connect()
+    kv = manager.dict()
+    # identify process/thread
+    ptid = hash((threading.current_thread(),\
+           multiprocessing.current_process()))
+    # get a random process/thread safe key
+    names = tempfile._get_candidate_names()
+    while True:
+        name = names.next()
+        k = "%s_%s" % (name, ptid)
+        if not k in kv:
+            break
+        # else ... loop forever
+    # update dict
+    kv[k] = inbox[0]
+    return (k, address, authkey)
+
+@imports([['papy', []], ['multiprocessing', []]], forgive =True)
+def load_manager_item(inbox, remove =True):
+    """
+    """
+    k, address, authkey = inbox[0]
+    manager = papy.workers.io.DictClient(address, authkey)
+    manager.connect()
+    kv = manager.dict()
+    if remove:
+        v = kv.pop(k)
+    else:
+        v = kv[k]
+    return v
+    
+
 @imports([['sqlite3', ['dbapi2']]])
 def dump_sqlite_item(inbox, name, table ='papy'):
     """ Writes the first element of the inbox as a value in a sqlite database.
         Returns the name of the database file, table name and row id for the 
         inserted item.
 
+        According to the sqlite documentation: You should avoid putting SQLite
+        database files on NFS if multiple processes might try to access the file
+        at the same time. 
+
         Arguments:
 
-          * name(str)
+          * name(str) [default: 'sqlite.tmp']
 
             Name of the database file to use. A new file will be created only if
             it does not exist.
@@ -342,16 +410,15 @@ def dump_sqlite_item(inbox, name, table ='papy'):
             # if locked wait ... forever
             if not e.args[0] == 'database is locked':
                 raise e 
+    # inserts are atomic, no locking needed.
     id_ = con.execute("insert into %s (value) values (?)"
                      % table, (dbapi2.Binary(inbox[0]),)).lastrowid
     con.commit()
     con.close()
     return (name, table, id_)
 
-
-
 @imports([['sqlite3', ['dbapi2']]])
-def load_read_sqlite_item(inbox, remove =True):
+def load_sqlite_item(inbox, remove =True):
     """ Loads an item from a sqlite database. Returns the stored string.
 
         Arguments:
@@ -377,6 +444,8 @@ def load_read_sqlite_item(inbox, remove =True):
     return item
 
 def dump_redis_item(inbox, name):
+    pass
+def load_redis_item(inbox, name):
     pass
 
 # FILES
@@ -480,6 +549,7 @@ def find_items(prefix ='tmp', suffix ='', dir =None):
 #
 # SERIALIZATION
 #
+
 # cPickle
 @imports([['cPickle',[]], ['gc',[]]])
 def pickle_dumps(inbox):
@@ -499,6 +569,26 @@ def pickle_loads(inbox):
     obj = cPickle.loads(inbox[0])
     gc.enable()
     return obj 
+
+# MARSHAL
+@imports([['marshal',[]], ['gc',[]]])
+def marshal_dumps(inbox):
+    """ Serializes the first element of the input using the marshal protocol.
+    """
+    gc.disable()
+    str = marshal.dumps(inbox[0], 2)
+    gc.enable()
+    return str
+
+@imports([['marshal',[]], ['gc',[]]])
+def marshal_loads(inbox):
+    """ Serializes the first element of the input using the marshal protocol.
+    """
+    gc.disable()
+    obj = marshal.loads(inbox[0])
+    gc.enable()
+    return obj 
+
 # JSON
 @imports([['simplejson',[]], ['gc',[]]], forgive =True)
 def json_dumps(inbox):
@@ -519,11 +609,14 @@ def json_loads(inbox):
     return obj
 
 # CSV
-@imports([['csv',[]]])
-def csv_dumps(inbox, handle):
-    pass
+@imports([['csv',[]], ['cStringIO', []]])
+def csv_dumps(inbox, **kwargs):
+    handle = cStringIO.StringIO()
+    csv_writer = csv.writer(handle, **kwargs)
+    csv_writer.writerow(inbox[0])
+    return handle.getvalue()
 
 @imports([['csv',[]]])
-def csv_loads(inbox, handle):
+def csv_loads(inbox):
     pass
 

@@ -321,11 +321,18 @@ class Plumber(Dagger):
     """ The Plumber.
     """
 
+    def _serve(self):
+        """ 
+        """
+        pass
+        
+
     def _finish(self, isstopped):
         """ Executes when last output piper raises StopIteration.
         """
         self.stats['run_time'] = time() - self.stats['start_time'] 
-        self.log.info('%s finished, stopped: %s.' % (repr(self), isstopped))
+        self.log.info('%s finished, stopped: %s.' %\
+        (repr(self), isstopped))
         self._is_finished.set()
 
     def _track(self, frame_finished):
@@ -334,7 +341,8 @@ class Plumber(Dagger):
         # this should be fixed to monitor not only the last!
         if frame_finished:
             self.stats['last_frame'] += 1
-            self.log.info('%s finished tasklet %s' % (repr(self), self.stats['last_frame']))
+            self.log.info('%s finished tasklet %s' %\
+            (repr(self), self.stats['last_frame']))
 
     @staticmethod
     def _plunge(tasks, is_stopping, track, finish):
@@ -446,16 +454,20 @@ class Plumber(Dagger):
                 By default take only one result from each output piper. As a general rule
                 the stride cannot be bigger then the stride of the IMap instances.
         """
-        self.stats['start_time'] = time()
-        self.stats['pipers_tracked'] = {}
+        # connect pipers
         self.connect()
-
+        # collect results for tracked tasks
+        self.stats['pipers_tracked'] = {}
         for p in self.postorder():
             if hasattr(p.imap, '_tasks_tracked') and p.track:
                 self.stats['pipers_tracked'][p.name] =\
                 [p.imap._tasks_tracked[t.task] for t in p.imap_tasks]
 
+        # start IMaps
+        self.stats['start_time'] = time()
         self.start()
+
+        # remove non-block results for end tasks
         tasks = (tasks or self.get_outputs())
         wtasks = Weave(tasks, repeats =stride)
         self._plunger = Thread(target =self._plunge, args =(wtasks,\

@@ -380,20 +380,41 @@ class test_Worker(GeneratorTest):
         assert a == list(b)
         fh.unlink()
 
-    def test_dump_load_read_item(self):
+    def test_dump_fd_load_item(self):
         import os
         a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
         for i in a:
             file = workers.io.dump_item([i])
-            item = workers.io.load_item([file], remove =True)
-            ii = workers.io.read_item([item])
+            item = workers.io.fd_item([file], remove =True)
+            ii = workers.io.load_item([item])
             assert ii == i
-        
-    def test_dump_load_mmap_item(self):
+
+    def test_dump_load_sqlite_item(self):
+        import os
+        a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
+        for i in a:
+            file = workers.io.dump_sqlite_item([i], 'test.sqlite')
+            item = workers.io.load_sqlite_item([file], remove =True)
+            assert item == i
+
+    def test_dump_load_manager_item(self):
+        import os
+        manager = workers.io.DictServer(address = ('127.0.0.1', 57333),
+                                        authkey =  'abc')
+        manager.start()
+        a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
+        for i in a:
+            file = workers.io.dump_manager_item([i], ('127.0.0.1', 57333), 'abc')
+            item = workers.io.load_manager_item([file], remove =False)
+            assert item == i
+        del manager
+
+
+    def test_dump_fd_mmap_item(self):
         a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
         for i in a:
             file = workers.io.dump_item([i])
-            item = workers.io.load_item([file])
+            item = workers.io.fd_item([file])
             ii = workers.io.mmap_item([item])
             assert ii.read(10000000) == i
 
@@ -412,8 +433,8 @@ class test_Worker(GeneratorTest):
             workers.io.dump_item([i], 'test', '.string')
         abc = workers.io.find_items('test', '.string')
         for z in abc:
-            ii = workers.io.load_item([z])
-            iii = workers.io.read_item([ii])
+            ii = workers.io.fd_item([z])
+            iii = workers.io.load_item([ii])
             b.append(iii)
         assert sorted(b) == sorted(a)
             
@@ -472,15 +493,6 @@ class test_Worker(GeneratorTest):
         fh.unlink()
         assert a == list(b)
             
-    #def test_dump_load_read_redis(self):
-    #    import os
-    #    a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
-    #    for i in a:
-    #        file = workers.io.dump_redis_item([i])
-    #        ii = workers.io.load_read_redis_item([file], remove =True)
-    #        assert ii == i
-    #   
-    
 
 
 
@@ -679,7 +691,7 @@ class test_Piper(GeneratorTest):
             data = xrange(1000)
             pickler = Worker(workers.io.pickle_dumps)
             dumper = Worker(workers.io.dump_shm_item)
-            loader = Worker((workers.io.load_shm_item, workers.io.read_item))
+            loader = Worker((workers.io.load_shm_item, workers.io.load_item))
             unpickler = Worker(workers.io.pickle_loads)
 
             p_pickler = Piper(pickler)

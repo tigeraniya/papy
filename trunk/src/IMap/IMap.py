@@ -51,7 +51,7 @@ class IMap(object):
 
       * func, iterable, args, kwargs
 
-        Defines the the first and only task, it *starts* the IMap pool and returns an IMap
+        Defines th the first and only task, it *starts* the IMap pool and returns an IMap
         iterator. For a description of the args, kwargs and iterable input please see
         the add_task function. Either *both* or *none* func **and** iterable have to be
         specified. Arguments and keyworded arguments are optional.
