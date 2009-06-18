@@ -388,6 +388,17 @@ class test_Worker(GeneratorTest):
             item = workers.io.fd_item([file], remove =True)
             ii = workers.io.load_item([item])
             assert ii == i
+    def _test_dump_pipe_fd_load_item(self):
+        import os
+        a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
+        for i in a:
+            try:
+                file = workers.io.dump_pipe_item([i])
+                item = workers.io.fd_item([file], remove =False)
+                ii = workers.io.load_item([item])
+            except SystemExit:
+                pass
+            assert ii == i
 
     def test_dump_load_sqlite_item(self):
         import os
@@ -1319,17 +1330,17 @@ class test_Plumber(GeneratorTest):
 
 
 suite_Graph = unittest.makeSuite(test_Graph,'test')
-suite_Worker = unittest.makeSuite(test_Worker,'test')
+suite_Worker = unittest.makeSuite(test_Worker,'_test')
 suite_Piper = unittest.makeSuite(test_Piper,'xtest')
 suite_Dagger = unittest.makeSuite(test_Dagger,'test')
 suite_Plumber = unittest.makeSuite(test_Plumber,'test')
 
 if __name__ == "__main__":
     runner = unittest.TextTestRunner()
-    runner.run(suite_Graph)
+#    runner.run(suite_Graph)
     runner.run(suite_Worker)
-    runner.run(suite_Piper)
-    runner.run(suite_Dagger)
-    runner.run(suite_Plumber)
+#    runner.run(suite_Piper)
+#    runner.run(suite_Dagger)
+#    runner.run(suite_Plumber)
 
 #EOF

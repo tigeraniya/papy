@@ -17,6 +17,17 @@ Four types of functions are provided.
   * file functions - create streams from the contents of a file or several
     files. These are not worker functions.
 """
+import os
+if 'PC_PIPE_BUF' in os.pathconf_names:
+    # unix
+    x, y = os.pipe()
+    PIPE_BUF = os.fpathconf(x, "PC_PIPE_BUF")
+else:
+    # in Jython 16384
+    # on windows 512
+    # in jython in windows 512
+    PIPE_BUF = 512
+
 from IMap import imports
 from multiprocessing.managers import BaseManager, DictProxy
 
@@ -218,15 +229,17 @@ def dump_item(inbox, prefix ='tmp', suffix ='', dir =None):
     handle.close()
     return name
 
-@imports([['os', ['stat', 'open', 'unlink']]])
+@imports([['os', []]])
 def fd_item(inbox, remove =True):
     """ Creates an item from a on-disk file.
     """
+    print inbox
     name = inbox[0]
-    size = stat(name).st_size
-    fd = open(name, os.O_RDONLY)
+    size = os.stat(name).st_size
+    fd = os.open(name, os.O_RDONLY)
     if remove:
-        unlink(name)
+        os.unlink(name)
+    print  ((fd, name), 0, size - 1)
     return ((fd, name), 0, size - 1)
 
 @imports([['mmap', []], ['os',[]]])
@@ -237,6 +250,8 @@ def mmap_item(inbox, close =True):
         object as the beginning of the object is **not** the beginning of the
         chunk. The index returned ``tell`` is the first byte of the chunk, the
         last byte is the last byte of the mmap object. 
+
+        You cannot mmap a named pipe.
 
         For a description of the chunk see ``get_chunks``.
 
@@ -262,11 +277,22 @@ def load_item(inbox, close =True):
         For a description of the chunk see ``get_chunks``.
     """
     (fd, name), start, stop = inbox[0]
-    os.lseek(fd, start, 0)
-    out = os.read(fd, stop - start + 1) 
+    data = []
+    if stop == -1:
+        # if file size is 0 it is probably a pipe
+        while True:
+            buffer = os.read(fd, PIPE_BUF)
+            if not buffer:
+                break
+            data.append(buffer)
+        data = "".join(data)
+        print data
+    else:
+        os.lseek(fd, start, 0)
+        data = os.read(fd, stop - start + 1) 
     if close:
         os.close(fd) # closing the fh from load
-    return out
+    return data
 
 @imports([['tempfile', []], ['mmap', []], ['posix_ipc', []], ['os',[]]], forgive =True)
 def dump_shm_item(inbox):
@@ -443,8 +469,43 @@ def load_sqlite_item(inbox, remove =True):
     con.close()
     return item
 
+@imports([['tempfile', []], ['os', []], ['sys',[]]])
+def dump_pipe_item(inbox):
+    """ Writes the first element of the inbox to a named pipe(FIFO). To use this
+        worker function the os has to support FIFOs and forks.
+    """
+    # get a random filename generator
+    names = tempfile._get_candidate_names()
+    while True:
+        n = names.next()
+        try: # try to create a new fifo
+            os.mkfifo(n)
+            break
+        except OSError, e:
+            if e.args[0] == 17: # 'File exists'
+                pass
+    pid = os.fork()
+    if not pid:
+        handle = open(n, 'w')
+        handle.write(inbox[0])
+        handle.close()
+        sys.exit(0)
+    return n
+
+def fd_pipe_item(inbox, remove =True):
+    """ Reades data from a named pipe(FIFO).
+    """
+    n = inbox[0]
+    handle = open(n, 'r')
+    data = handle.read()
+    handle.close()
+    if remove:
+        os.unlink(fifo)
+    return data
+
 def dump_redis_item(inbox, name):
     pass
+
 def load_redis_item(inbox, name):
     pass
 
