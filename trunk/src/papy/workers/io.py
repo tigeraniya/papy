@@ -212,16 +212,16 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None):
         in /dev/shm. To use named pipes the operating system has to support
         both forks and fifos (not Windows). To use shared memory the system has
         to be proper posix (not MacOSX) and the posix_ipc module has to be
-        installed.
+        installed. To use sockets.
 
         This worker is useful to efficently communicate parallel pipers without
         the overhead of using queues.
 
         Arguments:
 
-          * type('file', 'fifo' or 'shm') [default: 'file']
+          * type('file', 'fifo', 'shm', 'tcp') [default: 'file']
             
-            Type of the created file
+            Type of the created file/socket
 
           * prefix(string) [default: tmp_papy_%type%]
 
@@ -242,33 +242,44 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None):
     # get a random filename generator
     names = tempfile._get_candidate_names()
     # try to own the file
-    while True:
-        prefix = prefix or 'tmp_papy_%s' % type
-        suffix = suffix or ''
-        file = prefix + names.next() + suffix
-        if type in ('file', 'fifo'):
-            dir = dir or tempfile.gettempdir()
-            file = os.path.join(dir, file)
-            try:
-                if type == 'file':
-                    fd = os.open(file, tempfile._bin_openflags, 0600)
-                    tempfile._set_cloexec(fd)
-                elif type == 'fifo':
-                    os.mkfifo(file)
-                file = os.path.abspath(file)
-                break
-            except OSError, e:
-                if e.errno == errno.EEXIST:
+    if type in ('file', 'fifo', 'shm'):
+        while True:
+            prefix = prefix or 'tmp_papy_%s' % type
+            suffix = suffix or ''
+            file = prefix + names.next() + suffix
+            if type in ('file', 'fifo'):
+                dir = dir or tempfile.gettempdir()
+                file = os.path.join(dir, file)
+                try:
+                    if type == 'file':
+                        fd = os.open(file, tempfile._bin_openflags, 0600)
+                        tempfile._set_cloexec(fd)
+                    elif type == 'fifo':
+                        os.mkfifo(file)
+                    file = os.path.abspath(file)
+                    break
+                except OSError, e:
+                    if e.errno == errno.EEXIST:
+                        continue
+            elif type == 'shm':
+                try:
+                    mem = posix_ipc.SharedMemory(file, size =len(inbox[0]),\
+                                                      flags =posix_ipc.O_CREX)
+                    break
+                except posix_ipc.ExistentialError:
                     continue
-        elif type == 'shm':
-            try:
-                mem = posix_ipc.SharedMemory(file, size =len(inbox[0]),\
-                                                  flags =posix_ipc.O_CREX)
-                break
-            except posix_ipc.ExistentialError:
-                continue
-        else:
-            raise ValueError("type: %s not undertood" % type)
+    elif type == 'tcp':
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # try to bind to a port
+        try:
+            host = socket.gethostbyaddr(socket.gethostname())[0] # from /etc/hosts
+        except socket.gaierror:
+            host = urllib.urlopen(WHATS_MYIP_URL).read()
+        sock.bind(('', 0))           # os-chosen free port on all interfaces 
+        port = sock.getsockname()[1] # port of the socket
+    else:
+        raise ValueError("type: %s not undertood" % type)
+    
     # got a file, fifo or memory
     if type == 'file':
         handle = open(file, 'wb')
@@ -286,6 +297,21 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None):
         mapfile.write(inbox[0])
         mapfile.close()     # close the memory map
         os.close(mem.fd)    # close the file descriptor
+    elif type == 'tcp'
+        pid = os.fork()
+        if not pid:
+            # sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            sock.listen(1)
+            rsock, (rhost, rport) = sock.accept() # blocks until client connects
+            rsock.sendall(inbox[0])               # returns if all data was sent
+            # child closes all sockets and exits
+            rsock.close() 
+            sock.close()
+            print 'child(%s) exiting ...\n' % os.getpid()
+            os._exit(0)
+        # parent closes server socket
+        sock.close()
+        file = (host, port)
     # filename needs still to be unlinked
     return file
 

@@ -299,7 +299,7 @@ class test_Worker(GeneratorTest):
     def xtest_imap_kwargs(self):
         imap = IMap()
 
-    def test_imports(self):
+    def xtest_imports(self):
         @imports([('re',[]), ('sys',[])])
         def pr(i):
             return (re, sys)
@@ -385,11 +385,19 @@ class test_Worker(GeneratorTest):
             ii = workers.io.load_item([file])
             assert ii == i
 
-    def xtest_dump_load_item_fifo(self):
+    def xtest_dump_fifo_load_item(self):
         import os
         a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
         for i in a:
             file = workers.io.dump_item([i], type ='fifo')
+            ii = workers.io.load_item([file])
+            assert ii == i
+
+    def xtest_dump_shm_load_item(self):
+        import os
+        a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
+        for i in a:
+            file = workers.io.dump_item([i], type ='shm')
             ii = workers.io.load_item([file])
             assert ii == i
 
@@ -401,7 +409,34 @@ class test_Worker(GeneratorTest):
             item = workers.io.load_sqlite_item([file], remove =True)
             assert item == i
 
-    def test_dump_load_manager_item(self):
+    def xtest_dump_load_item_mmap(self):
+        import os
+        a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
+        for i in a:
+            file = workers.io.dump_item([i])
+            ii = workers.io.load_item([file], type ='mmap')
+            assert ii.read(10000) == i
+
+    def xtest_dump_shm_load_item_mmap(self):
+        import os
+        a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
+        for i in a:
+            file = workers.io.dump_item([i], type ='shm')
+            ii = workers.io.load_item([file], type ='mmap')
+            assert ii.read(1000) == i
+
+    def xtest_dump_fifo_load_item_mmap(self):
+        import os
+        a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
+        for i in a:
+            file = workers.io.dump_item([i], type ='fifo')
+            try:
+                workers.io.load_item([file], type ='mmap')
+                raise Exception
+            except:
+                os.unlink(file)            
+
+    def xtest_dump_load_manager_item(self):
         import os
         manager = workers.io.DictServer(address = ('127.0.0.1', 57333),
                                         authkey =  'abc')
@@ -412,28 +447,6 @@ class test_Worker(GeneratorTest):
             item = workers.io.load_manager_item([file], remove =False)
             assert item == i
         manager.shutdown()
-
-    def xtest_dump_load_mmap_item(self):
-        a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
-        for i in a:
-            file = workers.io.dump_item([i])
-            item = workers.io.load_item([file], type ='mmap')
-            assert item.read(10000000) == i
-
-    def xtest_dump_shm_load_mmap_item(self):
-        a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
-        for i in a:
-            file = workers.io.dump_item([i], type ='shm')
-            item = workers.io.load_item([file], type ='mmap')
-            assert item.read(10000000) == i
-
-
-    def xtest_dump_load_shm_read_item(self):
-        a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
-        for i in a:
-            file = workers.io.dump_item([i], type ='shm')
-            item = workers.io.load_item([file])
-            assert item == i
 
     def xtest_find_items(self):
         a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
