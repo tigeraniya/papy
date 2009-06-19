@@ -200,7 +200,7 @@ class test_Graph(unittest.TestCase):
 
 class test_Worker(GeneratorTest):
 
-    def test_single(self):
+    def xtest_single(self):
         pwr = Worker(power)
         pwr = pwr([2])
         self.assertEqual(pwr, 2*2)
@@ -208,7 +208,7 @@ class test_Worker(GeneratorTest):
         dbl = dbl([3])
         self.assertEqual(dbl, 2*3)
 
-    def test_eq(self):
+    def xtest_eq(self):
         pwr = Worker(power)
         dbl = Worker(double)
         pwr2 = Worker(power)
@@ -229,7 +229,7 @@ class test_Worker(GeneratorTest):
         assert pwrdbl is not pwrdbl2
         assert pwr is not pwr2
 
-    def test_double(self):
+    def xtest_double(self):
         pwr = Worker(power)
         dbl = Worker(double)
         dblpwr = dbl([pwr([3])])
@@ -237,7 +237,7 @@ class test_Worker(GeneratorTest):
         pwrdbl = pwr([dbl([3])])
         self.assertEqual(pwrdbl,(2*3)*(2*3))
 
-    def test_nested(self):
+    def xtest_nested(self):
         dblpwr = Worker([power, double])
         dblpwr = dblpwr([3])
         self.assertEqual(dblpwr,2*(3*3))
@@ -245,13 +245,13 @@ class test_Worker(GeneratorTest):
         pwrdbl = pwrdbl([3])
         self.assertEqual(pwrdbl,(2*3)*(2*3))
 
-    def test_keyword(self):
+    def xtest_keyword(self):
         pwr = Worker(powr, (2,))
         self.assertEqual(pwr((4,)), 16)
         pwr = Worker(powr, (3,))
         self.assertEqual(pwr((2,)), 8)
 
-    def test_keywords(self):
+    def xtest_keywords(self):
         mn = Worker(times_m_minus_n, (3,7))
         self.assertEqual(mn((4,)), 5)
         mn = Worker(times_m_minus_n, (2,1))
@@ -259,7 +259,7 @@ class test_Worker(GeneratorTest):
         mn.args = ((1,1),)
         self.assertEqual(mn((4,)), 3)
 
-    def test_multi(self):
+    def xtest_multi(self):
         multi0 = Worker((powr, times_m_minus_n), ((2,),(3,7)))
         self.assertEqual(multi0((4,)), 41)
         multi = Worker((double, pow2))
@@ -271,7 +271,7 @@ class test_Worker(GeneratorTest):
         self.assertEqual(multi3, multi)
         self.assertEqual(multi2, multi0)
 
-    def test_input(self):
+    def xtest_input(self):
         # good input
         w = Worker(powr)
         w = Worker([powr])
@@ -280,7 +280,7 @@ class test_Worker(GeneratorTest):
         z = Worker([power, double])
         z = Worker([w, x])
 
-    def test_IMap(self):
+    def xtest_IMap(self):
         imap = IMap()
         pw2 = Worker(pow2)
         imap.add_task(pw2, [[1],[2],[3],[4]])
@@ -288,7 +288,7 @@ class test_Worker(GeneratorTest):
         for i,j in izip(imap, [[1],[2],[3],[4]]):
             self.assertEqual(i,j[0] * j[0])
 
-    def test_IMap2(self):
+    def xtest_IMap2(self):
         imap = IMap()
         pw2 = Worker(powr, (2,))
         imap.add_task(pw2, [[1],[2],[3],[4]])
@@ -296,11 +296,8 @@ class test_Worker(GeneratorTest):
         for i,j in izip(imap, [[1],[2],[3],[4]]):
             self.assertEqual(i,j[0] * j[0])
 
-    def test_imap_kwargs(self):
+    def xtest_imap_kwargs(self):
         imap = IMap()
-
-
-
 
     def test_imports(self):
         @imports([('re',[]), ('sys',[])])
@@ -308,7 +305,7 @@ class test_Worker(GeneratorTest):
             return (re, sys)
         pr(1)
 
-    def test_compose(self):
+    def xtest_compose(self):
         def plus(i):
             return i[0]+1
         def minus(i):
@@ -318,24 +315,24 @@ class test_Worker(GeneratorTest):
         assert 0 == plus_minus([0], ((),()))
 
 
-    def test_sys_ver(self):
+    def xtest_sys_ver(self):
         assert [['sys',['version']]] == sys_ver.imports
         assert sys_ver.func_globals.get('version')
         rr = Worker(sys_ver)
         assert rr([1]) == __import__('sys').version
 
-    def test_imports_re(self):
+    def xtest_imports_re(self):
         assert [('re',[])] == retre_yes.imports
         assert not hasattr(retre_no, 'imports')
         assert retre_yes.func_globals.get('re')
         rr = Worker(retre_yes)
         assert rr([1]) == __import__('re')
 
-    def test_exceptions(self):
+    def xtest_exceptions(self):
         self.assertRaises(TypeError, Worker, 1)
         self.assertRaises(TypeError, Worker, [1])
 
-    def test_dump_stream(self):
+    def xtest_dump_stream(self):
         fh = open('test_dump_stream', 'wb')
         dump_work = Worker(workers.io.dump_stream, (fh, ''))
         dumper = Piper(dump_work)
@@ -346,7 +343,7 @@ class test_Worker(GeneratorTest):
         fh = open('test_dump_stream', 'rb')
         assert fh.read() == "\n\n".join(inbox[0]) + "\n\n"
 
-    def test_load_stream(self):
+    def xtest_load_stream(self):
         fh = open('test_load_stream', 'wb')
         dump_work = Worker(workers.io.dump_stream, (fh, 'SOME_STRING'))
         dumper = Piper(dump_work)
@@ -358,7 +355,7 @@ class test_Worker(GeneratorTest):
         load_work = workers.io.load_stream(fh, 'SOME_STRING')
         assert list(load_work) == inbox[0]
 
-    def test_load_pickle_stream(self):
+    def xtest_load_pickle_stream(self):
         import cPickle
         fh = open('pickle_stream', 'wb')
         a = ['aaa\n', (1,2,3), 'abc', {}]
@@ -369,7 +366,7 @@ class test_Worker(GeneratorTest):
         b = workers.io.load_pickle_stream(fh)
         assert a == list(b)
 
-    def test_load_pickle_shm_stream(self):
+    def xtest_load_pickle_shm_stream(self):
         import cPickle, os
         fh = workers.io.open_shm('stream')
         a = ['aaa\n', (1,2,3), 'abc', {}]
@@ -380,27 +377,23 @@ class test_Worker(GeneratorTest):
         assert a == list(b)
         fh.unlink()
 
-    def test_dump_fd_load_item(self):
+    def xtest_dump_load_item(self):
         import os
         a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
         for i in a:
             file = workers.io.dump_item([i])
-            item = workers.io.fd_item([file], remove =True)
-            ii = workers.io.load_item([item])
+            ii = workers.io.load_item([file])
             assert ii == i
-    def _test_dump_pipe_fd_load_item(self):
+
+    def xtest_dump_load_item_fifo(self):
         import os
         a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
         for i in a:
-            try:
-                file = workers.io.dump_pipe_item([i])
-                item = workers.io.fd_item([file], remove =False)
-                ii = workers.io.load_item([item])
-            except SystemExit:
-                pass
+            file = workers.io.dump_item([i], type ='fifo')
+            ii = workers.io.load_item([file])
             assert ii == i
 
-    def test_dump_load_sqlite_item(self):
+    def xtest_dump_load_sqlite_item(self):
         import os
         a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
         for i in a:
@@ -418,38 +411,40 @@ class test_Worker(GeneratorTest):
             file = workers.io.dump_manager_item([i], ('127.0.0.1', 57333), 'abc')
             item = workers.io.load_manager_item([file], remove =False)
             assert item == i
-        del manager
+        manager.shutdown()
 
-
-    def test_dump_fd_mmap_item(self):
+    def xtest_dump_load_mmap_item(self):
         a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
         for i in a:
             file = workers.io.dump_item([i])
-            item = workers.io.fd_item([file])
-            ii = workers.io.mmap_item([item])
-            assert ii.read(10000000) == i
+            item = workers.io.load_item([file], type ='mmap')
+            assert item.read(10000000) == i
 
-    def test_dump_load_shm_read_item(self):
+    def xtest_dump_shm_load_mmap_item(self):
         a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
         for i in a:
-            file = workers.io.dump_shm_item([i])
-            item = workers.io.load_shm_item([file])
-            ii = workers.io.mmap_item([item])
-            assert ii.read(10000000) == i
+            file = workers.io.dump_item([i], type ='shm')
+            item = workers.io.load_item([file], type ='mmap')
+            assert item.read(10000000) == i
 
-    def test_find_items(self):
+
+    def xtest_dump_load_shm_read_item(self):
+        a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
+        for i in a:
+            file = workers.io.dump_item([i], type ='shm')
+            item = workers.io.load_item([file])
+            assert item == i
+
+    def xtest_find_items(self):
         a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
         b = []
         for i in a:
-            workers.io.dump_item([i], 'test', '.string')
+            workers.io.dump_item([i], 'file', 'test', '.string')
         abc = workers.io.find_items('test', '.string')
         for z in abc:
-            ii = workers.io.fd_item([z])
-            iii = workers.io.load_item([ii])
+            iii = workers.io.load_item([z])
             b.append(iii)
         assert sorted(b) == sorted(a)
-            
-        
 
     def test_make_items(self):
         fh = open('chunks.txt','rb')
@@ -466,21 +461,21 @@ class test_Worker(GeneratorTest):
                     break
         assert output == fh.read()
 
-    def test_pickle(self):
+    def xtest_pickle(self):
         a = ['aaaaaa','bbbbbbbm\n','ccccccccccc']
         for i in a:
             b = workers.io.pickle_dumps([i])
             c = workers.io.pickle_loads([b])
             assert i == c
 
-    def test_json(self):
+    def xtest_json(self):
         a = ['aaaaaa','bbbbbbbm\n','ccccccccccc']
         for i in a:
             b = workers.io.json_dumps([i])
             c = workers.io.json_loads([b])
             assert i == c
 
-    def test_pickle_stream(self):
+    def xtest_pickle_stream(self):
         a = ['aa\naaaa','bbbbbbbm\n','cccccc\nccccc']
         fh = open('test_pickle_stream2', 'wb')
         for i in a:
@@ -492,8 +487,7 @@ class test_Worker(GeneratorTest):
         os.remove('test_pickle_stream2')
         assert a == list(b)
 
-
-    def test_pickle_stream_shm(self):
+    def xtest_pickle_stream_shm(self):
         a = ['aa\naaaa','bbbbbbbm\n','cccccc\nccccc']
         fh = workers.io.open_shm('test_pickle_stream2')
         for i in a:
@@ -1330,7 +1324,7 @@ class test_Plumber(GeneratorTest):
 
 
 suite_Graph = unittest.makeSuite(test_Graph,'test')
-suite_Worker = unittest.makeSuite(test_Worker,'_test')
+suite_Worker = unittest.makeSuite(test_Worker,'xtest')
 suite_Piper = unittest.makeSuite(test_Piper,'xtest')
 suite_Dagger = unittest.makeSuite(test_Dagger,'test')
 suite_Plumber = unittest.makeSuite(test_Plumber,'test')

@@ -40,6 +40,7 @@ class DictClient(BaseManager):
     pass
 DictClient.register('dict')
 
+
 #
 # LOGGING
 # 
@@ -197,143 +198,149 @@ def dump_pickle_stream(inbox, handle):
     cPickle.dump(inbox[0], handle, -1)
 
 # ITEMS
-@imports([['tempfile',['mkstemp']], ['os', ['fdopen', 'getcwd']]])
-def dump_item(inbox, prefix ='tmp', suffix ='', dir =None):
-    """ Writes the first element of the inbox as a file. Returns the name
-        of the file written. By default creates the file in the current working
-        directory.
+@imports([['tempfile',[]], ['os', []], ['errno', []], ['mmap', []],\
+          ['posix_ipc', []]], forgive = True)
+def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None):
+    """ Writes the first element of the inbox as a file of a specified type.
+        The type can be 'file', 'fifo' or 'shm' corresponding to typical
+        files, named pipes(FIFOs) and posix shared memory. FIFOs and shared
+        memory are volatile, but shared memory can exist longer then the python
+        process.
 
-        This worker is useful to persistantly store data and communicate
-        parallel pipers without the overhead of using queues.
+        Returns the semi-random name of the file written. By default creates 
+        files and fifos in the default temporary directory and shared memory
+        in /dev/shm. To use named pipes the operating system has to support
+        both forks and fifos (not Windows). To use shared memory the system has
+        to be proper posix (not MacOSX) and the posix_ipc module has to be
+        installed.
+
+        This worker is useful to efficently communicate parallel pipers without
+        the overhead of using queues.
 
         Arguments:
 
-          * prefix(string) [default: 'tmp']
+          * type('file', 'fifo' or 'shm') [default: 'file']
+            
+            Type of the created file
+
+          * prefix(string) [default: tmp_papy_%type%]
 
             Prefix of the file to be created. Should probably identify the
-            worker and piper.
+            worker and piper. 
 
           * suffix(string) [default: '']
 
-            Suffix of the file to be created. Should probably identify the file
-            format of the chunk.
+            Suffix of the file to be created. Should probably identify the 
+            format of the serialization protocol e.g. 'pickle' or
+            de-serialized data e.g. 'numpy'.
 
-          * dir(string) [default: current working directory]
-
-            Directory where the file will be created.
-    """
-    dir = dir or getcwd()
-    fd, name = mkstemp(suffix, prefix, dir)
-    handle = fdopen(fd, 'wb')
-    handle.write(inbox[0])
-    handle.close()
-    return name
-
-@imports([['os', []]])
-def fd_item(inbox, remove =True):
-    """ Creates an item from a on-disk file.
-    """
-    print inbox
-    name = inbox[0]
-    size = os.stat(name).st_size
-    fd = os.open(name, os.O_RDONLY)
-    if remove:
-        os.unlink(name)
-    print  ((fd, name), 0, size - 1)
-    return ((fd, name), 0, size - 1)
-
-@imports([['mmap', []], ['os',[]]])
-def mmap_item(inbox, close =True):
-    """ Returns a mmap object (memory mapped file) from a chunk which should be
-        the first and only element of the inbox. This can be faster then reading
-        the chunk. You should **not** call the ``seek`` method of the mmap
-        object as the beginning of the object is **not** the beginning of the
-        chunk. The index returned ``tell`` is the first byte of the chunk, the
-        last byte is the last byte of the mmap object. 
-
-        You cannot mmap a named pipe.
-
-        For a description of the chunk see ``get_chunks``.
-
-        This is one O(1)
-    """
-    (fd, name), start, stop = inbox[0]
-    offset = start - (start % mmap.ALLOCATIONGRANULARITY)
-    start = start - offset
-    stop = stop - offset + 1
-    mmaped = mmap.mmap(fd, stop, access=mmap.ACCESS_READ, offset =offset)
-    mmaped.seek(start)
-    if close:
-        os.close(fd) # closing the fh from load
-    return mmaped
-
-@imports([['os', []],  ['time',[]]])
-def load_item(inbox, close =True):
-    """ Reads out a string from a chunk which should be the first and only
-        element in the inbox. This might be slower then memmory mapping the
-        chunk. The first and last bytes of the string are the first and last
-        bytes of the chunk.
-
-        For a description of the chunk see ``get_chunks``.
-    """
-    (fd, name), start, stop = inbox[0]
-    data = []
-    if stop == -1:
-        # if file size is 0 it is probably a pipe
-        while True:
-            buffer = os.read(fd, PIPE_BUF)
-            if not buffer:
-                break
-            data.append(buffer)
-        data = "".join(data)
-        print data
-    else:
-        os.lseek(fd, start, 0)
-        data = os.read(fd, stop - start + 1) 
-    if close:
-        os.close(fd) # closing the fh from load
-    return data
-
-@imports([['tempfile', []], ['mmap', []], ['posix_ipc', []], ['os',[]]], forgive =True)
-def dump_shm_item(inbox):
-    """ Writes the first element of the inbox as POSIX shared memory. Returns
-        the name of the file written in /dev/shm/.
-
-        This worker is useful to temporarily communicate parallel pipers without
-        the overhead of using queues or on-disk files.
+          * dir(string) [default: tempfile.gettempdir() or /dev/shm]
+            
+            Directory to safe the file to. (can be changed only for types
+            'file' and 'fifo'
     """
     # get a random filename generator
     names = tempfile._get_candidate_names()
+    # try to own the file
     while True:
-        n = names.next()
-        try: # try to create new shared memory for filename
-            memory = posix_ipc.SharedMemory(n, size =len(inbox[0]), flags =posix_ipc.O_CREX)
-            break
-        except (posix_ipc.ExistentialError,):
-            # The OSError is raised if the number of open files per process
-            pass
-    mapfile = mmap.mmap(memory.fd, memory.size)
-    mapfile.write(inbox[0])
-    mapfile.close()     # filename needs still to be unlinked
-    os.close(memory.fd) # ... and the handle closed
-    return n
+        prefix = prefix or 'tmp_papy_%s' % type
+        suffix = suffix or ''
+        file = prefix + names.next() + suffix
+        if type in ('file', 'fifo'):
+            dir = dir or tempfile.gettempdir()
+            file = os.path.join(dir, file)
+            try:
+                if type == 'file':
+                    fd = os.open(file, tempfile._bin_openflags, 0600)
+                    tempfile._set_cloexec(fd)
+                elif type == 'fifo':
+                    os.mkfifo(file)
+                file = os.path.abspath(file)
+                break
+            except OSError, e:
+                if e.errno == errno.EEXIST:
+                    continue
+        elif type == 'shm':
+            try:
+                mem = posix_ipc.SharedMemory(file, size =len(inbox[0]),\
+                                                  flags =posix_ipc.O_CREX)
+                break
+            except posix_ipc.ExistentialError:
+                continue
+        else:
+            raise ValueError("type: %s not undertood" % type)
+    # got a file, fifo or memory
+    if type == 'file':
+        handle = open(file, 'wb')
+        handle.write(inbox[0])
+        handle.close() # close handle/fd
+    elif type == 'fifo':        
+        pid = os.fork()
+        if not pid:
+            handle = open(file, 'wb')
+            handle.write(inbox[0])
+            handle.close() # close handle/fd
+            os._exit(0)
+    elif type == 'shm':
+        mapfile = mmap.mmap(mem.fd, mem.size)
+        mapfile.write(inbox[0])
+        mapfile.close()     # close the memory map
+        os.close(mem.fd)    # close the file descriptor
+    # filename needs still to be unlinked
+    return file
 
-@imports([['posix_ipc', []]], forgive =True)
-def load_shm_item(inbox, remove =True):
-    """ Creates an item from a POSIX shared memory file. By default unlinks the
-        associated (temporary) file.
+@imports([['mmap', []], ['os',[]], ['papy', []]])
+def load_item(inbox, type ='string', close =True, remove =True):
+    """ Loads data from a file. Determines the file type automatically ('file',
+        'fifo' or 'shm') but allows to specify the representation type 'string' 
+        or 'mmap' for memmory mapped access to the file. Returns a the loaded
+        item as a string or mmap object.
 
         Arguments:
 
-          * remove(bool) [default: True]
+          * type('string' or 'mmap') [default: string]
 
-            Remove the loaded item from the table (temporary storage).
+            Determines the type of object the worker returns i.e. the file read
+            as a string or a memmory map. FIFOs cannot be memory mapped. 
+
+          * remove(boolean) [default: True]
+
+            Should the file be removed from the filesystem? This is mandatory
+            for FIFOs and generally a *very* good idea for shared memory.
     """
-    n = inbox[0]
-    memory = posix_ipc.SharedMemory(n)
-    if remove:
-        memory.unlink() # unlinking the dump
-    return ((memory.fd, n), 0, memory.size - 1)
+    try:
+        # did we get an item?
+        (fd, name), start, stop = inbox[0]
+    except ValueError:
+        # if not make one
+        (fd, name), start, stop = papy.workers.io.make_item(inbox, remove) 
+       
+    if type == 'string':
+        data = []
+        if stop == -1:
+            # if file size is 0 it is probably a pipe
+            while True:
+                buffer = os.read(fd, PIPE_BUF)
+                if not buffer:
+                    break
+                data.append(buffer)
+            data = "".join(data)
+        else:
+            os.lseek(fd, start, 0)
+            data = os.read(fd, stop - start + 1)
+    
+    elif type =='mmap':
+        offset = start - (start % mmap.ALLOCATIONGRANULARITY)
+        start = start - offset
+        stop = stop - offset + 1
+        data = mmap.mmap(fd, stop, access=mmap.ACCESS_READ, offset =offset)
+        data.seek(start)
+
+    if close:
+        os.close(fd)
+    if remove and name:
+        os.unlink(name)
+    return data
 
 @imports([['papy', []], ['tempfile', []], ['multiprocessing',[]],\
           ['threading', []]], forgive = True)
@@ -469,39 +476,7 @@ def load_sqlite_item(inbox, remove =True):
     con.close()
     return item
 
-@imports([['tempfile', []], ['os', []], ['sys',[]]])
-def dump_pipe_item(inbox):
-    """ Writes the first element of the inbox to a named pipe(FIFO). To use this
-        worker function the os has to support FIFOs and forks.
-    """
-    # get a random filename generator
-    names = tempfile._get_candidate_names()
-    while True:
-        n = names.next()
-        try: # try to create a new fifo
-            os.mkfifo(n)
-            break
-        except OSError, e:
-            if e.args[0] == 17: # 'File exists'
-                pass
-    pid = os.fork()
-    if not pid:
-        handle = open(n, 'w')
-        handle.write(inbox[0])
-        handle.close()
-        sys.exit(0)
-    return n
 
-def fd_pipe_item(inbox, remove =True):
-    """ Reades data from a named pipe(FIFO).
-    """
-    n = inbox[0]
-    handle = open(n, 'r')
-    data = handle.read()
-    handle.close()
-    if remove:
-        os.unlink(fifo)
-    return data
 
 def dump_redis_item(inbox, name):
     pass
@@ -510,6 +485,39 @@ def load_redis_item(inbox, name):
     pass
 
 # FILES
+@imports([['os', []], ['posix_ipc', []], ['stat', []]], forgive =True)
+def make_item(inbox, remove =True):
+    """ Creates an item from a file name. The file has to exist it can be a
+        normal file, a named pipe(FIFO) or POSIX shared memory.
+
+        Shared memory files should be unlinked at this stage.
+
+        Arguments:
+
+          * remove(boolean) [default: True]
+
+            Should the file be removed from the filesystem?
+    """
+    name = inbox[0]
+    try:
+        # if this succeeds we have pipe or a file in the CWD.
+        size = os.stat(name).st_size
+        fd = os.open(name, os.O_RDONLY)
+        if remove and not stat.S_ISFIFO(os.fstat(fd).st_mode):
+            # do not remove if name is a fifo
+            os.unlink(name)
+            name = None
+    except OSError:
+        # if this succeeds we have a shared memory fie.
+        memory = posix_ipc.SharedMemory(name)
+        size = memory.size
+        fd = memory.fd
+        if remove:
+            # this is bettern then os.unlink ... I think.
+            memory.unlink()
+            name = None
+    return ((fd, name), 0, size - 1)
+
 @imports([['time',[]]])
 def make_lines(handle, follow =False, wait =0.1):
     """ Creates a line generator from a stream (file handle) containing data in
@@ -580,7 +588,7 @@ def make_items(handle, size):
         # if no chunk the chunk size will be start, start+size+size in next
         # round.
 
-@imports([['glob', ['iglob']],['os',['getcwd', 'path']]])
+@imports([['glob', []], ['os',[]], ['tempfile',[]]])
 def find_items(prefix ='tmp', suffix ='', dir =None):
     """ Creates a file name generator from files matching the supplied
         arguments. Matches the same files as those created by ``dump_chunk``
@@ -600,9 +608,9 @@ def find_items(prefix ='tmp', suffix ='', dir =None):
 
             Directory where the files should be located.
     """
-    dir = dir or getcwd()
-    pattern = path.join(dir, prefix + '*' + suffix)
-    chunk_files = iglob(pattern)
+    dir = dir or tempfile.gettempdir()
+    pattern = os.path.join(dir, prefix + '*' + suffix)
+    chunk_files = glob.iglob(pattern)
     while True:
         yield chunk_files.next()
 
