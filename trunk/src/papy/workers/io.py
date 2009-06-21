@@ -28,6 +28,18 @@ else:
     # in jython in windows 512
     PIPE_BUF = 512
 
+import socket
+tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+TCP_SNDBUF = tcp_sock.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)
+TCP_RCVBUF = tcp_sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
+udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+UDP_SNDBUF = udp_sock.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)
+UDP_RCVBUF = udp_sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
+del tcp_sock, udp_sock
+
+WHATS_MYIP_URL = 'http://www.whatismyip.com/automation/n09230945.asp'
+
+
 from IMap import imports
 from multiprocessing.managers import BaseManager, DictProxy
 
@@ -199,7 +211,7 @@ def dump_pickle_stream(inbox, handle):
 
 # ITEMS
 @imports([['tempfile',[]], ['os', []], ['errno', []], ['mmap', []],\
-          ['posix_ipc', []]], forgive = True)
+          ['posix_ipc', []], ['socket', []], ['urllib', []]], forgive = True)
 def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None):
     """ Writes the first element of the inbox as a file of a specified type.
         The type can be 'file', 'fifo' or 'shm' corresponding to typical
@@ -219,7 +231,7 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None):
 
         Arguments:
 
-          * type('file', 'fifo', 'shm', 'tcp') [default: 'file']
+          * type('file', 'fifo', 'shm', 'tcp', 'udp') [default: 'file']
             
             Type of the created file/socket
 
@@ -260,6 +272,7 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None):
                     break
                 except OSError, e:
                     if e.errno == errno.EEXIST:
+                        # file exists try another one
                         continue
             elif type == 'shm':
                 try:
@@ -277,6 +290,8 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None):
             host = urllib.urlopen(WHATS_MYIP_URL).read()
         sock.bind(('', 0))           # os-chosen free port on all interfaces 
         port = sock.getsockname()[1] # port of the socket
+    elif type == 'udp':
+        raise ValueError("type: %s not implemented" %type)
     else:
         raise ValueError("type: %s not undertood" % type)
     
@@ -285,29 +300,29 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None):
         handle = open(file, 'wb')
         handle.write(inbox[0])
         handle.close() # close handle/fd
-    elif type == 'fifo':        
+    elif type == 'fifo':  
         pid = os.fork()
         if not pid:
-            handle = open(file, 'wb')
-            handle.write(inbox[0])
-            handle.close() # close handle/fd
+            # open file write-only and fail if it does not exist.
+            fd = os.open(file, os.O_EXCL & os.O_CREAT | os.O_WRONLY)
+            os.write(fd, inbox[0])
+            os.close(fd)
             os._exit(0)
     elif type == 'shm':
         mapfile = mmap.mmap(mem.fd, mem.size)
         mapfile.write(inbox[0])
         mapfile.close()     # close the memory map
         os.close(mem.fd)    # close the file descriptor
-    elif type == 'tcp'
+    elif type == 'tcp':
+        sock.listen(1)
         pid = os.fork()
         if not pid:
             # sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            sock.listen(1)
             rsock, (rhost, rport) = sock.accept() # blocks until client connects
             rsock.sendall(inbox[0])               # returns if all data was sent
             # child closes all sockets and exits
             rsock.close() 
             sock.close()
-            print 'child(%s) exiting ...\n' % os.getpid()
             os._exit(0)
         # parent closes server socket
         sock.close()
@@ -315,12 +330,14 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None):
     # filename needs still to be unlinked
     return file
 
-@imports([['mmap', []], ['os',[]], ['papy', []]])
-def load_item(inbox, type ='string', close =True, remove =True):
+@imports([['mmap', []], ['os',[]], ['stat', []],\
+          ['posix_ipc', []]], forgive =True)
+def load_item(inbox, type ='string', remove =True, buffer =None):
     """ Loads data from a file. Determines the file type automatically ('file',
-        'fifo' or 'shm') but allows to specify the representation type 'string' 
-        or 'mmap' for memmory mapped access to the file. Returns a the loaded
-        item as a string or mmap object.
+        'fifo', 'shm', 'tcp', 'udp') but allows to specify the representation 
+        type 'string' or 'mmap' for memmory mapped access to the file. Returns
+        a the loaded item as a string or mmap object. Internally creates an item
+        from a file object
 
         Arguments:
 
@@ -332,41 +349,104 @@ def load_item(inbox, type ='string', close =True, remove =True):
           * remove(boolean) [default: True]
 
             Should the file be removed from the filesystem? This is mandatory
-            for FIFOs and generally a *very* good idea for shared memory.
+            for FIFOs and sockets and generally a *very* good idea for shared 
+            memory. Files can be used to store data persistantly.
     """
-    try:
-        # did we get an item?
-        (fd, name), start, stop = inbox[0]
-    except ValueError:
-        # if not make one
-        (fd, name), start, stop = papy.workers.io.make_item(inbox, remove) 
-       
-    if type == 'string':
-        data = []
-        if stop == -1:
-            # if file size is 0 it is probably a pipe
-            while True:
-                buffer = os.read(fd, PIPE_BUF)
-                if not buffer:
-                    break
-                data.append(buffer)
-            data = "".join(data)
-        else:
-            os.lseek(fd, start, 0)
-            data = os.read(fd, stop - start + 1)
+    # determine the input type
+    is_file, is_fifo, is_shm, is_socket = False, False, False, False
+    name = inbox[0]
+    if isinstance(name, basestring):
+        is_file = True
+        
+    if is_file:
+        try:
+            is_fifo = stat.S_ISFIFO(os.stat(name).st_mode)
+        except OSError:
+            is_shm = os.path.exists(os.path.join('/dev/shm', name))
+    else:
+        is_item = len(name) == 4
+        is_socket = len(name) == 2
+
+    if (is_fifo or is_socket) and (type == 'mmap'):
+        raise ValueError('memory mapping is not supported for FIFOs\
+                          and sockets')
+    if (is_fifo or is_socket) and (remove == False):
+        raise ValueError('FIFOs and sockets have to be removed')
+
+    # get a fd and start/stop
+    start = 0
+    if is_shm:
+        memory = posix_ipc.SharedMemory(name)
+        stop = memory.size - 1
+        fd = memory.fd
+
+    elif is_fifo or is_file:
+        stop = os.stat(name).st_size - 1
+        fd = os.open(name, os.O_RDONLY)
+        BUFFER = (buffer or PIPE_BUF)
     
-    elif type =='mmap':
+    elif is_socket:
+        if 'tcp':
+            host, port = socket.gethostbyname(name[0]), name[1]
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.connect((host, port))
+            stop = -1
+            fd = sock.fileno()
+            BUFFER = (buffer or TCP_RCVBUF)
+        elif 'udp':
+            BUFFER = (buffer or UDP_RCVBUF)
+
+    elif is_item:
+        (fd, name), start, stop = name
+
+    else:
+        raise ValueError('?')
+
+    # get the data
+    if type =='mmap':
         offset = start - (start % mmap.ALLOCATIONGRANULARITY)
         start = start - offset
         stop = stop - offset + 1
         data = mmap.mmap(fd, stop, access=mmap.ACCESS_READ, offset =offset)
         data.seek(start)
 
-    if close:
+    elif type == 'string':
+        data = []
+        if stop == -1:
+            while True:
+                buffer_ = os.read(fd, BUFFER)
+                if not buffer_:
+                    break
+                data.append(buffer_)
+            data = "".join(data)
+            # data = sock.recv(socket.MSG_WAITALL) 
+            # this would read all the data from a socket
+        else:
+            os.lseek(fd, start, 0)
+            data = os.read(fd, stop - start + 1)
+    else:
+        raise ValueError('type: %s not understood.' % type)
+
+    # remove the file or close the socket
+    if remove:
+        if is_shm:
+            # closes and unlinks the shared memory
+            os.close(fd)
+            memory.unlink()
+        elif is_socket:
+            # closes client socket
+            sock.close()
+        else:
+            # pipes and files are just removed
+            os.close(fd)
+            os.unlink(name)
+    else:
+        # a file not remove, but close fh
         os.close(fd)
-    if remove and name:
-        os.unlink(name)
+
+    # returns a string or mmap
     return data
+
 
 @imports([['papy', []], ['tempfile', []], ['multiprocessing',[]],\
           ['threading', []]], forgive = True)
@@ -511,39 +591,6 @@ def load_redis_item(inbox, name):
     pass
 
 # FILES
-@imports([['os', []], ['posix_ipc', []], ['stat', []]], forgive =True)
-def make_item(inbox, remove =True):
-    """ Creates an item from a file name. The file has to exist it can be a
-        normal file, a named pipe(FIFO) or POSIX shared memory.
-
-        Shared memory files should be unlinked at this stage.
-
-        Arguments:
-
-          * remove(boolean) [default: True]
-
-            Should the file be removed from the filesystem?
-    """
-    name = inbox[0]
-    try:
-        # if this succeeds we have pipe or a file in the CWD.
-        size = os.stat(name).st_size
-        fd = os.open(name, os.O_RDONLY)
-        if remove and not stat.S_ISFIFO(os.fstat(fd).st_mode):
-            # do not remove if name is a fifo
-            os.unlink(name)
-            name = None
-    except OSError:
-        # if this succeeds we have a shared memory fie.
-        memory = posix_ipc.SharedMemory(name)
-        size = memory.size
-        fd = memory.fd
-        if remove:
-            # this is bettern then os.unlink ... I think.
-            memory.unlink()
-            name = None
-    return ((fd, name), 0, size - 1)
-
 @imports([['time',[]]])
 def make_lines(handle, follow =False, wait =0.1):
     """ Creates a line generator from a stream (file handle) containing data in

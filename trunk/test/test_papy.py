@@ -401,6 +401,14 @@ class test_Worker(GeneratorTest):
             ii = workers.io.load_item([file])
             assert ii == i
 
+    def xtest_dump_tcp_load_item(self):
+        import os
+        a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
+        for i in a:
+            file = workers.io.dump_item([i], type ='tcp')
+            ii = workers.io.load_item([file])
+            assert ii == i
+
     def xtest_dump_load_sqlite_item(self):
         import os
         a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
@@ -432,11 +440,14 @@ class test_Worker(GeneratorTest):
             file = workers.io.dump_item([i], type ='fifo')
             try:
                 workers.io.load_item([file], type ='mmap')
-                raise Exception
-            except:
-                os.unlink(file)            
+            except Exception, e:
+                pass
+                #import time
+                #time.sleep(1)
+                # investigate this!
+                #os.unlink(file)
 
-    def xtest_dump_load_manager_item(self):
+    def test_dump_load_manager_item(self):
         import os
         manager = workers.io.DictServer(address = ('127.0.0.1', 57333),
                                         authkey =  'abc')
