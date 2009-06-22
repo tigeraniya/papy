@@ -503,34 +503,66 @@ def load_manager_item(inbox, remove =True):
     return v
     
 
-@imports([['sqlite3', ['dbapi2']]])
-def dump_sqlite_item(inbox, name, table ='papy'):
-    """ Writes the first element of the inbox as a value in a sqlite database.
-        Returns the name of the database file, table name and row id for the 
-        inserted item.
-
+@imports([['sqlite3', []], ['MySQLdb', []]], forgive =True)
+def dump_db_item(inbox, type='sqlite', **kwargs):
+    """ Writes the first element of the inbox as a key/value pair in a database
+        of the provided type. Currently supported: "sqlite" and "mysql".
+        Returns the information necessary for the load_db_item to retrieve the
+        element.
+        
         According to the sqlite documentation: You should avoid putting SQLite
         database files on NFS if multiple processes might try to access the file
-        at the same time. 
+        at the same time.
 
         Arguments:
 
-          * name(str) [default: 'sqlite.tmp']
+          * type(str) [default: 'sqlite']
 
-            Name of the database file to use. A new file will be created only if
-            it does not exist.
+            Type of the database to use currently supported 'sqlite' and 'mysql'
+            Using MySQL requires a running 
 
-          * table(str) [default: 'papy']
+          * db(str) [default: 'papydb']
 
-            Name of the table to insert the item into. Can be unique per-piper
-            or shared.
+            Default name of the database, for sqlite it is the name of the
+            database file in the current working directory. Databases can be
+            shared among pipers. Having multiple SQLite database files improves
+            concurrency. A new file will be created if none exists. The MySQL 
+            database has to exists (it will not be created).
+          
+          * table(str) [default: 'temp']  
+
+            Name of the table to store the key/value pairs into. Tables can be
+            shared among pipers.
+
+          * host, user, passwd
+
+            Authentication information.
     """
+    try:
+        table = kwargs.pop('table')
+    except KeyError:
+        table = 'temp'
+
+    if type =='sqlite':
+        dbapi2 = sqlite3.dbapi2
+        ai = 'autoincrement'
+        kwargs['database']  = kwargs.get('db') or 'papydb'
+        kwargs['isolation_level'] ='IMMEDIATE'
+    elif type =='mysql':
+        dbapi2 = MySQLdb
+        ai = 'auto_increment'
+        kwargs['host'] = kwargs.get('host') or 'localhost'
+        kwargs['db'] = kwargs.get('db') or 'papy' #change me
+
+    else:
+        raise ValueError('Database format %s not understood!' % db)
+
     # Under Unix, you should not carry an open SQLite database across a fork() 
     # system call into the child process. Problems will result if you do.
     while True:
         try:
         # Calling this routine with an argument less than or equal to zero turns
-        # off all busy handlers.  "isolation_level=None" does not actually mean
+        # off all busy handlers. "isolation_level=None" does not actually mean
         # "provide a lower isolation level", it means "use SQLite's inherent
         # isolation /concurrency primitives rather than those in PySQLite".  By
         # default, SQLite version 3 operates in autocommit mode. In autocommit
@@ -540,23 +572,40 @@ def dump_sqlite_item(inbox, name, table ='papy'):
         # After a BEGIN IMMEDIATE, you are guaranteed that no other thread or
         # process will be able to write to the database or do a BEGIN IMMEDIATE
         # or BEGIN EXCLUSIVE. 
-            con = dbapi2.connect(name, isolation_level ="IMMEDIATE")
+            print kwargs
+            con =dbapi2.connect(**kwargs)
             cur = con.cursor()
-            cur.execute("create table if not exists %s (id integer primary key\
-                         autoincrement, value blob)" % (table,))
+            cur.execute("create table if not exists %s (id integer primary key %s, value blob)" % (table, ai))
             break
         except dbapi2.OperationalError, e:
             # if locked wait ... forever
             if not e.args[0] == 'database is locked':
                 raise e 
     # inserts are atomic, no locking needed.
-    id_ = con.execute("insert into %s (value) values (?)"
-                     % table, (dbapi2.Binary(inbox[0]),)).lastrowid
-    con.commit()
-    con.close()
-    return (name, table, id_)
+    print dir(con)
+    print dir(cur)
 
-@imports([['sqlite3', ['dbapi2']]])
+    if type in ('mysql',):
+        cur.execute("insert into %s (value) VALUES ('%s')" % (table, dbapi2.Binary(inbox[0])))
+        id_ = cur.lastrowid
+        # from mysql-python
+        # ... no auto-commit mode. 
+        # you'll need to do connection.commit() before closing the connection,
+        # or else none of your changes will be written to the database.
+        cur.close()
+        con.commit()
+
+
+    elif type in ('sqlite',):
+        pass
+        #id_ = cur.execute("insert into %s (value) values (?)"
+        #                 % table, (dbapi2.Binary(inbox[0]),)).lastrowid
+        #con.commit()
+        #con.close()
+        #return (name, table, id_)
+    return id_
+
+@imports([['sqlite3', []], ])
 def load_sqlite_item(inbox, remove =True):
     """ Loads an item from a sqlite database. Returns the stored string.
 
