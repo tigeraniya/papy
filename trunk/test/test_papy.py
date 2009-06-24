@@ -409,13 +409,33 @@ class test_Worker(GeneratorTest):
             ii = workers.io.load_item([file])
             assert ii == i
 
+    def xtest_dump_udp_load_item(self):
+        import os
+        a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
+        for i in a:
+            file = workers.io.dump_item([i], type ='udp')
+            ii = workers.io.load_item([file])
+            assert ii == i
+
+
+
     def xtest_dump_load_sqlite_item(self):
         import os
         a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
         for i in a:
-            file = workers.io.dump_sqlite_item([i], 'test.sqlite')
-            item = workers.io.load_sqlite_item([file], remove =True)
+            file = workers.io.dump_db_item([i])
+            item = workers.io.load_db_item([file], remove =True)
             assert item == i
+
+    def xtest_dump_load_sqlite_item(self):
+        import os
+        a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
+        for i in a:
+            file = workers.io.dump_db_item([i], type='mysql', user='mcieslik',\
+            host ='localhost', passwd ='pinkcream69', db ='papy')
+            item = workers.io.load_db_item([file], remove =True)
+            assert item == i
+
 
     def xtest_dump_load_item_mmap(self):
         import os
@@ -436,17 +456,11 @@ class test_Worker(GeneratorTest):
     def xtest_dump_fifo_load_item_mmap(self):
         import os
         a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
+        files = []
         for i in a:
             file = workers.io.dump_item([i], type ='fifo')
-            try:
-                workers.io.load_item([file], type ='mmap')
-            except Exception, e:
-                pass
-                #import time
-                #time.sleep(1)
-                # investigate this!
-                #os.unlink(file)
-
+            workers.io.load_item([file], type ='mmap')
+            
     def test_dump_load_manager_item(self):
         import os
         manager = workers.io.DictServer(address = ('127.0.0.1', 57333),
@@ -712,30 +726,32 @@ class test_Piper(GeneratorTest):
         assert list(loader) == list(data)
         handle1.unlink()
 
-    def xtest_posixshm_items(self):
-        imap1 = IMap()
-        imap2 = IMap()
-        imap3 = IMap()
-        for i1, i2 in ((imap1, imap2), (imap3, imap3), (None, None)):
-            data = xrange(1000)
-            pickler = Worker(workers.io.pickle_dumps)
-            dumper = Worker(workers.io.dump_shm_item)
-            loader = Worker((workers.io.load_shm_item, workers.io.load_item))
-            unpickler = Worker(workers.io.pickle_loads)
+    def xtest_dump_items(self):
+        for typ in ('file','shm','fifo','tcp'):
+            for typ2 in ('string',):
+                imap1 = IMap()
+                imap2 = IMap()
+                imap3 = IMap()
+                for i1, i2 in ((imap1, imap2), (imap3, imap3), (None, None)):
+                    data = xrange(1000)
+                    pickler = Worker(workers.io.pickle_dumps)
+                    dumper = Worker(workers.io.dump_item, (typ,))
+                    loader = Worker(workers.io.load_item)
+                    unpickler = Worker(workers.io.pickle_loads)
 
-            p_pickler = Piper(pickler)
-            p_dumper = Piper(dumper, parallel =i1)
-            p_loader = Piper(loader, parallel =i2)
-            p_unpickler = Piper(unpickler)
+                    p_pickler = Piper(pickler)
+                    p_dumper = Piper(dumper, parallel =i1)
+                    p_loader = Piper(loader, parallel =i2)
+                    p_unpickler = Piper(unpickler)
 
-            p_pickler([data])
-            p_dumper([p_pickler])
-            p_loader([p_dumper])
-            p_unpickler([p_loader])
+                    p_pickler([data])
+                    p_dumper([p_pickler])
+                    p_loader([p_dumper])
+                    p_unpickler([p_loader])
 
-            p_dumper.start(forced =True)
-            p_loader.start(forced =True)
-            assert list(data) == list(p_unpickler)
+                    p_dumper.start(forced =True)
+                    p_loader.start(forced =True)
+                    assert list(data) == list(p_unpickler)
 
 
 

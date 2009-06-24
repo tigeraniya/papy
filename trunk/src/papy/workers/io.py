@@ -211,11 +211,13 @@ def dump_pickle_stream(inbox, handle):
 
 # ITEMS
 @imports([['tempfile',[]], ['os', []], ['errno', []], ['mmap', []],\
-          ['posix_ipc', []], ['socket', []], ['urllib', []]], forgive = True)
-def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None):
+          ['signal', []],  ['posix_ipc', []], ['socket', []],\
+          ['urllib', []], ['random', []]], forgive = True)
+def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
+              timeout =320, buffer =None):
     """ Writes the first element of the inbox as a file of a specified type.
-        The type can be 'file', 'fifo' or 'shm' corresponding to typical
-        files, named pipes(FIFOs) and posix shared memory. FIFOs and shared
+        The type can be 'file', 'fifo', 'shm', 'tcp' or 'udp' corresponding to 
+        typical files, named pipes(FIFOs) and posix shared memory. FIFOs and shared
         memory are volatile, but shared memory can exist longer then the python
         process.
 
@@ -224,7 +226,7 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None):
         in /dev/shm. To use named pipes the operating system has to support
         both forks and fifos (not Windows). To use shared memory the system has
         to be proper posix (not MacOSX) and the posix_ipc module has to be
-        installed. To use sockets.
+        installed. Sockets should work on operating systems.
 
         This worker is useful to efficently communicate parallel pipers without
         the overhead of using queues.
@@ -233,7 +235,7 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None):
 
           * type('file', 'fifo', 'shm', 'tcp', 'udp') [default: 'file']
             
-            Type of the created file/socket
+            Type of the created file/socket.
 
           * prefix(string) [default: tmp_papy_%type%]
 
@@ -250,9 +252,15 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None):
             
             Directory to safe the file to. (can be changed only for types
             'file' and 'fifo'
+
+          * timeout(integer) [default: 320]
+
+            Number of seconds to keep the process at the write-end of the
+            socket or pipe alive.
     """
     # get a random filename generator
     names = tempfile._get_candidate_names()
+    names.rng.seed() # reseed rng after the fork
     # try to own the file
     if type in ('file', 'fifo', 'shm'):
         while True:
@@ -265,15 +273,25 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None):
                 try:
                     if type == 'file':
                         fd = os.open(file, tempfile._bin_openflags, 0600)
-                        tempfile._set_cloexec(fd)
+                        tempfile._set_cloexec(fd) # ?, but still open
                     elif type == 'fifo':
                         os.mkfifo(file)
                     file = os.path.abspath(file)
                     break
                 except OSError, e:
+                    # first try to close the fd
+                    try:
+                        os.close(fd)
+                    except OSError, ee:
+                        if ee.errno == errno.EBADF:
+                            pass
+                        # strange error better raise it
+                        raise ee
                     if e.errno == errno.EEXIST:
                         # file exists try another one
                         continue
+                    # all other errors should be raise
+                    raise e
             elif type == 'shm':
                 try:
                     mem = posix_ipc.SharedMemory(file, size =len(inbox[0]),\
@@ -281,8 +299,11 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None):
                     break
                 except posix_ipc.ExistentialError:
                     continue
-    elif type == 'tcp':
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    elif type in ('tcp', 'udp'):
+        
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM 
+                                            if type == 'tcp' else 
+                                             socket.SOCK_DGRAM)
         # try to bind to a port
         try:
             host = socket.gethostbyaddr(socket.gethostname())[0] # from /etc/hosts
@@ -290,21 +311,24 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None):
             host = urllib.urlopen(WHATS_MYIP_URL).read()
         sock.bind(('', 0))           # os-chosen free port on all interfaces 
         port = sock.getsockname()[1] # port of the socket
-    elif type == 'udp':
-        raise ValueError("type: %s not implemented" %type)
     else:
         raise ValueError("type: %s not undertood" % type)
     
     # got a file, fifo or memory
     if type == 'file':
         handle = open(file, 'wb')
+        os.close(fd) # no need to own a file twice!
         handle.write(inbox[0])
-        handle.close() # close handle/fd
-    elif type == 'fifo':  
+        handle.close() # close handle
+    elif type == 'fifo':
+        # open file write-only and fail if it does not exist.
         pid = os.fork()
         if not pid:
-            # open file write-only and fail if it does not exist.
+            # we set an alarom for 5min if nothing starts to read 
+            # within this time the process gets killed.
+            signal.alarm(timeout)
             fd = os.open(file, os.O_EXCL & os.O_CREAT | os.O_WRONLY)
+            signal.alarm(0)
             os.write(fd, inbox[0])
             os.close(fd)
             os._exit(0)
@@ -318,7 +342,9 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None):
         pid = os.fork()
         if not pid:
             # sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            signal.alarm(timeout)
             rsock, (rhost, rport) = sock.accept() # blocks until client connects
+            signal.alarm(0)
             rsock.sendall(inbox[0])               # returns if all data was sent
             # child closes all sockets and exits
             rsock.close() 
@@ -326,12 +352,34 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None):
             os._exit(0)
         # parent closes server socket
         sock.close()
-        file = (host, port)
+        file = (host, port, 'tcp')
+    elif type == 'udp':
+        BUFFER = (buffer or UDP_SNDBUF)
+        pid  = os.fork()
+        if not pid:
+            # first reply
+            signal.alarm(timeout)
+            data, rhost = sock.recvfrom(BUFFER) # this blocks
+            signal.alarm(0)
+            i = 0
+            while True:
+                # sends an empty '' when data finishes and exits
+                data = inbox[0][i:i+BUFFER]
+                sock.sendto(data, rhost)
+                i += BUFFER
+                if data:
+                    continue
+                break
+            sock.close()
+            os._exit(0)
+        sock.close()
+        file = (host, port, 'udp')
+
     # filename needs still to be unlinked
     return file
 
 @imports([['mmap', []], ['os',[]], ['stat', []],\
-          ['posix_ipc', []]], forgive =True)
+          ['posix_ipc', []], ['warnings', []]], forgive =True)
 def load_item(inbox, type ='string', remove =True, buffer =None):
     """ Loads data from a file. Determines the file type automatically ('file',
         'fifo', 'shm', 'tcp', 'udp') but allows to specify the representation 
@@ -365,13 +413,18 @@ def load_item(inbox, type ='string', remove =True, buffer =None):
             is_shm = os.path.exists(os.path.join('/dev/shm', name))
     else:
         is_item = len(name) == 4
-        is_socket = len(name) == 2
+        is_socket = len(name) == 3 
+        is_tcp = name[2] == 'tcp'
+        is_udp = name[2] == 'udp'
 
     if (is_fifo or is_socket) and (type == 'mmap'):
-        raise ValueError('memory mapping is not supported for FIFOs\
-                          and sockets')
-    if (is_fifo or is_socket) and (remove == False):
-        raise ValueError('FIFOs and sockets have to be removed')
+        warnings.warn('memory mapping is not supported for FIFOs and sockets',\
+                                                                RuntimeWarning)
+        type = 'string'
+    if (is_fifo or is_socket) and not remove:
+        warnings.warn('FIFOs and sockets have to be removed',\
+                                               RuntimeWarning)
+        remove = True 
 
     # get a fd and start/stop
     start = 0
@@ -386,15 +439,20 @@ def load_item(inbox, type ='string', remove =True, buffer =None):
         BUFFER = (buffer or PIPE_BUF)
     
     elif is_socket:
-        if 'tcp':
-            host, port = socket.gethostbyname(name[0]), name[1]
+        host, port = socket.gethostbyname(name[0]), name[1]
+        if is_tcp:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.connect((host, port))
             stop = -1
             fd = sock.fileno()
             BUFFER = (buffer or TCP_RCVBUF)
-        elif 'udp':
+        elif is_udp:
             BUFFER = (buffer or UDP_RCVBUF)
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.sendto('', (host, port)) # 'greet server'
+            stop = -1
+        else:
+            raise ValueError
 
     elif is_item:
         (fd, name), start, stop = name
@@ -414,7 +472,10 @@ def load_item(inbox, type ='string', remove =True, buffer =None):
         data = []
         if stop == -1:
             while True:
-                buffer_ = os.read(fd, BUFFER)
+                if is_socket and is_udp:
+                    buffer_  = sock.recv(BUFFER)
+                else:
+                    buffer_ = os.read(fd, BUFFER)                                          
                 if not buffer_:
                     break
                 data.append(buffer_)
@@ -503,8 +564,8 @@ def load_manager_item(inbox, remove =True):
     return v
     
 
-@imports([['sqlite3', []], ['MySQLdb', []]], forgive =True)
-def dump_db_item(inbox, type='sqlite', **kwargs):
+@imports([['sqlite3', []], ['MySQLdb', []], ['warnings', []]], forgive =True)
+def dump_db_item(inbox, type='sqlite', table ='temp', **kwargs):
     """ Writes the first element of the inbox as a key/value pair in a database
         of the provided type. Currently supported: "sqlite" and "mysql".
         Returns the information necessary for the load_db_item to retrieve the
@@ -536,23 +597,23 @@ def dump_db_item(inbox, type='sqlite', **kwargs):
 
           * host, user, passwd
 
-            Authentication information.
+            Authentication information. Refer to the generic dbapi2
+            documentation.
     """
-    try:
-        table = kwargs.pop('table')
-    except KeyError:
-        table = 'temp'
-
+    # connect defaults
+    kwargs['db'] = kwargs.get('db') or 'papydb'
+    
+    # backend specific
     if type =='sqlite':
         dbapi2 = sqlite3.dbapi2
         ai = 'autoincrement'
-        kwargs['database']  = kwargs.get('db') or 'papydb'
+        kwargs['database']  = kwargs.pop('db')
         kwargs['isolation_level'] ='IMMEDIATE'
     elif type =='mysql':
         dbapi2 = MySQLdb
         ai = 'auto_increment'
         kwargs['host'] = kwargs.get('host') or 'localhost'
-        kwargs['db'] = kwargs.get('db') or 'papy' #change me
+        #warnings.simplefilter('ignore')
 
     else:
         raise ValueError('Database format %s not understood!' % db)
@@ -572,7 +633,6 @@ def dump_db_item(inbox, type='sqlite', **kwargs):
         # After a BEGIN IMMEDIATE, you are guaranteed that no other thread or
         # process will be able to write to the database or do a BEGIN IMMEDIATE
         # or BEGIN EXCLUSIVE. 
-            print kwargs
             con =dbapi2.connect(**kwargs)
             cur = con.cursor()
             cur.execute("create table if not exists %s (id integer primary key %s, value blob)" % (table, ai))
@@ -582,31 +642,26 @@ def dump_db_item(inbox, type='sqlite', **kwargs):
             if not e.args[0] == 'database is locked':
                 raise e 
     # inserts are atomic, no locking needed.
-    print dir(con)
-    print dir(cur)
 
     if type in ('mysql',):
-        cur.execute("insert into %s (value) VALUES ('%s')" % (table, dbapi2.Binary(inbox[0])))
-        id_ = cur.lastrowid
-        # from mysql-python
-        # ... no auto-commit mode. 
-        # you'll need to do connection.commit() before closing the connection,
-        # or else none of your changes will be written to the database.
-        cur.close()
-        con.commit()
-
-
+        cur.execute("insert into %s (value) values ('%s')" % (table, dbapi2.Binary(inbox[0])))
     elif type in ('sqlite',):
-        pass
-        #id_ = cur.execute("insert into %s (value) values (?)"
-        #                 % table, (dbapi2.Binary(inbox[0]),)).lastrowid
-        #con.commit()
-        #con.close()
-        #return (name, table, id_)
-    return id_
+        cur.execute("insert into %s (value) values (?)" % table, (dbapi2.Binary(inbox[0]),))
+
+    #     
+    id_ = cur.lastrowid
+
+    #clean-up
+    cur.close()
+    con.commit()
+    #warnings.simplefilter('default')
+    # from mysql-python ... no auto-commit mode.  you'll need to do
+    # connection.commit() before closing the connection, or else none of your
+    # changes will be written to the database.
+    return type, id_, table, kwargs
 
 @imports([['sqlite3', []], ])
-def load_sqlite_item(inbox, remove =True):
+def load_db_item(inbox, remove =True):
     """ Loads an item from a sqlite database. Returns the stored string.
 
         Arguments:
@@ -615,29 +670,45 @@ def load_sqlite_item(inbox, remove =True):
 
             Remove the loaded item from the table (temporary storage).
     """
-    name, table, id_ = inbox[0]
+    type, id_, table, kwargs = inbox[0]
+    
+    if type =='sqlite':
+        dbapi2 = sqlite3.dbapi2
+    elif type =='mysql':
+        dbapi2 = MySQLdb
+
     while True:
         try:
-             con = dbapi2.connect(name)
-             break
+            con = dbapi2.connect(**kwargs)
+            cur = con.cursor()
+            break
         except dbapi2.OperationalError, e:
             if not e.args[0] == 'database is locked':
                 raise e
-    get_item = 'select value from %s where id = ?' % table
-    item = str(con.execute(get_item, (id_,)).fetchone()[0])
+    if type =='sqlite':
+        get_item = 'select value from %s where id = ?' % table
+        item = str(cur.execute(get_item, (id_,)).fetchone()[0])
+    elif type =='mysql':
+        get_item = 'select value from %s where id = %s' % (table, id_)
+        cur.execute(get_item)
+        item = str(cur.fetchone()[0])
+    
+    # remove the retrieved item.
     if remove:
-        del_item = 'delete from %s where id = ?' % table
-        con.execute(del_item, (id_,))
-    con.close()
+        if type in ('sqlite',):
+            del_item = 'delete from %s where id = ?' % table
+            cur.execute(del_item, (id_,))
+        elif type in ('mysql',):
+            del_item = 'delete from %s where id = %s' % (table, id_)
+            cur.execute(del_item)
+    
+    # clean-up connection
+    cur.close()
+    con.commit()
     return item
 
 
 
-def dump_redis_item(inbox, name):
-    pass
-
-def load_redis_item(inbox, name):
-    pass
 
 # FILES
 @imports([['time',[]]])
