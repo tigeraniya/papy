@@ -260,15 +260,16 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
     """
     # get a random filename generator
     names = tempfile._get_candidate_names()
-    names.rng.seed() # reseed rng after the fork
+    names.rng.seed() # re-seed rng after the fork
     # try to own the file
     if type in ('file', 'fifo', 'shm'):
+        prefix = prefix or 'tmp_papy_%s' % type
+        suffix = suffix or ''
+        dir = dir or tempfile.gettempdir()
         while True:
-            prefix = prefix or 'tmp_papy_%s' % type
-            suffix = suffix or ''
+            # create a random file name
             file = prefix + names.next() + suffix
             if type in ('file', 'fifo'):
-                dir = dir or tempfile.gettempdir()
                 file = os.path.join(dir, file)
                 try:
                     if type == 'file':
@@ -299,6 +300,7 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
                     break
                 except posix_ipc.ExistentialError:
                     continue
+    # the os will create a random socket for us.
     elif type in ('tcp', 'udp'):
         
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM 
@@ -322,6 +324,10 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
         handle.close() # close handle
     elif type == 'fifo':
         # open file write-only and fail if it does not exist.
+        try:
+            os.wait()
+        except OSError, e:
+            print e
         pid = os.fork()
         if not pid:
             # we set an alarom for 5min if nothing starts to read 
@@ -331,6 +337,7 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
             signal.alarm(0)
             os.write(fd, inbox[0])
             os.close(fd)
+            #sys.exit()
             os._exit(0)
     elif type == 'shm':
         mapfile = mmap.mmap(mem.fd, mem.size)

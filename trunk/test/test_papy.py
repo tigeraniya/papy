@@ -427,7 +427,7 @@ class test_Worker(GeneratorTest):
             item = workers.io.load_db_item([file], remove =True)
             assert item == i
 
-    def xtest_dump_load_sqlite_item(self):
+    def test_dump_load_mysql_item(self):
         import os
         a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
         for i in a:
@@ -727,7 +727,7 @@ class test_Piper(GeneratorTest):
         handle1.unlink()
 
     def xtest_dump_items(self):
-        for typ in ('file','shm','fifo','tcp'):
+        for typ in ('file','shm', 'fifo'):
             for typ2 in ('string',):
                 imap1 = IMap()
                 imap2 = IMap()
@@ -740,7 +740,7 @@ class test_Piper(GeneratorTest):
                     unpickler = Worker(workers.io.pickle_loads)
 
                     p_pickler = Piper(pickler)
-                    p_dumper = Piper(dumper, parallel =i1)
+                    p_dumper = Piper(dumper, parallel =i1, debug =True)
                     p_loader = Piper(loader, parallel =i2)
                     p_unpickler = Piper(unpickler)
 
@@ -1373,7 +1373,7 @@ if __name__ == "__main__":
     runner = unittest.TextTestRunner()
 #    runner.run(suite_Graph)
     runner.run(suite_Worker)
-#    runner.run(suite_Piper)
+    runner.run(suite_Piper)
 #    runner.run(suite_Dagger)
 #    runner.run(suite_Plumber)
 
