@@ -473,7 +473,7 @@ class test_Worker(GeneratorTest):
             assert item == i
         manager.shutdown()
 
-    def xtest_find_items(self):
+    def test_find_items(self):
         a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
         b = []
         for i in a:
@@ -732,7 +732,7 @@ class test_Piper(GeneratorTest):
                 imap1 = IMap()
                 imap2 = IMap()
                 imap3 = IMap()
-                for i1, i2 in ((imap1, imap2), (imap3, imap3), (None, None)):
+                for i1, i2 in ((imap1, None),):# (imap3, imap3), (None, None)):
                     data = xrange(1000)
                     pickler = Worker(workers.io.pickle_dumps)
                     dumper = Worker(workers.io.dump_item, (typ,))
@@ -749,10 +749,13 @@ class test_Piper(GeneratorTest):
                     p_loader([p_dumper])
                     p_unpickler([p_loader])
 
+
+
                     p_dumper.start(forced =True)
                     p_loader.start(forced =True)
                     assert list(data) == list(p_unpickler)
-
+                    p_loader.stop()
+                    p_dumper.stop()
 
 
 

@@ -17,7 +17,15 @@ Four types of functions are provided.
   * file functions - create streams from the contents of a file or several
     files. These are not worker functions.
 """
+
 import os
+import socket
+from collections import defaultdict
+
+from IMap import imports
+from multiprocessing.managers import BaseManager, DictProxy
+
+# Determine the run-time pipe read/write buffer.
 if 'PC_PIPE_BUF' in os.pathconf_names:
     # unix
     x, y = os.pipe()
@@ -28,7 +36,9 @@ else:
     # in jython in windows 512
     PIPE_BUF = 512
 
-import socket
+# Determine the run-time socket buffers.
+# Note that this number is determine on the papy server
+# and inherited by the clients.
 tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 TCP_SNDBUF = tcp_sock.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)
 TCP_RCVBUF = tcp_sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
@@ -37,11 +47,8 @@ UDP_SNDBUF = udp_sock.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)
 UDP_RCVBUF = udp_sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
 del tcp_sock, udp_sock
 
+# check the ip visible from the world.
 WHATS_MYIP_URL = 'http://www.whatismyip.com/automation/n09230945.asp'
-
-
-from IMap import imports
-from multiprocessing.managers import BaseManager, DictProxy
 
 SHAREDDICT = {}
 class DictServer(BaseManager):
@@ -52,6 +59,12 @@ class DictClient(BaseManager):
     pass
 DictClient.register('dict')
 
+# dictionary to hold forks per process.
+# If the main process forks its id look-up
+# will be atomic defaultdict['x'] is not.
+PIDS = defaultdict(list)
+PID_MAIN = os.getpid()
+PIDS[PID_MAIN]
 
 #
 # LOGGING
@@ -315,72 +328,92 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
         port = sock.getsockname()[1] # port of the socket
     else:
         raise ValueError("type: %s not undertood" % type)
-    
+
     # got a file, fifo or memory
     if type == 'file':
         handle = open(file, 'wb')
         os.close(fd) # no need to own a file twice!
         handle.write(inbox[0])
         handle.close() # close handle
-    elif type == 'fifo':
-        # open file write-only and fail if it does not exist.
-        try:
-            os.wait()
-        except OSError, e:
-            print e
-        pid = os.fork()
-        if not pid:
-            # we set an alarom for 5min if nothing starts to read 
-            # within this time the process gets killed.
-            signal.alarm(timeout)
-            fd = os.open(file, os.O_EXCL & os.O_CREAT | os.O_WRONLY)
-            signal.alarm(0)
-            os.write(fd, inbox[0])
-            os.close(fd)
-            #sys.exit()
-            os._exit(0)
+        file = (file, 0)
     elif type == 'shm':
         mapfile = mmap.mmap(mem.fd, mem.size)
         mapfile.write(inbox[0])
         mapfile.close()     # close the memory map
         os.close(mem.fd)    # close the file descriptor
-    elif type == 'tcp':
-        sock.listen(1)
-        pid = os.fork()
-        if not pid:
-            # sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            signal.alarm(timeout)
-            rsock, (rhost, rport) = sock.accept() # blocks until client connects
-            signal.alarm(0)
-            rsock.sendall(inbox[0])               # returns if all data was sent
-            # child closes all sockets and exits
-            rsock.close() 
+        file = (file, 0)
+    else:
+        # forking mode. forks should be waited
+        if type == 'fifo':
+            pid = os.fork()
+            if not pid:
+                # we set an alarm for 5min if nothing starts to read 
+                # within this time the process gets killed.
+                signal.alarm(timeout)
+                fd = os.open(file, os.O_EXCL & os.O_CREAT | os.O_WRONLY)
+                signal.alarm(0)
+                os.write(fd, inbox[0])
+                os.close(fd)
+                os._exit(0)
+            file = (file, pid)
+        elif type == 'tcp':
+            sock.listen(1)
+            pid = os.fork()
+            if not pid:
+                # sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                signal.alarm(timeout)
+                rsock, (rhost, rport) = sock.accept() # blocks until client connects
+                signal.alarm(0)
+                rsock.sendall(inbox[0])               # returns if all data was sent
+                # child closes all sockets and exits
+                rsock.close() 
+                sock.close()
+                os._exit(0)
+            # parent closes server socket
             sock.close()
-            os._exit(0)
-        # parent closes server socket
-        sock.close()
-        file = (host, port, 'tcp')
-    elif type == 'udp':
-        BUFFER = (buffer or UDP_SNDBUF)
-        pid  = os.fork()
-        if not pid:
-            # first reply
-            signal.alarm(timeout)
-            data, rhost = sock.recvfrom(BUFFER) # this blocks
-            signal.alarm(0)
-            i = 0
-            while True:
-                # sends an empty '' when data finishes and exits
-                data = inbox[0][i:i+BUFFER]
-                sock.sendto(data, rhost)
-                i += BUFFER
-                if data:
+            file = (host, port, 'tcp')
+        elif type == 'udp':
+            BUFFER = (buffer or UDP_SNDBUF)
+            pid  = os.fork()
+            if not pid:
+                # first reply
+                signal.alarm(timeout)
+                data, rhost = sock.recvfrom(BUFFER) # this blocks
+                signal.alarm(0)
+                i = 0
+                while True:
+                    # sends an empty '' when data finishes and exits
+                    data = inbox[0][i:i+BUFFER]
+                    sock.sendto(data, rhost)
+                    i += BUFFER
+                    if data:
+                        continue
+                    break
+                sock.close()
+                os._exit(0)
+            # parent closes server socket
+            sock.close()
+            file = (host, port, 'udp')
+        
+        # 0. get pid list and methods for atomic operations
+        # 1. add the child pid to the pid list
+        # 2. try to wait each pid in the list without blocking:
+        #    if success remove pid if not ready pass if OSError child not exists
+        #    another thread has waited this child.
+        pids = PIDS[os.getpid()] # entry pre-exists 
+        add_pid = pids.append         
+        del_pid = pids.remove 
+        # list methods are atomic
+        add_pid(pid)
+        for pid in pids:
+            try:
+                killed, status = os.waitpid(pid, os.WNOHANG)
+                if killed:
+                    del_pid(pid)
+            except OSError, e:
+                if e.errno == os.errno.ECHILD:
                     continue
-                break
-            sock.close()
-            os._exit(0)
-        sock.close()
-        file = (host, port, 'udp')
+                raise
 
     # filename needs still to be unlinked
     return file
@@ -410,14 +443,14 @@ def load_item(inbox, type ='string', remove =True, buffer =None):
     # determine the input type
     is_file, is_fifo, is_shm, is_socket = False, False, False, False
     name = inbox[0]
-    if isinstance(name, basestring):
+    if len(name) == 2 and isinstance(name[0], basestring):
         is_file = True
         
     if is_file:
         try:
-            is_fifo = stat.S_ISFIFO(os.stat(name).st_mode)
+            is_fifo = stat.S_ISFIFO(os.stat(name[0]).st_mode)
         except OSError:
-            is_shm = os.path.exists(os.path.join('/dev/shm', name))
+            is_shm = os.path.exists(os.path.join('/dev/shm', name[0]))
     else:
         is_item = len(name) == 4
         is_socket = len(name) == 3 
@@ -436,13 +469,13 @@ def load_item(inbox, type ='string', remove =True, buffer =None):
     # get a fd and start/stop
     start = 0
     if is_shm:
-        memory = posix_ipc.SharedMemory(name)
+        memory = posix_ipc.SharedMemory(name[0])
         stop = memory.size - 1
         fd = memory.fd
 
     elif is_fifo or is_file:
-        stop = os.stat(name).st_size - 1
-        fd = os.open(name, os.O_RDONLY)
+        stop = os.stat(name[0]).st_size - 1
+        fd = os.open(name[0], os.O_RDONLY)
         BUFFER = (buffer or PIPE_BUF)
     
     elif is_socket:
@@ -507,7 +540,7 @@ def load_item(inbox, type ='string', remove =True, buffer =None):
         else:
             # pipes and files are just removed
             os.close(fd)
-            os.unlink(name)
+            os.unlink(name[0])
     else:
         # a file not remove, but close fh
         os.close(fd)
