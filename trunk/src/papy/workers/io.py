@@ -17,54 +17,16 @@ Four types of functions are provided.
   * file functions - create streams from the contents of a file or several
     files. These are not worker functions.
 """
-
-import os
-import socket
-from collections import defaultdict
-
+# all imports in this module have to be injected remotely
+# imports is provided remotely by IMap
 from IMap import imports
-from multiprocessing.managers import BaseManager, DictProxy
+# PAPY_DEFAULTS and get_defaults is provided by worker._inject
+from papy.utils.defaults import get_defaults
+PAPY_DEFAULTS = get_defaults()
+# PAPY_RUNTIME and fork_waitid is provided by worker._inject
+from papy.utils.runtime import get_runtime, fork_waitid
+PAPY_RUNTIME = get_runtime()
 
-# Determine the run-time pipe read/write buffer.
-if 'PC_PIPE_BUF' in os.pathconf_names:
-    # unix
-    x, y = os.pipe()
-    PIPE_BUF = os.fpathconf(x, "PC_PIPE_BUF")
-else:
-    # in Jython 16384
-    # on windows 512
-    # in jython in windows 512
-    PIPE_BUF = 512
-
-# Determine the run-time socket buffers.
-# Note that this number is determine on the papy server
-# and inherited by the clients.
-tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-TCP_SNDBUF = tcp_sock.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)
-TCP_RCVBUF = tcp_sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
-udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-UDP_SNDBUF = udp_sock.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)
-UDP_RCVBUF = udp_sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
-del tcp_sock, udp_sock
-
-# check the ip visible from the world.
-WHATS_MYIP_URL = 'http://www.whatismyip.com/automation/n09230945.asp'
-
-SHAREDDICT = {}
-class DictServer(BaseManager):
-    pass
-DictServer.register('dict', lambda: SHAREDDICT, DictProxy)
-
-class DictClient(BaseManager):
-    pass
-DictClient.register('dict')
-
-# dictionary to hold forks per process.
-# If the main process forks its id look-up
-# will be atomic defaultdict['x'] is not.
-PIDS = defaultdict(list)
-PID_MAIN = os.getpid()
-PIDS[PID_MAIN]
 
 #
 # LOGGING
@@ -323,7 +285,7 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
         try:
             host = socket.gethostbyaddr(socket.gethostname())[0] # from /etc/hosts
         except socket.gaierror:
-            host = urllib.urlopen(WHATS_MYIP_URL).read()
+            host = urllib.urlopen(DEFAULTS['WHATS_MYIP_URL']).read()
         sock.bind(('', 0))           # os-chosen free port on all interfaces 
         port = sock.getsockname()[1] # port of the socket
     else:
@@ -373,7 +335,7 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
             sock.close()
             file = (host, port, 'tcp')
         elif type == 'udp':
-            BUFFER = (buffer or UDP_SNDBUF)
+            BUFFER = (buffer or DEFAULTS['UDP_SNDBUF'])
             pid  = os.fork()
             if not pid:
                 # first reply
@@ -400,7 +362,7 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
         # 2. try to wait each pid in the list without blocking:
         #    if success remove pid if not ready pass if OSError child not exists
         #    another thread has waited this child.
-        pids = PIDS[os.getpid()] # entry pre-exists 
+        pids = DEFAULTS['PIDS'][os.getpid()] # entry pre-exists 
         add_pid = pids.append         
         del_pid = pids.remove 
         # list methods are atomic
@@ -476,7 +438,7 @@ def load_item(inbox, type ='string', remove =True, buffer =None):
     elif is_fifo or is_file:
         stop = os.stat(name[0]).st_size - 1
         fd = os.open(name[0], os.O_RDONLY)
-        BUFFER = (buffer or PIPE_BUF)
+        BUFFER = (buffer or DEFAULTS['PIPE_BUF'])
     
     elif is_socket:
         host, port = socket.gethostbyname(name[0]), name[1]
@@ -485,9 +447,9 @@ def load_item(inbox, type ='string', remove =True, buffer =None):
             sock.connect((host, port))
             stop = -1
             fd = sock.fileno()
-            BUFFER = (buffer or TCP_RCVBUF)
+            BUFFER = (buffer or DEFAULTS['TCP_RCVBUF'])
         elif is_udp:
-            BUFFER = (buffer or UDP_RCVBUF)
+            BUFFER = (buffer or DEFAULTS['UDP_RCVBUF'])
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.sendto('', (host, port)) # 'greet server'
             stop = -1
@@ -549,6 +511,7 @@ def load_item(inbox, type ='string', remove =True, buffer =None):
     return data
 
 
+
 @imports([['papy', []], ['tempfile', []], ['multiprocessing',[]],\
           ['threading', []]], forgive = True)
 def dump_manager_item(inbox, address =('127.0.0.1', 46779), authkey ='papy'):
@@ -570,8 +533,11 @@ def dump_manager_item(inbox, address =('127.0.0.1', 46779), authkey ='papy'):
 
             Authentication string to connect to the server.           
     """
+    class DictClient(multiprocessing.managers.BaseManager):
+        pass
+    DictClient.register('dict')
     # get database 
-    manager = papy.workers.io.DictClient(address, authkey)
+    manager = DictClient(address, authkey)
     manager.connect()
     kv = manager.dict()
     # identify process/thread
@@ -593,8 +559,11 @@ def dump_manager_item(inbox, address =('127.0.0.1', 46779), authkey ='papy'):
 def load_manager_item(inbox, remove =True):
     """
     """
+    class DictClient(multiprocessing.managers.BaseManager):
+        pass
+    DictClient.register('dict')
     k, address, authkey = inbox[0]
-    manager = papy.workers.io.DictClient(address, authkey)
+    manager = DictClient(address, authkey)
     manager.connect()
     kv = manager.dict()
     if remove:

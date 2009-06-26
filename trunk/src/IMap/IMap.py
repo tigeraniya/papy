@@ -675,9 +675,8 @@ def worker(inqueue, outqueue, host =None):
             ok, result = (False, e)         
         put((job, i, ok, result))
         
-        
-def inject_func(func, conn, i):
-    """ Injects a function object into a rpyc connection object
+def inject_func(func, conn):
+    """ Injects a function object into a rpyc connection object.
     """
     name = func.__name__
     if not name in conn.namespace:

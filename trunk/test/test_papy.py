@@ -727,12 +727,12 @@ class test_Piper(GeneratorTest):
         handle1.unlink()
 
     def xtest_dump_items(self):
-        for typ in ('file','shm', 'fifo'):
+        for typ in ('tcp', 'udp'):
             for typ2 in ('string',):
                 imap1 = IMap()
                 imap2 = IMap()
                 imap3 = IMap()
-                for i1, i2 in ((imap1, None),):# (imap3, imap3), (None, None)):
+                for i1, i2 in ((imap1, imap2), (imap3, imap3), (None, None)):
                     data = xrange(1000)
                     pickler = Worker(workers.io.pickle_dumps)
                     dumper = Worker(workers.io.dump_item, (typ,))
@@ -748,8 +748,6 @@ class test_Piper(GeneratorTest):
                     p_dumper([p_pickler])
                     p_loader([p_dumper])
                     p_unpickler([p_loader])
-
-
 
                     p_dumper.start(forced =True)
                     p_loader.start(forced =True)
