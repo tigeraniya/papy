@@ -25,7 +25,6 @@ def get_defaults():
     udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     DEFAULTS['UDP_SNDBUF'] = udp_sock.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)
     DEFAULTS['UDP_RCVBUF'] = udp_sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
-    del tcp_sock, udp_sock
 
     # check the ip visible from the world.
     DEFAULTS['WHATS_MYIP_URL'] = 'http://www.whatismyip.com/automation/n09230945.asp'

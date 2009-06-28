@@ -9,6 +9,7 @@ from IMap import IMap, Weave, imports, inject_func
 from graph import Graph
 from utils import logger
 from utils.defaults import get_defaults
+from utils.runtime import get_runtime
 # python imports
 from multiprocessing import TimeoutError, cpu_count
 from itertools import izip, tee, imap, chain, cycle, repeat
@@ -839,15 +840,12 @@ class Worker(object):
         """ Inject/replace all functions into a rpyc connection object.
         """
         # provide DEFAULTS remotely
-        if not 'DEFAULTS' in conn.namespace:
-            inject_func(get_defaults, conn)
-            conn.execute('DEFAULTS = get_defaults()')
-        # provide fork_waiter
-        if not 'fork_waitid' in conn.namespace:
-            conn.execute('from atexit import register')
-            inject_func('fork_waitid', conn)
-            conn.execute('register(fork_waitid)')
-
+        inject_func(get_defaults, conn)
+            conn.execute('PAPY_DEFAULTS = get_defaults()')
+        # provide PAPY_RUNTIME remotely
+        if not 'PAPY_RUNTIME' in conn.namespace:
+            inject_func(get_runtime, conn)
+            conn.execute('PAPY_RUNTIME = get_runtime()')
         # provide partial remotely
         conn.execute('from functools import partial')
         # inject compose function

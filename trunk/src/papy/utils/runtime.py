@@ -1,21 +1,15 @@
-"""
+""" Functions to gather run-time information about a process.
 """
 from IMap import imports
 
-@imports([['multiprocessing', []], ['os', []], ['collections', []]])
+@imports([['os', []], ['collections', []]])
 def get_runtime():
     PAPY_RUNTIME = {}
-    cp =  multiprocessing.current_process()
-    PAPY_RUNTIME['PID'] = cp.pid
-    PAPY_RUNTIME['IS_MAIN'] = not cp._parent_pid
-    PAPY_RUNTIME['FORKS'] = def
-
-    
-# dictionary to hold forks per process.
-# If the main process forks its id look-up
-# will be atomic defaultdict['x'] is not.
-DEFAULTS['PIDS'] = collections.defaultdict(list)
-DEFAULTS['PID_MAIN'] = os.getpid()
-DEFAULTS['PIDS'][DEFAULTS['PID_MAIN']]
-return DEFAULTS
-
+    PAPY_RUNTIME['PID'] = os.getpid()
+    PAPY_RUNTIME['PPID'] = os.getppid()
+    PAPY_RUNTIME['FORKS'] = [] 
+    # collections.defaultdict(list)
+    # PAPY_RUNTIME['FORKS'][PAPY_RUNTIME['PID']]
+    # defaultdict assign is not atomic value needs to be 
+    # created
+    return PAPY_RUNTIME

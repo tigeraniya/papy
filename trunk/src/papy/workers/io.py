@@ -22,10 +22,13 @@ Four types of functions are provided.
 from IMap import imports
 # PAPY_DEFAULTS and get_defaults is provided by worker._inject
 from papy.utils.defaults import get_defaults
-PAPY_DEFAULTS = get_defaults()
-# PAPY_RUNTIME and fork_waitid is provided by worker._inject
-from papy.utils.runtime import get_runtime, fork_waitid
-PAPY_RUNTIME = get_runtime()
+# PAPY_RUNTIME and get_runtime is provided by worker._inject
+from papy.utils.runtime import get_runtime
+# register a SIGCHLD handler sigchld_handler and the signal.signal
+# call is done by worker._inject
+#import signal
+#@imports([['os', []], ['signal', []]])
+#signal.signal(signal.SIGCHLD, signal.SIG_IGN)
 
 
 #
@@ -233,6 +236,13 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
             Number of seconds to keep the process at the write-end of the
             socket or pipe alive.
     """
+    if not 'PAPY_DEFAULTS' in globals():
+        global PAPY_DEFAULTS
+        PAPY_DEFAULTS = get_defaults()
+    if not 'PAPY_RUNTIME' in globals():
+        global PAPY_RUNTIME
+        PAPY_RUNTIME = get_runtime()
+
     # get a random filename generator
     names = tempfile._get_candidate_names()
     names.rng.seed() # re-seed rng after the fork
@@ -285,7 +295,7 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
         try:
             host = socket.gethostbyaddr(socket.gethostname())[0] # from /etc/hosts
         except socket.gaierror:
-            host = urllib.urlopen(DEFAULTS['WHATS_MYIP_URL']).read()
+            host = urllib.urlopen(PAPY_DEFAULTS['WHATS_MYIP_URL']).read()
         sock.bind(('', 0))           # os-chosen free port on all interfaces 
         port = sock.getsockname()[1] # port of the socket
     else:
@@ -335,7 +345,7 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
             sock.close()
             file = (host, port, 'tcp')
         elif type == 'udp':
-            BUFFER = (buffer or DEFAULTS['UDP_SNDBUF'])
+            BUFFER = (buffer or PAPY_DEFAULTS['UDP_SNDBUF'])
             pid  = os.fork()
             if not pid:
                 # first reply
@@ -362,11 +372,13 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
         # 2. try to wait each pid in the list without blocking:
         #    if success remove pid if not ready pass if OSError child not exists
         #    another thread has waited this child.
-        pids = DEFAULTS['PIDS'][os.getpid()] # entry pre-exists 
-        add_pid = pids.append         
+        # 0.
+        pids = PAPY_RUNTIME['FORKS'][os.getpid()] # entry pre-exists 
+        add_pid = pids.append   # list methods are atomic
         del_pid = pids.remove 
-        # list methods are atomic
+        # 1.
         add_pid(pid)
+        # 2. 
         for pid in pids:
             try:
                 killed, status = os.waitpid(pid, os.WNOHANG)
@@ -438,7 +450,7 @@ def load_item(inbox, type ='string', remove =True, buffer =None):
     elif is_fifo or is_file:
         stop = os.stat(name[0]).st_size - 1
         fd = os.open(name[0], os.O_RDONLY)
-        BUFFER = (buffer or DEFAULTS['PIPE_BUF'])
+        BUFFER = (buffer or PAPY_DEFAULTS['PIPE_BUF'])
     
     elif is_socket:
         host, port = socket.gethostbyname(name[0]), name[1]
@@ -447,9 +459,9 @@ def load_item(inbox, type ='string', remove =True, buffer =None):
             sock.connect((host, port))
             stop = -1
             fd = sock.fileno()
-            BUFFER = (buffer or DEFAULTS['TCP_RCVBUF'])
+            BUFFER = (buffer or PAPY_DEFAULTS['TCP_RCVBUF'])
         elif is_udp:
-            BUFFER = (buffer or DEFAULTS['UDP_RCVBUF'])
+            BUFFER = (buffer or PAPY_DEFAULTS['UDP_RCVBUF'])
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.sendto('', (host, port)) # 'greet server'
             stop = -1
