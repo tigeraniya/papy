@@ -2,34 +2,28 @@
 :mod:`papy.workers.io`
 ========================
 
-A collection of input/output worker functions. Functions dealing with stream
-inputs are normal functions i.e. they cannot be used within a worker. 
-Four types of functions are provided.
-
-  * logging functions - currently only stdout printing.
+A collection of input/output worker functions. To connect *Pipers* to
+external inputs/outputs (streams) or other *Pipers* (items). Two types of
+functions are provided:
 
   * stream function - load or save the input stream from or into a single file,
     therefore they can only be used at the beginnings or ends of a pipeline.
-    Stream loaders are not worker functions.
+    Stream loaders are not worker functions, as they are colled once (with the
+    input) and create the input collection in the form of a generator of items.
 
-  * item functions - load, save or process data items.
+  * item functions - load, save, process or display data items. These are 
+    *Worker* functions and should be used within *Pipers*. 
 
-  * file functions - create streams from the contents of a file or several
-    files. These are not worker functions.
+No method of interprocess communication, besides the default inefficient
+two-pass ``multiprocessing.Queue`` and temporary files is supported on all 
+platforms even among UNIXes as they rely on particular implementation details.
 """
-# all imports in this module have to be injected remotely
+# all imports in this module have to be injected to remote RPyC connections.
 # imports is provided remotely by IMap
 from IMap import imports
-# PAPY_DEFAULTS and get_defaults is provided by worker._inject
+# get_defaults and get_runtime are provided by worker._inject
 from papy.utils.defaults import get_defaults
-# PAPY_RUNTIME and get_runtime is provided by worker._inject
 from papy.utils.runtime import get_runtime
-# register a SIGCHLD handler sigchld_handler and the signal.signal
-# call is done by worker._inject
-#import signal
-#@imports([['os', []], ['signal', []]])
-#signal.signal(signal.SIGCHLD, signal.SIG_IGN)
-
 
 #
 # LOGGING
@@ -236,6 +230,8 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
             Number of seconds to keep the process at the write-end of the
             socket or pipe alive.
     """
+    # this determines host specific defaults
+    # and runtime information.
     if not 'PAPY_DEFAULTS' in globals():
         global PAPY_DEFAULTS
         PAPY_DEFAULTS = get_defaults()
@@ -832,7 +828,6 @@ def find_items(prefix ='tmp', suffix ='', dir =None):
 #
 # SERIALIZATION
 #
-
 # cPickle
 @imports([['cPickle',[]], ['gc',[]]])
 def pickle_dumps(inbox):

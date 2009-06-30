@@ -1,0 +1,15 @@
+Communication
+=============
+
+This chapter deals with the details of inter-process communication in *PaPy*.
+By it's design *PaPy* is a rather high-level engine for the execution of
+chained tasks and the details of inter-process communication (
+
+
+
+By
+default pipers are connected by a pair of locked pipe objects. This is
+inefficient as it involves two passes of pickling/unpickling and creates a
+potential bottleneck as half of all computations is done by a single process.
+The solution is to either a) bypass the double pipe connection and connect piper
+processes directly, b) use a more efficient serialization protocol.
