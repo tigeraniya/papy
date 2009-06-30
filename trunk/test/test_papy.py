@@ -10,7 +10,7 @@ import operator
 from numpy import mean
 from multiprocessing import TimeoutError
 from papy import *
-from papy.papy import compose, imports, Produce, Consume, Chain
+from papy.papy import comp_task, imports, Produce, Consume, Chain
 from IMap import *
 import logging
 from papy.utils import logger
@@ -755,7 +755,34 @@ class test_Piper(GeneratorTest):
                     p_loader.stop()
                     p_dumper.stop()
 
+    def xtest_dump_itmes_thread(self):
+        for typ in ('tcp', 'udp'):
+            for typ2 in ('string',):
+                imap1 = IMap(worker_type ='thread')
+                imap2 = IMap(worker_type ='thread')
+                imap3 = IMap(worker_type ='thread')
+                for i1, i2 in ((imap1, imap2), (imap3, imap3), (None, None)):
+                    data = xrange(1000)
+                    pickler = Worker(workers.io.pickle_dumps)
+                    dumper = Worker(workers.io.dump_item, (typ,))
+                    loader = Worker(workers.io.load_item)
+                    unpickler = Worker(workers.io.pickle_loads)
 
+                    p_pickler = Piper(pickler)
+                    p_dumper = Piper(dumper, parallel =i1, debug =True)
+                    p_loader = Piper(loader, parallel =i2)
+                    p_unpickler = Piper(unpickler)
+
+                    p_pickler([data])
+                    p_dumper([p_pickler])
+                    p_loader([p_dumper])
+                    p_unpickler([p_loader])
+
+                    p_dumper.start(forced =True)
+                    p_loader.start(forced =True)
+                    assert list(data) == list(p_unpickler)
+                    p_loader.stop()
+                    p_dumper.stop()
 
 
 

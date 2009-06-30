@@ -24,6 +24,8 @@ from IMap import imports
 # get_defaults and get_runtime are provided by worker._inject
 from papy.utils.defaults import get_defaults
 from papy.utils.runtime import get_runtime
+PAPY_DEFAULTS = get_defaults()
+PAPY_RUNTIME = get_runtime()
 
 #
 # LOGGING
@@ -184,7 +186,7 @@ def dump_pickle_stream(inbox, handle):
 # ITEMS
 @imports([['tempfile',[]], ['os', []], ['errno', []], ['mmap', []],\
           ['signal', []],  ['posix_ipc', []], ['socket', []],\
-          ['urllib', []], ['random', []]], forgive = True)
+          ['urllib', []], ['random', []], ['threading', []]], forgive = True)
 def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
               timeout =320, buffer =None):
     """ Writes the first element of the inbox as a file of a specified type.
@@ -230,15 +232,6 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
             Number of seconds to keep the process at the write-end of the
             socket or pipe alive.
     """
-    # this determines host specific defaults
-    # and runtime information.
-    if not 'PAPY_DEFAULTS' in globals():
-        global PAPY_DEFAULTS
-        PAPY_DEFAULTS = get_defaults()
-    if not 'PAPY_RUNTIME' in globals():
-        global PAPY_RUNTIME
-        PAPY_RUNTIME = get_runtime()
-
     # get a random filename generator
     names = tempfile._get_candidate_names()
     names.rng.seed() # re-seed rng after the fork
@@ -369,7 +362,12 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
         #    if success remove pid if not ready pass if OSError child not exists
         #    another thread has waited this child.
         # 0.
-        pids = PAPY_RUNTIME['FORKS'][os.getpid()] # entry pre-exists 
+        tid = threading._get_ident()
+        try:
+            pids = PAPY_RUNTIME[tid]
+        except KeyError:
+            PAPY_RUNTIME[tid] = []
+            pids = PAPY_RUNTIME[tid]
         add_pid = pids.append   # list methods are atomic
         del_pid = pids.remove 
         # 1.
@@ -384,7 +382,6 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
                 if e.errno == os.errno.ECHILD:
                     continue
                 raise
-
     # filename needs still to be unlinked
     return file
 

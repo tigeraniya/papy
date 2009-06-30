@@ -80,6 +80,12 @@ class Dagger(Graph):
                "\n".join(('\t\t'+repr(p)+' ' for p in self.nodes())) + '\n'\
                "\tPipes:\n" +\
                "\n".join(('\t\t'+repr(p[1])+'>>>'+repr(p[0]) for p in self.edges()))
+    
+    @staticmethod
+    def _cmp(x, y):
+        """ Compares pipers by ornament.
+        """
+        return cmp(x.ornament, y.ornament)
 
     def resolve(self, piper, forgive =False):
         """Given a piper or piper id returns the identical piper in the graph.
@@ -120,6 +126,14 @@ class Dagger(Graph):
             if not piper.connected and self[piper].keys(): # skip input pipers
                 piper.connect(self[piper].keys())   # what if []?
         self.log.info('%s succesfuly connected' % repr(self))
+
+    def connect_inputs(self, datas):
+        """ Connects input *Pipers* to input-data in the correct order.
+        """
+        start_pipers = self.get_inputs()
+        start_pipers.sort(self._cmp)
+        for piper, data in izip(start_pipers, datas):
+            piper.connect([data])
 
     def disconnect(self):
         """ Disconnects pipers in the correct order.
@@ -325,12 +339,6 @@ class Plumber(Dagger):
     """ The Plumber.
     """
 
-    def _serve(self):
-        """ 
-        """
-        pass
-        
-
     def _finish(self, isstopped):
         """ Executes when last output piper raises StopIteration.
         """
@@ -418,7 +426,6 @@ class Plumber(Dagger):
         xtras  = '[%s]' % ",".join(xtras)                              # node xtra
         return (icode, tcode, icall, pcall, pipers, xtras, pipes)
 
-
     def __repr__(self):
         return "Plumber(%s)" % super(Plumber, self).__repr__()
 
@@ -438,7 +445,7 @@ class Plumber(Dagger):
         h.write(P_LAY % self._code())
         h.close()
 
-    def plunge(self, tasks =None, stride =1):
+    def plunge(self, data, tasks =None, stride =1):
         """ Runs the plumber which means that the next methods of each output piper are
             called in cycles and the results discarded.
 
@@ -459,6 +466,7 @@ class Plumber(Dagger):
                 the stride cannot be bigger then the stride of the IMap instances.
         """
         # connect pipers
+        self.connect_inputs(data)
         self.connect()
         # collect results for tracked tasks
         self.stats['pipers_tracked'] = {}
@@ -814,6 +822,7 @@ class Worker(object):
         if len(self.task) != len(self.args):
             raise TypeError("The Worker expects the arguents as ((args1) ... (argsN)) " +\
             "got: %s" % arguments)
+        # 
         self.__name__ =  ">".join([f.__name__ for f in self.task])
 
     def __repr__(self):
@@ -839,26 +848,26 @@ class Worker(object):
     def _inject(self, conn):
         """ Inject/replace all functions into a rpyc connection object.
         """
-        # provide DEFAULTS remotely
-        inject_func(get_defaults, conn)
-            conn.execute('PAPY_DEFAULTS = get_defaults()')
+        # provide PAPY_DEFAULTS remotely
         # provide PAPY_RUNTIME remotely
-        if not 'PAPY_RUNTIME' in conn.namespace:
+        if not 'PAPY_INJECTED' in conn.namespace:
+            inject_func(get_defaults, conn)
             inject_func(get_runtime, conn)
+            conn.execute('PAPY_DEFAULTS = get_defaults()')
             conn.execute('PAPY_RUNTIME = get_runtime()')
-        # provide partial remotely
-        conn.execute('from functools import partial')
-        # inject compose function
-        inject_func(compose, conn)
+            conn.execute('PAPY_INJECTED = True')
         # inject all functions
         for f in self.task:
             inject_func(f, conn)
-        # make partial of composed function
-        conn.execute('comp_func = partial(compose, funcs =%s)' %\
-                      str(tuple([i.__name__ for i in self.task])).replace("'",""))
-                        # ['func1', 'func2'] -> "(func1, func2)"
-        comp_func = conn.namespace['comp_func']
-        self.task = [comp_func]
+        # create list of functions called TASK
+        # and inject a function comp_task which 
+        inject_func(comp_task, conn)
+        conn.execute('TASK = %s' %\
+                     str(tuple([i.__name__ for i in self.task])).replace("'",""))
+                    # ['func1', 'func2'] -> "(func1, func2)"
+        # inject compose function, wil
+
+        self.task = [conn.namespace['comp_task']]
         self.args = [[self.args]]
         # instead of multiple remote back and the combined functions is
         # evaluated remotely.
@@ -915,10 +924,10 @@ def inspect(piper):
     return (is_piper, is_worker, is_function, is_iterable_p, is_iterable_w, is_iterable_f)
 
 @imports([['itertools',['izip']]])
-def compose(inbox, args, funcs):
-    """ Composes functions.
+def comp_task(inbox, args):
+    """ Composes the task.
     """
-    for f, a in izip(funcs, args):
+    for f, a in izip(TASK, args):
         inbox = (f(inbox, *a),)
     return inbox[0]
 

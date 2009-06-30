@@ -648,7 +648,12 @@ def worker(inqueue, outqueue, host =None):
         inqueue._writer.close()
         outqueue._reader.close()
     if host:
-        conn = rpyc.classic.connect(*host.split(':'))
+        host_port = host.split(':')
+        try:
+            host_port = [host_port[0], int(host_port[1])]
+        except IndexError:
+            pass
+        conn = rpyc.classic.connect(*host_port)
         conn.execute(getsource(imports)) # provide @imports on server
 
     while True:
