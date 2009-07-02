@@ -903,7 +903,7 @@ class Worker(object):
             except Exception, e:
                 # an exception occured in one of the f's do not raise it
                 # instead return it.
-                outbox = WorkerError(e, f, inbox)
+                outbox = WorkerError(e, f.__name__, inbox)
         else:
             # if any of the inputs is a PiperError just propagate it.
             outbox = PiperError(*exceptions)

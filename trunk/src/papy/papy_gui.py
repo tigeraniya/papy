@@ -1,10 +1,15 @@
+#!/usr/bin/env python
+# Python
 from threading import Thread
 from Queue import Queue
-from Tkinter import *
 from code import InteractiveConsole
-from tkMessageBox import *
 from functools import partial
 
+# Tkinter imports
+from Tkinter import *
+from tkMessageBox import *
+
+# papy
 from papy import *
 
 
@@ -25,7 +30,7 @@ g['node_1'].xtra['screen_name'] = 'node_2'
 
 class Options(dict):
 
-    defaults = (('app_name', 'papy_gui'),
+    defaults = (('app_name', 'PaPy'),
                 ('node_color', 'blue'),
                 ('node_status', 'green'),
                 ('canvas_background', 'white'),

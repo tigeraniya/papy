@@ -192,7 +192,7 @@ def dump_pickle_stream(inbox, handle):
 # ITEMS
 @imports([['tempfile',[]], ['os', []], ['errno', []], ['mmap', []],\
           ['signal', []],  ['posix_ipc', []], ['socket', []],\
-          ['urllib', []], ['random', []], ['threading', []]], forgive = True)
+          ['urllib', []], ['random', []], ['threading', []]], forgive =True)
 def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
               timeout =320, buffer =None):
     """ Writes the first element of the inbox as a file of a specified type.
@@ -340,7 +340,8 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
             sock.close()
             file = (host, port, 'tcp')
         elif type == 'udp':
-            BUFFER = (buffer or PAPY_DEFAULTS['UDP_SNDBUF'])
+            #BUFFER = (buffer or PAPY_DEFAULTS['UDP_SNDBUF'])
+            BUFFER = 4096
             pid  = os.fork()
             if not pid:
                 # first reply
@@ -460,7 +461,8 @@ def load_item(inbox, type ='string', remove =True, buffer =None):
             fd = sock.fileno()
             BUFFER = (buffer or PAPY_DEFAULTS['TCP_RCVBUF'])
         elif is_udp:
-            BUFFER = (buffer or PAPY_DEFAULTS['UDP_RCVBUF'])
+            #BUFFER = (buffer or PAPY_DEFAULTS['UDP_RCVBUF'])
+            BUFFER = 4096
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.sendto('', (host, port)) # 'greet server'
             stop = -1

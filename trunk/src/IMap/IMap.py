@@ -37,6 +37,7 @@ from inspect import getsource, isbuiltin, isfunction
 import traceback
 from collections import defaultdict, deque
 import time
+import gc
 # sets-up logging
 from logging import getLogger
 log = getLogger(__name__)
@@ -190,7 +191,9 @@ class IMap(object):
             log.debug('IMap(%s) pool_putter waits for semaphore for task %s' % (id_self, task))
             pool_semaphore.acquire()
             log.debug('IMap(%s) pool_putter gets semaphore for task %s' % (id_self, task))
+            #gc.disable()
             put_to_pool_in(task)
+            #gc.enable()
             log.debug('IMap(%s) pool_putter submits task %s to worker.' % (id_self, task))
         log.debug('IMap(%s) pool_putter returns' % id_self)
 
@@ -216,7 +219,9 @@ class IMap(object):
         while True:
             try:
                 log.debug('IMap(%s) pool_getter waits for a result.' % id_self)
+                #gc.disable()
                 result = get()
+                #gc.enable()
             except (IOError, EOFError):
                 log.error('IMap(%s) pool_getter has a pipe problem.' % id_self)
                 break
@@ -658,7 +663,9 @@ def worker(inqueue, outqueue, host =None):
 
     while True:
         try:
+            #gc.disable()
             task = get()
+            #gc.enable()
         except (EOFError, IOError):
             break
 
@@ -677,8 +684,10 @@ def worker(inqueue, outqueue, host =None):
         try:
             ok, result = (True, func(data, *args, **kwargs))
         except Exception, e:
-            ok, result = (False, e)         
+            ok, result = (False, e)
+        #gc.disable()
         put((job, i, ok, result))
+        #gc.enable()
         
 def inject_func(func, conn):
     """ Injects a function object into a rpyc connection object.
@@ -740,15 +749,15 @@ def imports(modules, forgive =False):
     def wrap(f):
         if modules:
             setattr(f, 'imports', modules)
-            try:
-                for mod, sub in modules:
+            for mod, sub in modules:
+                try:
                     module = __import__(mod, fromlist=sub)
                     f.func_globals[mod] = module
                     for submod in sub:
                         f.func_globals[submod] = getattr(module, submod)
-            except ImportError:
-                if not forgive:
-                    raise
+                except ImportError:
+                    if not forgive:
+                        raise
         return f
     return wrap
 
