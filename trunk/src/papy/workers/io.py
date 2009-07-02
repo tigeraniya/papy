@@ -1,31 +1,35 @@
 """ 
 :mod:`papy.workers.io`
-========================
+======================
 
-A collection of input/output worker functions. To connect *Pipers* to
-external inputs/outputs (streams) or other *Pipers* (items). Two types of
-functions are provided:
+A collection of worker functions dealing with inputs/outputs of a pipeline or
+*Pipers*. In general those functions are used to connect *Pipers* to external 
+inputs/outputs (these are the pipeline input/outputs i.e. streams) or to connect
+them to other *Pipers* (via items i.e. transformed elements of the input 
+streams). Based on that distinction two types of functions are provided:
 
   * stream function - load or save the input stream from or into a single file,
     therefore they can only be used at the beginnings or ends of a pipeline.
-    Stream loaders are not worker functions, as they are colled once (with the
-    input) and create the input collection in the form of a generator of items.
+    Stream loaders are not worker functions, as they are called once (e.g. with 
+    the input file name as the argument) and create the input stream in the
+    form of a generator of input items.
 
   * item functions - load, save, process or display data items. These are 
     *Worker* functions and should be used within *Pipers*. 
 
 No method of interprocess communication, besides the default inefficient
 two-pass ``multiprocessing.Queue`` and temporary files is supported on all 
-platforms even among UNIXes as they rely on particular implementation details.
+platforms. Even among *NIX implementation details forking and shm implementation
+details can differ.
 """
-# all imports in this module have to be injected to remote RPyC connections.
-# imports is provided remotely by IMap
-from IMap import imports
-# get_defaults and get_runtime are provided by worker._inject
-from papy.utils.defaults import get_defaults
-from papy.utils.runtime import get_runtime
-PAPY_DEFAULTS = get_defaults()
-PAPY_RUNTIME = get_runtime()
+
+# all top-level imports in this module have to be injected to remote RPyC
+# connections if the defined functions should be callable remotelt. 
+from IMap import imports # provided by IMap
+from papy.utils.defaults import get_defaults # provided by worker._inject
+from papy.utils.runtime import get_runtime # provided by worker._inject
+PAPY_DEFAULTS = get_defaults() # init by worker._inject
+PAPY_RUNTIME = get_runtime()   # init by worker._inject
 
 #
 # LOGGING
@@ -35,35 +39,36 @@ def print_(inbox):
     """
     print inbox[0]
 #
-# INPUT OUTPUT
+# INPUT/OUTPUT
 #
 # STREAMS
 @imports([['posix_ipc', ['SharedMemory']], ['mmap',[]], ['os',[]]], forgive =True)
 def open_shm(name):
     """ Equivalent to the built in open function but opens a file in shared
         memory. A single file can be opened multiple times. Only the name of the
-        file is necessary not the absolute location (most likely /dev/shm/).
+        file is necessary and not its absolute location (which is most likely 
+        /dev/shm/). The file is opened by default in read/write mode.
 
         Arguments:
 
           * name(string)
 
             The name of the file to open e.g. 'my_file' not /dev/shm/my_file
-            
-
-
     """
-    # The class is defined within a function to allow
-    # it to be injected together with the import statments
-    # on a remote RPyC host.
-    # TODO: closed, ?encoding?, isatty, mode, ?newlines?, next, readlines,
-    # xreadlines, writelines, readinto
-    # TODO: ??name
+    # TODO: Determine which I/O methods should be implemented.
+    # TODO: Document methods.  
+    # http://www.python.org/dev/peps/pep-3116/
     class ShmHandle(SharedMemory):
         """ This is wrapper around memory mapped shared memory provided by
-            posix shm. 
+            posix shm.
+
+            Arguments:
+
+              * name(string)
+
+              The name of the file to open e.g. 'my_file' not /dev/shm/my_file
         """
-        # to avoid recursive mapfile lookup 
+
         def __init__(self, name):
             # try to make some shared memory
             try:
@@ -79,7 +84,8 @@ def open_shm(name):
                 self.mapfile = None
 
         def __getattr__(self, name):
-            # cannot multiple inheritance using two C-classes.
+            # cannot do multiple inheritance using two C-classes.
+            # to avoid recursive mapfile lookup 
             if not self.mapfile:
                 # if we opened the handle when it was empty 
                 # no mapfile was created. 

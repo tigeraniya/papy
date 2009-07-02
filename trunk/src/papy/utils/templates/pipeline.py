@@ -18,7 +18,6 @@ from IMap import IMap
 # all example workers
 from papy import workers
 from papy.utils import logger
-from functools import partial
 logger.start_logger(log_to_screen =False, log_rotate =True)
 
 # Part 1: Define user functions
@@ -29,10 +28,10 @@ def pow_(inbox, arg):
 
 # Part 2: Define the topology
 def pipeline(runtime_):
-    input_data, imap_ = runtime_
+    imap_ = runtime_
     # initialize Worker instances (i.e. wrap the functions).
     pow2 = Worker(pow_, (2,))
-    mul3 = Worker(workers.maths.mul_, (3,))
+    mul3 = Worker(workers.maths.mul, (3,))
     prnt = Worker(workers.io.print_)
     # initialize Piper instances (i.e. attach functions to runtime)
     pow2_piper = Piper(pow2, parallel =imap_)
@@ -40,14 +39,17 @@ def pipeline(runtime_):
     prnt_piper = Piper(prnt)
     pipes = Plumber()
     pipes.add_pipe((pow2_piper, mul3_piper, prnt_piper))
-    pipes.set_inputs([input_data])
     return pipes
 
 # Part 3: Define the run-time
 def runtime(options):
     size = int(options['--size'])
+    worker_num = int(options['--worker_num'])
+
     input_data = xrange(size)
-    return input_data
+    imap_ = IMap(worker_num =worker_num)
+
+    return input_data, imap_
 
 # Execute:
 if __name__ == '__main__':
@@ -56,11 +58,9 @@ if __name__ == '__main__':
     from getopt import getopt
     options = dict(getopt(sys.argv[1:], '',['size=', 'worker_num='])[0])
     # initialize runtime
-    input_data = runtime(options)
-    worker_num = int(options['--worker_num'])
-    imap_ = IMap(worker_num =worker_num)
+    input_data, imap_ = runtime(options)
     # initialize the pipeline
-    pipes = pipeline((input_data, imap_))
+    pipes = pipeline(imap_)
     # start the pipeline 
-    pipes.plunge()
+    pipes.plunge([input_data])
     
