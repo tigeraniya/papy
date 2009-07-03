@@ -8,59 +8,79 @@
 
     All the steps are as explicit as possible. If you prefer the less flexible
     but shorter implicit API features please refer to the documentation.
-    # Add links 
 """
 # Part 0: import the PaPy infrastructure.
 # interface of the API: 
 from papy import Plumber, Dagger, Piper, Worker
-# parallel IMap function: 
-from IMap import IMap
+# the parallel IMap function and importrs wrapper: 
+from IMap import IMap, imports
 # all example workers
 from papy import workers
+# logging support
 from papy.utils import logger
-logger.start_logger(log_to_screen =False, log_rotate =True)
+logger.start_logger(log_rotate =False)
+
 
 # Part 1: Define user functions
-def pow_(inbox, arg):
-    """ This function wraps the built-in function pow.
+@imports([['socket',[]], ['os',[]], ['threading',[]]])
+def who(inbox):
+    """ This function identifies the host/process/thread.
     """
-    return pow(inbox[0], arg)
+    return "input: %s, host:%s, parent %s, process:%s, thread:%s" %\
+    (inbox[0], socket.gethostname(), os.getppid(), os.getpid(), threading._get_ident())
 
 # Part 2: Define the topology
-def pipeline(runtime_):
-    imap_ = runtime_
+def pipeline(resources):
+    imap1, imap2, imap3 = resources
     # initialize Worker instances (i.e. wrap the functions).
-    pow2 = Worker(pow_, (2,))
-    mul3 = Worker(workers.maths.mul, (3,))
-    prnt = Worker(workers.io.print_)
+    w_mul = Worker(workers.maths.mul, (3,))
+    w_who = Worker(who)
+    w_prn = Worker(workers.io.print_)
     # initialize Piper instances (i.e. attach functions to runtime)
-    pow2_piper = Piper(pow2, parallel =imap_)
-    mul3_piper = Piper(mul3, parallel =imap_)
-    prnt_piper = Piper(prnt)
+    p_mul = Piper(w_mul, parallel =imap1)
+    p_who = Piper(w_who, parallel =imap2)
+    p_prn = Piper(w_prn, parallel =imap3)
+    # create the pipeline and connect pipers
     pipes = Plumber()
-    pipes.add_pipe((pow2_piper, mul3_piper, prnt_piper))
+    pipes.add_pipe((p_mul, p_who, p_prn))
     return pipes
 
-# Part 3: Define the run-time
-def runtime(options):
-    size = int(options['--size'])
-    worker_num = int(options['--worker_num'])
+# Part 3: parse the arguments
+def options(args):
+    size = int(args['--size'])
+    worker_num = int(args['--worker_num'])
+    return (size, worker_num)
 
-    input_data = xrange(size)
-    imap_ = IMap(worker_num =worker_num)
+# Part 4: define the resources
+def resources(args):
+    size, worker_num = args
+    imap1 = IMap(worker_num =worker_num)
+    imap2 = IMap(worker_num =worker_num)
+    imap3 = None
+    return imap1, imap2, imap3
 
-    return input_data, imap_
+# Part 5: define the input
+def data(args):
+    size, worker_num = args
+    return xrange(size)
 
-# Execute:
+# Part 6: Execute
 if __name__ == '__main__':
-    # get command-line options using getopt 
+    # get command-line arguments using getopt 
     import sys
     from getopt import getopt
-    options = dict(getopt(sys.argv[1:], '',['size=', 'worker_num='])[0])
-    # initialize runtime
-    input_data, imap_ = runtime(options)
-    # initialize the pipeline
-    pipes = pipeline(imap_)
-    # start the pipeline 
-    pipes.plunge([input_data])
-    
+    args = dict(getopt(sys.argv[1:], '',['size=', 'worker_num='])[0])
+    # parse options
+    opts = options(args)
+    # definie/initialize resources
+    rsrc = resources(opts)
+    # define/create input data
+    inpt = data(opts)
+    # attach resources to pipeline
+    pipes = pipeline(rsrc)
+    # connect and start pipeline
+    pipes.plunge([inpt])
+    # wait until pipeline is finished
+    pipes._is_finished.wait() 
+
+

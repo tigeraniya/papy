@@ -26,6 +26,7 @@ g['node_2'].xtra['y'] = 75
 g['node_2'].xtra['color'] = 'blue'
 g['node_2'].xtra['status'] = 'orange'
 g['node_1'].xtra['screen_name'] = 'node_2'
+g.add_edge(('node_1', 'node_2'))
 
 
 class Options(dict):
@@ -33,7 +34,7 @@ class Options(dict):
     defaults = (('app_name', 'PaPy'),
                 ('node_color', 'blue'),
                 ('node_status', 'green'),
-                ('canvas_background', 'white'),
+                ('canvas_background', 'yellow'),
                 )
 
     def __init__(self, options =None):
@@ -83,7 +84,7 @@ class ScrolledCanvas(Frame):
 
 
     def make_widgets(self):
-        canvas = Canvas(self, bg='white', relief=SUNKEN)
+        canvas = Canvas(self, bg=O['canvas_background'], relief=SUNKEN)
         canvas.config(scrollregion=(0,0,1000,1000))
         canvas.config(highlightthickness=0)
 
@@ -222,6 +223,7 @@ class GraphCanvas(ScrolledCanvas):
         self.lasty = 0
         self.tag_to_node = {}
         self.tag_to_Node = {}
+        self.tag_to_edge = {}
 
         self.canvas.bind("<Button-1>",  self.mouse1_down)
         self.canvas.bind("<B1-Motion>", self.mouse1_drag)
@@ -236,25 +238,48 @@ class GraphCanvas(ScrolledCanvas):
 
         self.graph = graph
         self.create_node_tags()
-
-
+        self.create_edge_tags()
 
     def create_node_tags(self):
         for node, Node in self.graph.iteritems():
-            tag = self.create_node_tag(Node.xtra, id(node))
+            tag = self.create_node_tag(node, Node)
             Node.xtra['tag'] = tag[1]
             self.tag_to_node[tag[1]] = node
             self.tag_to_Node[tag[1]] = Node
-
-    def create_node_tag(self, xtra, id_):
-        x = (xtra.get('x') or self.lastx)
-        y = (xtra.get('y') or self.lasty)
-        status = (xtra.get('status') or 'green')
-        color = (xtra.get('color') or 'red')
-        tag = ("node", 'id_%s' % id_)
-        self.canvas.create_text(x+12, y-17, text=tag, fill='black', anchor =NW, tags =tag)
+    
+    def create_edge_tags(self):
+        for edge in self.graph.edges():
+            tag = self.create_edge_tag(edge)
+            self.tag_to_edge[tag[1]] = edge
+    
+    def create_node_tag(self, node, Node):
+        x = (Node.xtra.get('x') or self.lastx)
+        y = (Node.xtra.get('y') or self.lasty)
+        status = (Node.xtra.get('status') or O['node_status'])
+        color  = (Node.xtra.get('color')  or O['node_color'])
+        tag = ("node", 'node_%s' % id(node))
         self.canvas.create_oval(x-12, y-12, x+12, y+12, fill=status, tags =tag, activewidth=3.0, activefill ="plum")
         self.canvas.create_oval(x-8,  y-8, x+8, y+8, fill=color, tags =tag, state ='disabled', width =0.0)
+        self.canvas.create_text(x+12, y-17, text=tag, fill='black', anchor =NW, tags =tag)
+        return tag
+
+    def create_edge_tag(self, edge):
+        N1 = self.graph[edge[0]]
+        N2 = self.graph[edge[1]]
+        t1 = N1.xtra['tag']
+        t2 = N2.xtra['tag']
+        xy1 = N1.xtra['x'], N1.xtra['y']
+        xy2 = N2.xtra['x'], N2.xtra['y']
+        tag = ("edge", t1, t2)
+        self.canvas.create_line(*xy1 + xy2, tags =tag)
+
+
+        print xy1, xy2
+        print self.canvas.coords(t1)
+        print self.canvas.coords(t2)
+
+
+        
         return tag
 
     def create_piper(self):
@@ -275,15 +300,29 @@ class GraphCanvas(ScrolledCanvas):
     def mouse1_drag(self, event):
         old_x, old_y = self.lastx, self.lasty
         self.lastx, self.lasty = self._canvas_coords(event.x, event.y)
+        dx, dy = self.lastx - old_x, self.lasty - old_y
+
         print 'mouse at: %s-%s' % (self.lastx, self.lasty)
         tags = self.canvas.gettags(CURRENT)
         if tags and tags[0] == 'node':
-            self.canvas.move(tags[1], self.lastx - old_x, self.lasty - old_y)
-            #self.graph[self.tag_to_node[tags[1]]].xtra['x'] = event.x
-            #self.graph[self.tag_to_node[tags[1]]].xtra['y'] = event.y
-        else:
+            self.canvas.delete("%s&&%s" % ('edge', tags[1]))
+            n1 = self.graph[self.tag_to_node[tags[1]]]
+            self.canvas.move("%s&&%s" % ('node', tags[1]), dx, dy)
+            n1.xtra['x'] += dx
+            n1.xtra['y'] += dy
+
+
+
+   
+            edges = self.graph.incoming_edges(self.tag_to_node[tags[1]]) +\
+                    self.graph.outgoing_edges(self.tag_to_node[tags[1]])
+            for edge in edges:
+                self.create_edge_tag(edge)
+        if tags and tags[0] == 'edge':
             pass
-            #self.canvas.scan_dragto(event.x, event.y)
+
+        if not tags:
+            self.canvas.scan_dragto(dx, dy)
 
 
 
