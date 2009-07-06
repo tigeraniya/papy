@@ -7,6 +7,7 @@ from functools import partial
 
 # Tkinter imports
 from Tkinter import *
+import Pmw
 from tkMessageBox import *
 
 # papy
@@ -44,7 +45,9 @@ class Options(dict):
     defaults = (('app_name', 'PaPy'),
                 ('node_color', 'blue'),
                 ('node_status', 'green'),
-                ('canvas_background', 'yellow'),
+                ('graph_background', 'aliceblue'),
+                ('pipers_background', 'white'),
+                ('resources_background', 'white')
                 )
 
     def __init__(self, options =None):
@@ -57,7 +60,6 @@ class ScrolledText(Frame):
 
     def __init__(self, parent =None, text ='', file =None):
         Frame.__init__(self, parent)
-        self.pack(expand=YES, fill=BOTH)
         self.make_widgets()
         self.settext(text, file)
 
@@ -82,34 +84,6 @@ class ScrolledText(Frame):
         return self.text.get('1.0', END+'-1c')           # first through last
 
 
-class ScrolledCanvas(Frame):
-
-    def __init__(self, parent):
-        Frame.__init__(self, parent)
-        self.make_widgets()
-        self.pack()
-
-    def make_widgets(self):
-
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(0, weight=1)
-
-        canvas = Canvas(self, bg=O['canvas_background'], relief=SUNKEN)
-        canvas.config(scrollregion=(0,0,1000,1000))
-        canvas.config(highlightthickness=0)
-
-        ybar = Scrollbar(self)
-        ybar.config(command=canvas.yview)
-        canvas.config(yscrollcommand=ybar.set)
-
-        xbar = Scrollbar(self, orient=HORIZONTAL)
-        xbar.config(command=canvas.xview)
-        canvas.config(xscrollcommand=xbar.set)
-
-        xbar.grid(row=1, column=0, sticky=E+W)
-        ybar.grid(row=0, column=1, sticky=N+S)
-        canvas.grid(row=0, column=0, sticky=N+S+E+W)
-        self.canvas = canvas
 
 class MenuBar(Menu):
 
@@ -140,29 +114,11 @@ class StatusBar(Frame):
         self.label.config(text="")
         self.label.update_idletasks()
 
-class GraphCanvas(ScrolledCanvas):
+class GraphCanvas(Pmw.ScrolledCanvas):
 
-    def _menu_popup(self, event, menu):
-        menu.post(event.x_root, event.y_root)
-
-    def _canvas_coords(self, x, y):
-        return (int(self.canvas.canvasx(x)), int(self.canvas.canvasy(y)))
-
-    def _toggle_connect(self):
-        if self.connect:
-            self.piper_menu.entryconfig(3, state =NORMAL)
-            self.piper_menu.entryconfig(4, state =DISABLED)
-            self.canvas.unbind("<Motion>")
-            self.connect = False
-        else:
-            self.piper_menu.entryconfig(3, state =DISABLED)
-            self.piper_menu.entryconfig(4, state =NORMAL)
-            self.canvas.bind("<Motion>", self.draw_pipe)
-            self.connect = True
-
-    def __init__(self, parent, graph, **kwargs):
-        ScrolledCanvas.__init__(self, parent)
-
+    def __init__(self, graph, parent =None, **kwargs):
+        apply(Pmw.ScrolledCanvas.__init__, (self, parent), kwargs)
+        
         # position of the last click
         self.lastx = 0
         self.lasty = 0
@@ -172,21 +128,22 @@ class GraphCanvas(ScrolledCanvas):
         self.tag_to_Node = {}
         self.tag_to_edge = {}
 
-        self.canvas.bind("<Button-1>",  self.mouse1_down)
-        self.canvas.bind("<B1-Motion>", self.mouse1_drag)
-        self.canvas.bind("<ButtonRelease-1>", self.mouse1_up)
-        self.canvas.bind("<Button-3>", self.mouse3_down)
-        self.canvas.bind("<ButtonRelease-3>", self.mouse3_up)
+        self.component('canvas').config(bg =O['graph_background'], width= 600, height =400, relief =SUNKEN)
+        self.component('canvas').bind("<Button-1>",  self.mouse1_down)
+        self.component('canvas').bind("<B1-Motion>", self.mouse1_drag)
+        self.component('canvas').bind("<ButtonRelease-1>", self.mouse1_up)
+        self.component('canvas').bind("<Button-3>", self.mouse3_down)
+        self.component('canvas').bind("<ButtonRelease-3>", self.mouse3_up)
         # MacOSX compability
-        self.canvas.bind("<Control-Button-1>", self.mouse3_down)
-        self.canvas.bind("<Control-ButtonRelease-1>", self.mouse3_up)
+        self.component('canvas').bind("<Control-Button-1>", self.mouse3_down)
+        self.component('canvas').bind("<Control-ButtonRelease-1>", self.mouse3_up)
         self.connect = False
 
         # left and right click canvas
-        self.canvas_menu = Menu(root, tearoff =0)
-        self.canvas_menu.add_command(label="create piper", command =self.create_piper)
-        self.canvas_menu.add_separator()
-        self.canvas_menu.add_command(label="cancel pipe", command =self._toggle_connect, state =DISABLED) 
+        self.self_menu = Menu(root, tearoff =0)
+        self.self_menu.add_command(label="add piper", command =self.create_piper)
+        #self_menu.add_separator()
+        #self_menu.add_command(label="cancel pipe", command =self._toggle_connect, state =DISABLED) 
 
         # right click node
         self.piper_menu = Menu(root, tearoff =0)
@@ -204,10 +161,27 @@ class GraphCanvas(ScrolledCanvas):
         self.create_node_tags()
         self.create_edge_tags()
 
+    def _menu_popup(self, event, menu):
+        menu.post(event.x_root, event.y_root)
+
+    def _canvas_coords(self, x, y):
+        return (int(self.canvasx(x)), int(self.canvasy(y)))
+
+    def _toggle_connect(self):
+        if self.connect:
+            self.piper_menu.entryconfig(3, state =NORMAL)
+            self.piper_menu.entryconfig(4, state =DISABLED)
+            self.unbind("<Motion>")
+            self.connect = False
+        else:
+            self.piper_menu.entryconfig(3, state =DISABLED)
+            self.piper_menu.entryconfig(4, state =NORMAL)
+            self.bind("<Motion>", self.draw_pipe)
+            self.connect = True
+
 
     def draw_pipe(self, event):
         print event.x, event.y
-
 
     def create_node_tags(self):
         for node, Node in self.graph.iteritems():
@@ -215,13 +189,14 @@ class GraphCanvas(ScrolledCanvas):
             Node.xtra['tag'] = tag[1]
             self.tag_to_node[tag[1]] = node
             self.tag_to_Node[tag[1]] = Node
+        self.resizescrollregion()
 
     def move_node_tag(self, tag, dx, dy):
         # delete edges
-        self.canvas.delete("%s&&%s" % ('edge', tag))
+        self.delete("%s&&%s" % ('edge', tag))
         # move node
         n1 = self.graph[self.tag_to_node[tag]]
-        self.canvas.move("%s&&%s" % ('node', tag), dx, dy)
+        self.move("%s&&%s" % ('node', tag), dx, dy)
         # update position
         n1.xtra['x'] += dx
         n1.xtra['y'] += dy
@@ -230,6 +205,8 @@ class GraphCanvas(ScrolledCanvas):
                 self.graph.outgoing_edges(self.tag_to_node[tag])
         for edge in edges:
             self.create_edge_tag(edge)
+        self.resizescrollregion()
+
         
     def create_edge_tags(self):
         for edge in self.graph.edges():
@@ -246,11 +223,11 @@ class GraphCanvas(ScrolledCanvas):
         status = (Node.xtra.get('status') or O['node_status'])
         color  = (Node.xtra.get('color')  or O['node_color'])
         tag = ("node", "n%s" % id(node))
-        self.canvas.create_oval(x-12, y-12, x+12, y+12, fill=status, tags =tag,\
+        self.create_oval(x-12, y-12, x+12, y+12, fill=status, tags =tag,\
                                             activewidth=3.0, activefill ="plum")
-        self.canvas.create_oval(x-8,  y-8,  x+8,  y+8, fill=color,  tags =tag,\
+        self.create_oval(x-8,  y-8,  x+8,  y+8, fill=color,  tags =tag,\
                                             state ='disabled', width =0.0)
-        self.canvas.create_text(x+12, y-17, text=tag, fill='black', anchor =NW,\
+        self.create_text(x+12, y-17, text=tag, fill='black', anchor =NW,\
                                             tags =tag)
         return tag
 
@@ -262,7 +239,7 @@ class GraphCanvas(ScrolledCanvas):
         xy1 = N1.xtra['x'], N1.xtra['y']
         xy2 = N2.xtra['x'], N2.xtra['y']
         tag = ("edge", t1, t2)
-        self.canvas.create_line(*xy1 + xy2, tags =tag)
+        self.create_line(*xy1 + xy2, tags =tag)
         return tag
 
     def create_piper(self):
@@ -277,7 +254,7 @@ class GraphCanvas(ScrolledCanvas):
         # remove piper from dagger
         self.graph.del_node(n1) # wrong!
         # remove pipers and pipes from canvas
-        self.canvas.delete(self.lasttags[1])
+        self.delete(self.lasttags[1])
         
     def remove_pipe(self):
         t1, t2 = self.lasttags[1:3]
@@ -286,16 +263,14 @@ class GraphCanvas(ScrolledCanvas):
         # remove pipe from dagger
         self.graph.del_edge((n1,n2)) # wrong!
         # remove pipes from canvas
-        self.canvas.delete("%s&&%s&&%s" % ('edge', t1, t2))
+        self.delete("%s&&%s&&%s" % ('edge', t1, t2))
 
-    def flash_node_tag(self, tag):
-        self.lower(tag)
 
     def mouse1_down(self, event):
         # canvas position of click
         self.lastx, self.lasty = self._canvas_coords(event.x, event.y)
         # what did we click
-        self.lasttags = self.canvas.gettags(CURRENT)
+        self.lasttags = self.gettags(CURRENT)
 
     def mouse1_drag(self, event):
         old_x, old_y = self.lastx, self.lasty
@@ -319,7 +294,7 @@ class GraphCanvas(ScrolledCanvas):
         root.frame.status_bar.set('canvas released at: %s-%s' % (event.x, event.y))
 
     def mouse3_down(self, event):
-        lasttags = self.canvas.gettags(CURRENT)
+        lasttags = self.gettags(CURRENT)
         lastx, lasty = self._canvas_coords(event.x, event.y)
 
         if lasttags and lasttags[0] == 'node':    
@@ -327,7 +302,7 @@ class GraphCanvas(ScrolledCanvas):
         elif lasttags and lasttags[0] == 'edge':    
             self._menu_popup(event, self.edge_menu)
         elif not lasttags:
-            self._menu_popup(event, self.canvas_menu)
+            self._menu_popup(event, self.self_menu)
         
         if not self.connect:
             self.lasttags = lasttags
@@ -345,42 +320,95 @@ class ToolBar(Frame):
         self.make_widgets()
 
     def make_widgets(self):
-        icon='''R0lGODdhFQAVAPMAAAQ2PESapISCBASCBMTCxPxmNCQiJJya/ISChGRmzPz+/PxmzDQyZDQyZDQy
-        ZDQyZCwAAAAAFQAVAAAElJDISau9Vh2WMD0gqHHelJwnsXVloqDd2hrMm8pYYiSHYfMMRm53ULlQ
-        HGFFx1MZCciUiVOsPmEkKNVp3UBhJ4Ohy1UxerSgJGZMMBbcBACQlVhRiHvaUsXHgywTdycLdxyB
-        gm1vcTyIZW4MeU6NgQEBXEGRcQcIlwQIAwEHoioCAgWmCZ0Iq5+hA6wIpqislgGhthEAOw==
-        '''
 
-        ii = PhotoImage(data=icon)
-        b1 = Button(master =self, data =ii, command=None)
+        b1 = Button(master =self, text ='B1', command=None)
         b1.pack(side=LEFT)
-        b2 = Button(master =self, image =ii, command=None)
+        b2 = Button(master =self, text ='B2', command=None)
         b2.pack(side=LEFT)
+
+class NoteBook(Pmw.NoteBook):
+    def __init__(self, parent =None, **kwargs):
+        Pmw.NoteBook.__init__(self, parent)
+        self.make_widgets()
+        self.setnaturalsize()
+
+class LoggingShell(NoteBook):
+
+    def make_widgets(self):
+        self.add('Shell')
+        self.add('Logging')
+        self.tab('Shell').focus_set()
+
+class Pipeline(NoteBook):
+
+    def make_widgets(self):
+        self.add('Pipeline')
+        self.add('Functions')
+        self.tab('Pipeline').focus_set()
+
+        self.graph = GraphCanvas(graph =g, parent =self.page('Pipeline'))
+        self.graph.pack(expand =YES, fill =BOTH)
 
 class PapyMainFrame(Frame):
     def __init__(self, parent =None, title =None,**kwargs):
         Frame.__init__(self, parent)
-        self.make_widgets(title)
+        self.master.title(title or O['app_name'])
+        self.make_widgets()
         self.pack(expand =YES, fill =BOTH)
 
     def make_widgets(self, title =None):
-        # top menu
-        self.menu_bar = MenuBar(self.master)
+        #main menu
+        self.menu_bar = MenuBar(self)
         self.master.config(menu =self.menu_bar)
 
         # toolbar
-        self.tool_bar = ToolBar(self.master)
-        self.tool_bar.pack(side =TOP, fill=X)
+        self.tool_bar = ToolBar(self)
+        self.tool_bar.pack(fill =X)
 
-        # canvas
-        self.master.title(title or O['app_name'])
-        self.graph = GraphCanvas(self, graph =g, background=O['canvas_background'])
-        self.graph.pack(expand =YES, fill =BOTH)
+        # 4 panes
+        self.lr = PanedWindow(self)
+        self.lr.pack(fill=BOTH, expand=YES)
+
+        self.l = PanedWindow(self.lr, orient=VERTICAL)
+        self.r = PanedWindow(self.lr, orient=VERTICAL)
+        self.lr.add(self.l)
+        self.lr.add(self.r)
+        
+        # pipers
+        self.pipers = Pmw.Group(self.l,
+		                         tag_pyclass =Label,
+		                         tag_text='Pipers',
+		                         tag_foreground='blue')
+        cw = Pmw.ScrolledCanvas(self.pipers.interior())
+        cw.component('canvas').config(bg =O['pipers_background'], width= 200, height =400)
+        cw.pack(fill =BOTH, expand =True)
+        
+        # resources
+        self.resources = Pmw.Group(self.l,
+		                         tag_pyclass =Label,
+		                         tag_text='Resources',
+		                         tag_foreground='red')
+        cw = Pmw.ScrolledCanvas(self.resources.interior())
+        cw.component('canvas').config(bg =O['resources_background'], width= 200, height =400)
+        cw.pack(fill =BOTH, expand =YES)
+ 
+        
+        self.l.add(self.pipers)
+        self.l.add(self.resources)
+        self.l.paneconfigure(self.pipers, sticky =N+E+W+S) 
+        self.l.paneconfigure(self.resources, sticky =N+E+W+S) 
+
+        # pipeline & code
+        self.pipeline = Pipeline(self.r)
+        self.r.add(self.pipeline)
+
+        # shell and logging
+        self.io = LoggingShell(self.r)
+        self.r.add(self.io)
 
         # statusbar
         self.status_bar = StatusBar(self)
-        self.status_bar.pack(side =BOTTOM, fill =X)
-
+        self.status_bar.pack(side =LEFT)
 
 
 if __name__ == '__main__':
@@ -389,6 +417,7 @@ if __name__ == '__main__':
         global root, O
         O = Options()
         root = Tk()
+        Pmw.initialise(root)
         root.protocol("WM_DELETE_WINDOW", gui_stop)
         root.frame = PapyMainFrame(root)
         root.mainloop()
@@ -399,3 +428,4 @@ if __name__ == '__main__':
     gui_thread = Thread(target =gui_start)
     gui_thread.start()
 
+    
