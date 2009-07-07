@@ -2,16 +2,14 @@
 # Python
 from threading import Thread
 from Queue import Queue
-from code import InteractiveConsole
-from functools import partial
 
 # Tkinter imports
-from Tkinter import *
 import Pmw
+from Tkinter import *
 from tkMessageBox import *
 
 # papy
-from graph import Graph
+from papy import *
 
 
 g = Graph()
@@ -56,63 +54,40 @@ class Options(dict):
         dict.__init__(self, init)
 
 
-class ScrolledText(Frame):
+class MainMenuBar(Pmw.MainMenuBar):
 
-    def __init__(self, parent =None, text ='', file =None):
-        Frame.__init__(self, parent)
-        self.make_widgets()
-        self.settext(text, file)
-
-    def make_widgets(self):
-        sbar = Scrollbar(self)
-        text = Text(self, relief=SUNKEN)
-        sbar.config(command =text.yview)                  # xlink sbar and text
-        text.config(yscrollcommand =sbar.set)             # move one moves other
-        sbar.pack(side=RIGHT, fill=Y)                     # pack first=clip last
-        text.pack(side=LEFT, expand=YES, fill=BOTH)       # text clipped first
-        self.text = text
-
-    def settext(self, text ='', file =None):
-        if file:
-            text = open(file, 'r').read()
-        self.text.delete('1.0', END)                     # delete current text
-        self.text.insert('1.0', text)                    # add at line 1, col 0
-        self.text.mark_set(INSERT, '1.0')                # set insert cursor
-        self.text.focus()                                # save user a click
-
-    def gettext(self):                                   # returns a string
-        return self.text.get('1.0', END+'-1c')           # first through last
-
-
-
-class MenuBar(Menu):
-
-    def __init__(self, *args, **kwargs):
-        Menu.__init__(self, *args, **kwargs)
+    def __init__(self, parent, **kwargs):
+        apply(Pmw.MainMenuBar.__init__, (self, parent), kwargs)
         self.create_widgets()
 
     def not_impl(self):
         showerror(message ='Not implemented')
 
     def create_widgets(self):
-        file_menu = Menu(self)
-        file_menu.add_command(label ='Open', command =self.not_impl)
-        file_menu.add_command(label ='Save', command =self.not_impl)
-        self.add_cascade(label="File", underline=1, menu =file_menu)
+        self.addmenu('File', 'Load/Save/Exit')
 
-class StatusBar(Frame):
-    def __init__(self, parent):
-        Frame.__init__(self, parent)
-        self.label = Label(self, bd=1, anchor=W)
-        self.label.pack(fill=X)
+        self.addmenuitem('File', 'command', 'Load',
+		                 command = None,
+		                   label = 'Load')
+        
+        self.addmenuitem('File', 'command', 'Save',
+		                 command = None,
+		                   label = 'Save')
 
-    def set(self, format, *args):
-        self.label.config(text=format % args)
-        self.label.update_idletasks()
+        self.addmenuitem('File', 'command', 'Exit',
+		                 command = None,
+		                   label = 'Exit')
 
-    def clear(self):
-        self.label.config(text="")
-        self.label.update_idletasks()
+        self.addmenu('Options', 'Options/Setting')
+        self.addmenuitem('Options', 'command', 'Gui',
+		                 command = None,
+		                   label = 'Gui Options')
+
+        self.addmenu('Help', 'User manuals', name = 'help')
+        self.addmenuitem('Help', 'command', 'About this application',
+                command = None,
+                  label = 'About')
+
 
 class GraphCanvas(Pmw.ScrolledCanvas):
 
@@ -291,7 +266,7 @@ class GraphCanvas(Pmw.ScrolledCanvas):
 
     def mouse1_up(self, event):
         self.lasttag = []
-        root.frame.status_bar.set('canvas released at: %s-%s' % (event.x, event.y))
+        root.frame.status_bar.message('state', 'canvas released at: %s-%s' % (event.x, event.y))
 
     def mouse3_down(self, event):
         lasttags = self.gettags(CURRENT)
@@ -358,7 +333,7 @@ class PapyMainFrame(Frame):
 
     def make_widgets(self, title =None):
         #main menu
-        self.menu_bar = MenuBar(self)
+        self.menu_bar = MainMenuBar(self)
         self.master.config(menu =self.menu_bar)
 
         # toolbar
@@ -407,8 +382,11 @@ class PapyMainFrame(Frame):
         self.r.add(self.io)
 
         # statusbar
-        self.status_bar = StatusBar(self)
-        self.status_bar.pack(side =LEFT)
+        self.status_bar = Pmw.MessageBar(self,
+		   entry_relief = 'groove',
+		       labelpos = W,
+		     label_text = 'Status:')
+        self.status_bar.pack(fill =X)
 
 
 if __name__ == '__main__':
@@ -420,6 +398,19 @@ if __name__ == '__main__':
         Pmw.initialise(root)
         root.protocol("WM_DELETE_WINDOW", gui_stop)
         root.frame = PapyMainFrame(root)
+        
+        #import idlelib
+        #from idlelib import PyShell
+        #PyShellEditorWindow=PyShell.PyShellEditorWindow
+        #PyShellFileList=PyShell.PyShellFileList
+        #idlelib.PyShell.use_subprocess = False
+        #root.flist = PyShellFileList(root)
+        #root.firstidle = True
+        #root.save_idle = None
+        #flist = idlelib.PyShell.PyShellFileList(root)
+        #root.withdraw()
+        #flist.pyshell = PyShell.PyShell(root)
+        #flist.pyshell.begin()
         root.mainloop()
 
     def gui_stop():
