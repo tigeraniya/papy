@@ -2,15 +2,23 @@
 # Python
 from threading import Thread
 from Queue import Queue
+import os
 
 # Tkinter imports
 import Pmw
 from Tkinter import *
 from tkMessageBox import *
+#
+from idlelib.TreeWidget import TreeItem, TreeNode
 
 # papy
-from papy import *
-
+#from papy import Worker, Piper, Dagger, Plumber,\
+#                 PiperError, WorkerError, DaggerError, PlumberError,\
+#                 imports
+#
+from graph import Graph, Node
+import workers
+#import utils
 
 g = Graph()
 g.add_node('node_1')
@@ -44,14 +52,116 @@ class Options(dict):
                 ('node_color', 'blue'),
                 ('node_status', 'green'),
                 ('graph_background', 'aliceblue'),
-                ('pipers_background', 'white'),
-                ('resources_background', 'white')
+                ('Pipers_background', 'white'),
+                ('IMaps_background', 'white')
                 )
 
     def __init__(self, options =None):
         init = dict(self.defaults)
         init.update(options or {})
         dict.__init__(self, init)
+
+
+class _TreeItem(TreeItem):
+
+    def __init__(self, item):
+        self.item = item
+    
+    def GetText(self):
+        return self.item.name
+
+    def SetText(self, text):
+        self.item.name = text
+
+    def IsExpandable(self):
+        return True
+
+    def IsEditable(self):
+        return True
+    
+    def GetSubList(self):
+        return [AttributeTreeItem(self.item, attr) for attr in self.attrs]
+
+
+class IMapTreeItem(_TreeItem):
+
+    attrs = ('worker_type', 'worker_num', 'worker_remote',\
+             'stride', 'buffer', 'ordered', 'skip')
+    
+class PiperTreeItem(TreeItem):
+    
+    attrs = ()
+
+
+
+
+
+class AttributeTreeItem(TreeItem):
+    
+    def __init__(self, item, argument):
+        self.item = item
+        self.argument = argument
+
+    def GetText(self):
+        return "%s: %s" % (self.argument, getattr(self.item, self.argument))
+
+    def SetText(self, text):
+        text = text.split(':')[1]
+        setattr(self.item, self.argument, text)
+
+    def IsExpandable(self):
+        return False
+
+    def IsEditable(self):
+        return self.editable
+
+
+class Tree(object):
+
+    def __init__(self, parent, **kwargs):
+        self.parent = parent
+        self.name = kwargs.get('name')
+        self.label_text = kwargs.get('label_text') or self.name
+        self.add_text = kwargs.get('add_text') or 'add %s' %\
+                                                        self.name[:-1]
+        self.del_text = kwargs.get('del_text') or 'del %s' %\
+                                                        self.name[:-1]
+        self.add_cmd = kwargs.get('add_cmd')
+        self.del_cmd = kwargs.get('del_cmd')
+        self.node_pyclass = kwargs.get('node_pyclass') or eval('TreeNode')
+        self.item_pyclass = kwargs.get('item_pyclass') or eval(self.name[:-1] + 'TreeItem')
+        self.make_widgets()
+
+    def make_widgets(self):
+        self.frame = Frame(self.parent)
+        self.buttons = Pmw.ButtonBox(self.frame, padx =0, pady =0)
+        self.buttons.add(self.add_text, command =self.add_cmd)
+        self.buttons.add(self.del_text, command =self.del_cmd)
+
+        self.group = Pmw.Group(self.frame, tag_pyclass =Label,
+                                              tag_text
+                                              =self.label_text)
+
+        canvas = Pmw.ScrolledCanvas(self.group.interior())
+        self.canvas = canvas.component('canvas') 
+        self.canvas.config(bg =O[self.name + '_background'])#, width= 170, height =350)
+        self.buttons.pack(side =BOTTOM, anchor =W)
+        canvas.pack(fill =BOTH, expand =YES)
+        self.group.pack(fill =BOTH, expand =YES)
+
+
+    def add_item(self, item):
+        node = self.node_pyclass(self.canvas, None, self.item_pyclass(item))
+        node.update()
+
+        
+
+    
+
+
+
+    
+    
 
 
 class MainMenuBar(Pmw.MainMenuBar):
@@ -344,79 +454,73 @@ class PapyMainFrame(Frame):
         self.lr = PanedWindow(self)
         self.lr.pack(fill=BOTH, expand=YES)
 
-        self.l = PanedWindow(self.lr, orient=VERTICAL)
-        self.r = PanedWindow(self.lr, orient=VERTICAL)
-        self.lr.add(self.l)
-        self.lr.add(self.r)
+        self.l = PanedWindow(self.lr, orient=VERTICAL, showhandle =YES, sashwidth =20)
+        self.r = PanedWindow(self.lr, orient=VERTICAL, showhandle =YES, sashwidth =20)
+        self.lr.add(self.l, stretch ='always')
+        self.lr.add(self.r, stretch ='always')
         
         # pipers
-        self.pipers = Pmw.Group(self.l,
-		                         tag_pyclass =Label,
-		                         tag_text='Pipers',
-		                         tag_foreground='blue')
-        cw = Pmw.ScrolledCanvas(self.pipers.interior())
-        cw.component('canvas').config(bg =O['pipers_background'], width= 200, height =400)
-        cw.pack(fill =BOTH, expand =True)
-        
-        # resources
-        self.resources = Pmw.Group(self.l,
-		                         tag_pyclass =Label,
-		                         tag_text='Resources',
-		                         tag_foreground='red')
-        cw = Pmw.ScrolledCanvas(self.resources.interior())
-        cw.component('canvas').config(bg =O['resources_background'], width= 200, height =400)
-        cw.pack(fill =BOTH, expand =YES)
- 
-        
-        self.l.add(self.pipers)
-        self.l.add(self.resources)
-        self.l.paneconfigure(self.pipers, sticky =N+E+W+S) 
-        self.l.paneconfigure(self.resources, sticky =N+E+W+S) 
+        self.pipers = Tree(self.l, name ='Pipers')
+        print papy.workers
+        #piper = Piper(papy.workers.io.print_)
+        #self.pipers.add_item(piper)
 
-        # pipeline & code
+        # imaps
+        self.imaps = Tree(self.l, name ='IMaps')
+
+        imap = IMap()
+        self.imaps.add_item(imap)
+
+        
+        self.l.add(self.pipers.frame, stretch ='always')
+        self.l.add(self.imaps.frame, stretch ='always')
+        self.l.paneconfigure(self.pipers.frame, sticky =N+E+W+S) 
+        self.l.paneconfigure(self.imaps.frame, sticky =N+E+W+S) 
+
+        # pipeline & code, shell & logging
         self.pipeline = Pipeline(self.r)
-        self.r.add(self.pipeline)
-
-        # shell and logging
         self.io = LoggingShell(self.r)
-        self.r.add(self.io)
+        self.r.add(self.pipeline, stretch ='always')
+        self.r.add(self.io, stretch ='always')
+        self.r.paneconfigure(self.pipeline, sticky =N+E+W+S) 
+        self.r.paneconfigure(self.io, sticky =N+E+W+S) 
 
         # statusbar
         self.status_bar = Pmw.MessageBar(self,
 		   entry_relief = 'groove',
 		       labelpos = W,
 		     label_text = 'Status:')
-        self.status_bar.pack(fill =X)
+        self.status_bar.pack(fill =BOTH, anchor =W)
 
 
 if __name__ == '__main__':
-
-    def gui_start():
-        global root, O
-        O = Options()
-        root = Tk()
-        Pmw.initialise(root)
-        root.protocol("WM_DELETE_WINDOW", gui_stop)
-        root.frame = PapyMainFrame(root)
         
-        #import idlelib
-        #from idlelib import PyShell
-        #PyShellEditorWindow=PyShell.PyShellEditorWindow
-        #PyShellFileList=PyShell.PyShellFileList
-        #idlelib.PyShell.use_subprocess = False
-        #root.flist = PyShellFileList(root)
-        #root.firstidle = True
-        #root.save_idle = None
-        #flist = idlelib.PyShell.PyShellFileList(root)
-        #root.withdraw()
-        #flist.pyshell = PyShell.PyShell(root)
-        #flist.pyshell.begin()
-        root.mainloop()
+    #import idlelib
+    #from idlelib import PyShell
+    #PyShellEditorWindow=PyShell.PyShellEditorWindow
+    #PyShellFileList=PyShell.PyShellFileList
+    #idlelib.PyShell.use_subprocess = False
+    #root.flist = PyShellFileList(root)
+    #root.firstidle = True
+    #root.save_idle = None
+    #flist = idlelib.PyShell.PyShellFileList(root)
+    #root.withdraw()
+    #flist.pyshell = PyShell.PyShell(root)
+    #flist.pyshell.begin()
+        
+    def console_start():
+        import code
+        ic = code.InteractiveConsole()
+        ic.interact()
 
-    def gui_stop():
-        root.destroy()
+    console_thread = Thread(target =console_start)
+    console_thread.daemon = True
+    console_thread.start()
 
-    gui_thread = Thread(target =gui_start)
-    gui_thread.start()
-
+    O = Options()
+    root = Tk()
+    Pmw.initialise(root)
+    root.frame = PapyMainFrame(root)
+    #root.minsize(root.winfo_reqwidth(), root.winfo_reqheight())
+    root.mainloop()
     

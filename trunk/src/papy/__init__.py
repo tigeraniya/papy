@@ -1,7 +1,7 @@
 """
 :mod:`papy`
 ===========
-   :platform: Python 2.5/2.6
+   :platform: Python 2.6
    :synopsis: Create a data processing pipeline.
 
 Papy - Parallel pipelines in Python
