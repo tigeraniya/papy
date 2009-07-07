@@ -2,6 +2,7 @@
 # Python
 from threading import Thread
 from Queue import Queue
+import code
 import os
 
 # Tkinter imports
@@ -11,14 +12,9 @@ from tkMessageBox import *
 #
 from idlelib.TreeWidget import TreeItem, TreeNode
 
-# papy
-#from papy import Worker, Piper, Dagger, Plumber,\
-#                 PiperError, WorkerError, DaggerError, PlumberError,\
-#                 imports
-#
-from graph import Graph, Node
-import workers
-#import utils
+from papy import *
+from IMap import *
+
 
 g = Graph()
 g.add_node('node_1')
@@ -88,26 +84,23 @@ class IMapTreeItem(_TreeItem):
     attrs = ('worker_type', 'worker_num', 'worker_remote',\
              'stride', 'buffer', 'ordered', 'skip')
     
-class PiperTreeItem(TreeItem):
+class PiperTreeItem(_TreeItem):
     
-    attrs = ()
-
-
-
-
+    attrs = ('worker', 'IMap', 'consume', 'produce', 'spawn', 'timeout',
+             'cmp', 'ornament', 'debug', 'track')
 
 class AttributeTreeItem(TreeItem):
     
-    def __init__(self, item, argument):
+    def __init__(self, item, attr):
         self.item = item
-        self.argument = argument
+        self.attr = attr
 
     def GetText(self):
-        return "%s: %s" % (self.argument, getattr(self.item, self.argument))
+        return "%s: %s" % (self.attr, getattr(self.item, self.attr.lower()))
 
     def SetText(self, text):
         text = text.split(':')[1]
-        setattr(self.item, self.argument, text)
+        setattr(self.item, self.attr.lower(), text)
 
     def IsExpandable(self):
         return False
@@ -412,12 +405,16 @@ class ToolBar(Frame):
         b2.pack(side=LEFT)
 
 class NoteBook(Pmw.NoteBook):
-    def __init__(self, parent =None, **kwargs):
-        Pmw.NoteBook.__init__(self, parent)
-        self.make_widgets()
-        self.setnaturalsize()
+    def __init__(self, parent, pages, **kwargs):
+        apply(Pmw.NoteBook.__init__, (self, parent), kwargs)
+        self.add_pages(pages)
+
+    def add_pages(self, pages):
+        for page in pages:
+            self.add(page)
 
 class LoggingShell(NoteBook):
+    
 
     def make_widgets(self):
         self.add('Shell')
@@ -431,8 +428,6 @@ class Pipeline(NoteBook):
         self.add('Functions')
         self.tab('Pipeline').focus_set()
 
-        self.graph = GraphCanvas(graph =g, parent =self.page('Pipeline'))
-        self.graph.pack(expand =YES, fill =BOTH)
 
 class PapyMainFrame(Frame):
     def __init__(self, parent =None, title =None,**kwargs):
@@ -461,15 +456,8 @@ class PapyMainFrame(Frame):
         
         # pipers
         self.pipers = Tree(self.l, name ='Pipers')
-        print papy.workers
-        #piper = Piper(papy.workers.io.print_)
-        #self.pipers.add_item(piper)
-
         # imaps
         self.imaps = Tree(self.l, name ='IMaps')
-
-        imap = IMap()
-        self.imaps.add_item(imap)
 
         
         self.l.add(self.pipers.frame, stretch ='always')
@@ -478,8 +466,9 @@ class PapyMainFrame(Frame):
         self.l.paneconfigure(self.imaps.frame, sticky =N+E+W+S) 
 
         # pipeline & code, shell & logging
-        self.pipeline = Pipeline(self.r)
-        self.io = LoggingShell(self.r)
+        self.pipeline = NoteBook(self.r, ['Pipeline', 'Functions'])
+        self.io = NoteBook(self.r, ['Shell', 'Logging'])
+
         self.r.add(self.pipeline, stretch ='always')
         self.r.add(self.io, stretch ='always')
         self.r.paneconfigure(self.pipeline, sticky =N+E+W+S) 
@@ -491,6 +480,33 @@ class PapyMainFrame(Frame):
 		       labelpos = W,
 		     label_text = 'Status:')
         self.status_bar.pack(fill =BOTH, anchor =W)
+
+
+class GuiPlumber(object):
+
+    def start_console(*args, **kwargs):
+
+        def ic():
+            ic = code.InteractiveConsole()
+            ic.interact()
+
+        console_thread = Thread(target =ic)
+        console_thread.daemon = True
+        console_thread.start()
+
+    def __init__(self, root, plumber =None, interactive =True):
+        self.root = root
+        self.plumber = plumber
+        self.interactive = interactive
+        if self.interactive:
+            self.start_console()
+        if self.plumber:
+            self.st
+
+
+
+
+
 
 
 if __name__ == '__main__':
@@ -508,19 +524,31 @@ if __name__ == '__main__':
     #flist.pyshell = PyShell.PyShell(root)
     #flist.pyshell.begin()
         
-    def console_start():
-        import code
-        ic = code.InteractiveConsole()
-        ic.interact()
-
-    console_thread = Thread(target =console_start)
-    console_thread.daemon = True
-    console_thread.start()
 
     O = Options()
     root = Tk()
     Pmw.initialise(root)
     root.frame = PapyMainFrame(root)
     #root.minsize(root.winfo_reqwidth(), root.winfo_reqheight())
+
+    imap = IMap()
+    piper = Piper(workers.io.print_, parallel =imap)
+    root.frame.pipers.add_item(piper)
+    root.frame.imaps.add_item(imap)
+
+    root.frame.graph = GraphCanvas(graph =g, parent =root.frame.pipeline.page('Pipeline'))
+    root.frame.graph.pack(expand =YES, fill =BOTH)
+    root.frame.pipeline.setnaturalsize()
+
+
+
+
+
+
+
+
+
+
+
     root.mainloop()
     
