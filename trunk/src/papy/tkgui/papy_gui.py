@@ -482,26 +482,26 @@ class PapyMainFrame(Frame):
         self.status_bar.pack(fill =BOTH, anchor =W)
 
 
-class GuiPlumber(object):
+#class GuiPlumber(object):
 
-    def start_console(*args, **kwargs):
+#    def start_console(*args, **kwargs):
 
-        def ic():
-            ic = code.InteractiveConsole()
-            ic.interact()
+#        def ic():
+#            ic = code.InteractiveConsole()
+#            ic.interact()
 
-        console_thread = Thread(target =ic)
-        console_thread.daemon = True
-        console_thread.start()
+#        console_thread = Thread(target =ic)
+#        console_thread.daemon = True
+#        console_thread.start()
 
-    def __init__(self, root, plumber =None, interactive =True):
-        self.root = root
-        self.plumber = plumber
-        self.interactive = interactive
-        if self.interactive:
-            self.start_console()
-        if self.plumber:
-            self.st
+#    def __init__(self, root, plumber =None, interactive =True):
+#        self.root = root
+#        self.plumber = plumber
+#        self.interactive = interactive
+#        if self.interactive:
+#            self.start_console()
+#        if self.plumber:
+#            self.st
 
 
 
