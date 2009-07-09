@@ -1,16 +1,15 @@
 Architecture
 ============
 
-The architecture of papy is remarkably simple and intuitive yet flexible. It
+The architecture of *PaPy* is remarkably simple and intuitive yet flexible. It
 consists of only four core components (classes) to construct a data processing
 pipeline. Each component provides an isolated subset of the functionality, which
 includes: arbitrary directed pipeline topology, parallelism and distributed
 computing, user function wrapping, and run-time interactions (e.g. logging).
-Papy is intrinsically modular any function can be used in several places in a
-pipeline or re-used in another. Complete pipelines can also be re-used e.g. by
-embedding in bigger pipelines.
+*PaPy* is intrinsically modular, any function can be used in several places in a
+pipeline or re-used in another pipeline.
 
-In this document we first introduce object-otiented programming in the context
+In this chapter we first introduce object-otiented programming in the context
 of papy, explain briefly the core components (building blocks) and introduce a
 conceptual outline of pipeline creation. In later sections we revisit each
 component and explain the how and why. 
@@ -74,7 +73,7 @@ is expected use directly.
   * The Plumber - provides the interface to set-up run and monitor a pipeline
                   (run-time).
 
-.. info::
+.. note::
 
   These terms are also covered briefly in the dictionary section.
 
@@ -587,8 +586,7 @@ Plumber instance a pipeline can run in the background.
 
   #. starting/stopping a pipeline
 
-!!!TODO!!! explaining saving
-
+  
 
 
 

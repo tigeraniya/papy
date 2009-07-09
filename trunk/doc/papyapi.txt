@@ -4,6 +4,9 @@
 .. automodule:: papy.workers
    :members:
 
+.. automodule:: papy.utils
+   :members:
+
 .. automodule:: papy.workers.core
    :members:
 

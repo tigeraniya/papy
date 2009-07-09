@@ -1,61 +1,42 @@
+""" The PaPy gui written in Tkinter.
+"""
 #!/usr/bin/env python
-# Python
+# Python imports
 from threading import Thread
 from Queue import Queue
 import code
 import os
-
-# Tkinter imports
+# Tkinter/Pmw/idlelib imports
 import Pmw
 from Tkinter import *
 from tkMessageBox import *
-#
 from idlelib.TreeWidget import TreeItem, TreeNode
-
+# PaPy/IMap imports
 from papy import *
 from IMap import *
 
 
-g = Graph()
-g.add_node('node_1')
-g.add_node('node_2')
-g.add_node('node_3')
-g['node_1'].xtra['x'] = 25
-g['node_1'].xtra['y'] = 25
-g['node_1'].xtra['color'] = 'red'
-g['node_1'].xtra['status'] = 'green'
-g['node_1'].xtra['screen_name'] = 'node_1'
-g['node_2'].xtra['x'] = 75
-g['node_2'].xtra['y'] = 75
-g['node_2'].xtra['color'] = 'blue'
-g['node_2'].xtra['status'] = 'orange'
-g['node_2'].xtra['screen_name'] = 'node_2'
+class RootItem(TreeItem):
+    
+    def __init__(self, items, item_pyclass, icon_name =None):
+        self.items = items
+        self.icon_name = icon_name 
+        self.item_pyclass = item_pyclass
 
-g['node_3'].xtra['x'] = 75
-g['node_3'].xtra['y'] = 25
-g['node_3'].xtra['color'] = 'green'
-g['node_3'].xtra['status'] = 'red'
-g['node_3'].xtra['screen_name'] = 'node_3'
+    def GetLabelText(self):
+        return "Name"
 
-g.add_edge(('node_1', 'node_2'))
-g.add_edge(('node_2', 'node_3'))
+    def GetText(self):
+        return "Value" 
 
+    def IsExpandable(self):
+        return True
 
+    def GetSubList(self):
+        return [self.item_pyclass(item) for item in self.items]
 
-class Options(dict):
-
-    defaults = (('app_name', 'PaPy'),
-                ('node_color', 'blue'),
-                ('node_status', 'green'),
-                ('graph_background', 'aliceblue'),
-                ('Pipers_background', 'white'),
-                ('IMaps_background', 'white')
-                )
-
-    def __init__(self, options =None):
-        init = dict(self.defaults)
-        init.update(options or {})
-        dict.__init__(self, init)
+    def GetIconName(self):
+        return self.icon_name
 
 
 class _TreeItem(TreeItem):
@@ -95,8 +76,11 @@ class AttributeTreeItem(TreeItem):
         self.item = item
         self.attr = attr
 
+    def GetLabelText(self):
+        return self.attr
+
     def GetText(self):
-        return "%s: %s" % (self.attr, getattr(self.item, self.attr.lower()))
+        return str(getattr(self.item, self.attr.lower()))
 
     def SetText(self, text):
         text = text.split(':')[1]
@@ -106,13 +90,14 @@ class AttributeTreeItem(TreeItem):
         return False
 
     def IsEditable(self):
-        return self.editable
+        return False
 
 
 class Tree(object):
 
-    def __init__(self, parent, **kwargs):
+    def __init__(self, parent, items, **kwargs):
         self.parent = parent
+        self.items = items
         self.name = kwargs.get('name')
         self.label_text = kwargs.get('label_text') or self.name
         self.add_text = kwargs.get('add_text') or 'add %s' %\
@@ -121,7 +106,7 @@ class Tree(object):
                                                         self.name[:-1]
         self.add_cmd = kwargs.get('add_cmd')
         self.del_cmd = kwargs.get('del_cmd')
-        self.node_pyclass = kwargs.get('node_pyclass') or eval('TreeNode')
+        self.root_pyclass = kwargs.get('root_pyclass') or eval('RootItem')
         self.item_pyclass = kwargs.get('item_pyclass') or eval(self.name[:-1] + 'TreeItem')
         self.make_widgets()
 
@@ -137,36 +122,44 @@ class Tree(object):
 
         canvas = Pmw.ScrolledCanvas(self.group.interior())
         self.canvas = canvas.component('canvas') 
-        self.canvas.config(bg =O[self.name + '_background'])#, width= 170, height =350)
+        self.canvas.config(bg =O[self.name + '_background'], width= 200)
         self.buttons.pack(side =BOTTOM, anchor =W)
+        self.root = TreeNode(self.canvas, None,\
+        self.root_pyclass(self.items, self.item_pyclass, O[self.name + '_root_icon']))
+         
+        # this patches TreeNode with icons for the specific tree.
+        icondir = os.path.join(os.path.dirname(__file__), 'icons', self.name + 'Tree')
+        icons = os.listdir(icondir)
+        for icon in icons:
+            image = PhotoImage(master =self.canvas,\
+                                file  =os.path.join(icondir, icon))
+            self.root.iconimages[icon] = image
+            
         canvas.pack(fill =BOTH, expand =YES)
         self.group.pack(fill =BOTH, expand =YES)
-
-
-    def add_item(self, item):
-        node = self.node_pyclass(self.canvas, None, self.item_pyclass(item))
-        node.update()
-
         
 
-    
+    def add_item(self, item):
+        self.root.children = []
+        node = TreeNode(self.canvas, self.root, self.item_pyclass(item))
+        node.update()
+        self.root.expand()
+
+        #self.root.view()
+        #node.view()
 
 
-
-    
-    
-
-
+        
 class MainMenuBar(Pmw.MainMenuBar):
 
     def __init__(self, parent, **kwargs):
         apply(Pmw.MainMenuBar.__init__, (self, parent), kwargs)
-        self.create_widgets()
+        self.make_widgets()
 
     def not_impl(self):
         showerror(message ='Not implemented')
 
-    def create_widgets(self):
+    def make_widgets(self):
         self.addmenu('File', 'Load/Save/Exit')
 
         self.addmenuitem('File', 'command', 'Load',
@@ -369,7 +362,7 @@ class GraphCanvas(Pmw.ScrolledCanvas):
 
     def mouse1_up(self, event):
         self.lasttag = []
-        root.frame.status_bar.message('state', 'canvas released at: %s-%s' % (event.x, event.y))
+        root.papy.status_bar.message('state', 'canvas released at: %s-%s' % (event.x, event.y))
 
     def mouse3_down(self, event):
         lasttags = self.gettags(CURRENT)
@@ -415,7 +408,6 @@ class NoteBook(Pmw.NoteBook):
 
 class LoggingShell(NoteBook):
     
-
     def make_widgets(self):
         self.add('Shell')
         self.add('Logging')
@@ -429,24 +421,27 @@ class Pipeline(NoteBook):
         self.tab('Pipeline').focus_set()
 
 
-class PapyMainFrame(Frame):
-    def __init__(self, parent =None, title =None,**kwargs):
-        Frame.__init__(self, parent)
-        self.master.title(title or O['app_name'])
+class PaPyGui(Pmw.MegaToplevel):
+
+    def __init__(self, parent, **kwargs):
+        kwargs['title'] = O['app_name']
+        apply(Pmw.MegaToplevel.__init__, (self, parent), kwargs)      
+        self.toplevel = self.interior()
+        self.make_namespace()
+        self.make_plumber()
         self.make_widgets()
-        self.pack(expand =YES, fill =BOTH)
 
     def make_widgets(self, title =None):
         #main menu
-        self.menu_bar = MainMenuBar(self)
-        self.master.config(menu =self.menu_bar)
+        self.menu_bar = MainMenuBar(self.toplevel)
+        self.toplevel.config(menu =self.menu_bar)
 
-        # toolbar
-        self.tool_bar = ToolBar(self)
+        #toolbar
+        self.tool_bar = ToolBar(self.toplevel)
         self.tool_bar.pack(fill =X)
 
         # 4 panes
-        self.lr = PanedWindow(self)
+        self.lr = PanedWindow(self.toplevel)
         self.lr.pack(fill=BOTH, expand=YES)
 
         self.l = PanedWindow(self.lr, orient=VERTICAL, showhandle =YES, sashwidth =20)
@@ -455,11 +450,10 @@ class PapyMainFrame(Frame):
         self.lr.add(self.r, stretch ='always')
         
         # pipers
-        self.pipers = Tree(self.l, name ='Pipers')
+        self.pipers = Tree(self.l, self.namespace['pipers'], name ='Pipers')
         # imaps
-        self.imaps = Tree(self.l, name ='IMaps')
+        self.imaps = Tree(self.l, self.namespace['imaps'], name ='IMaps')
 
-        
         self.l.add(self.pipers.frame, stretch ='always')
         self.l.add(self.imaps.frame, stretch ='always')
         self.l.paneconfigure(self.pipers.frame, sticky =N+E+W+S) 
@@ -475,80 +469,136 @@ class PapyMainFrame(Frame):
         self.r.paneconfigure(self.io, sticky =N+E+W+S) 
 
         # statusbar
-        self.status_bar = Pmw.MessageBar(self,
+        self.status_bar = Pmw.MessageBar(self.toplevel,
 		   entry_relief = 'groove',
 		       labelpos = W,
 		     label_text = 'Status:')
         self.status_bar.pack(fill =BOTH, anchor =W)
 
+    def make_namespace(self):
+        self.namespace = {}
+        self.namespace['papy'] = self
+        self.namespace['functions'] = set([])
+        self.namespace['imaps'] = set([])
+        self.namespace['pipers'] = set([])
 
-#class GuiPlumber(object):
+    def add_piper(self, worker, **kwargs):
+        piper = Piper(worker, **kwargs)
+        self.namespace['pipers'].add(piper)
+        self.pipers.add_item(piper)
 
-#    def start_console(*args, **kwargs):
+    def del_piper(self, **kwargs):
+        pass
 
-#        def ic():
-#            ic = code.InteractiveConsole()
-#            ic.interact()
+    def add_imap(self, **kwargs):
+        imap = IMap(**kwargs)
+        self.namespace['imaps'].add(imap)
+        self.imaps.add_item(imap)
 
-#        console_thread = Thread(target =ic)
-#        console_thread.daemon = True
-#        console_thread.start()
+    def del_imap(selfm, **kwargs):
+        pass
 
-#    def __init__(self, root, plumber =None, interactive =True):
-#        self.root = root
-#        self.plumber = plumber
-#        self.interactive = interactive
-#        if self.interactive:
-#            self.start_console()
-#        if self.plumber:
-#            self.st
+    def make_plumber(self):
+        if False: # some input file
+            pass
+        else: 
+            self.namespace['plumber'] = Plumber()
+
+class Options(dict):
+    """ Provide options throughout the PaPy Gui application.
+    """
+
+    defaults = (('app_name', 'PaPy'),
+                ('node_color', 'blue'),
+                ('node_status', 'green'),
+                ('graph_background', 'aliceblue'),
+                ('Pipers_background', 'white'),
+                ('Pipers_root_icon', 'pipe_16.gif'),
+                ('IMaps_root_icon', 'gear_16.gif'),
+                ('IMaps_background', 'white')
+                )
+
+    def __init__(self, config_options =None, command_options =None):
+        init = dict(self.defaults)
+        init.update(config_options or {})
+        init.update(command_options or {})
+        dict.__init__(self, init)
 
 
+class ConfigOptions(dict):
+    pass
 
 
-
+class CommandOptions(dict):
+    pass
 
 
 if __name__ == '__main__':
         
-    #import idlelib
-    #from idlelib import PyShell
-    #PyShellEditorWindow=PyShell.PyShellEditorWindow
-    #PyShellFileList=PyShell.PyShellFileList
-    #idlelib.PyShell.use_subprocess = False
-    #root.flist = PyShellFileList(root)
-    #root.firstidle = True
-    #root.save_idle = None
-    #flist = idlelib.PyShell.PyShellFileList(root)
-    #root.withdraw()
-    #flist.pyshell = PyShell.PyShell(root)
-    #flist.pyshell.begin()
-        
+    cfg_opts = ConfigOptions()
+    cmd_opts = CommandOptions()
 
-    O = Options()
+    O = Options(cfg_opts, cmd_opts)
     root = Tk()
+    root.withdraw()
     Pmw.initialise(root)
-    root.frame = PapyMainFrame(root)
-    #root.minsize(root.winfo_reqwidth(), root.winfo_reqheight())
-
-    imap = IMap()
-    piper = Piper(workers.io.print_, parallel =imap)
-    root.frame.pipers.add_item(piper)
-    root.frame.imaps.add_item(imap)
-
-    root.frame.graph = GraphCanvas(graph =g, parent =root.frame.pipeline.page('Pipeline'))
-    root.frame.graph.pack(expand =YES, fill =BOTH)
-    root.frame.pipeline.setnaturalsize()
+    papy = PaPyGui(root)
 
 
 
 
+    g = Graph()
+    g.add_node('node_1')
+    g.add_node('node_2')
+    g.add_node('node_3')
+    g['node_1'].xtra['x'] = 25
+    g['node_1'].xtra['y'] = 25
+    g['node_1'].xtra['color'] = 'red'
+    g['node_1'].xtra['status'] = 'green'
+    g['node_1'].xtra['screen_name'] = 'node_1'
+    g['node_2'].xtra['x'] = 75
+    g['node_2'].xtra['y'] = 75
+    g['node_2'].xtra['color'] = 'blue'
+    g['node_2'].xtra['status'] = 'orange'
+    g['node_2'].xtra['screen_name'] = 'node_2'
+
+    g['node_3'].xtra['x'] = 75
+    g['node_3'].xtra['y'] = 25
+    g['node_3'].xtra['color'] = 'green'
+    g['node_3'].xtra['status'] = 'red'
+    g['node_3'].xtra['screen_name'] = 'node_3'
+
+    g.add_edge(('node_1', 'node_2'))
+    g.add_edge(('node_2', 'node_3'))
 
 
 
+    papy.add_imap()
+    papy.add_imap()
+    papy.add_imap()
+    papy.add_imap()
 
+    papy.add_piper(workers.io.dump_item)
+    papy.add_piper(workers.io.print_)
 
+    #root.papy.graph = GraphCanvas(graph =g, parent =root.papy.pipeline.page('Pipeline'))
+    #root.papy.graph.pack(expand =YES, fill =BOTH)
 
+    # start python gui interpreter
+    if O:
+        pass
+    # start python shell interpreter
+    if O:
+        def ic():
+            ic = code.InteractiveConsole(papy.namespace)
+            ic.interact()
+        console_thread = Thread(target =ic)
+        console_thread.daemon = True
+        console_thread.start()
 
+    papy.protocol("WM_DELETE_WINDOW", root.destroy)
     root.mainloop()
-    
+
+  
+
+

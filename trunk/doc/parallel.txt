@@ -1,10 +1,10 @@
-About the Parallelism in PaPy
-=============================
+About the Parallelism in *PaPy*
+===============================
 
-This document explains and shows how to use the parallel features of *PaPy*. The
-first paragraphs introduce the ``map`` and ``imap`` functions and the *IMap* object. 
-The types of parallelism, are explained in the later sections where also typical 
-optimizations of pipelines are covered. 
+This document explains and gives code snippets how to use the parallel features
+of *PaPy*. The first paragraphs introduce the ``map`` and ``imap`` functions and
+the *IMap* object.  The types of parallelism, are explained in the later
+sections where also typical optimizations, bottlenecks of pipelines are covered. 
 
 Parallel functionality is provided by the *IMap* class. In the most basic mode
 of operation it can be called exactly like ``itertools.imap`` or the
@@ -152,7 +152,7 @@ The results are either returned imediately or stored in a result list. The
 maximum size of this list is the size of temporary list and the size of the
 input.  The reason for this behaviour is the order by which tasks i.e.
 (function, data) tuples are submitted to the pool. If one pool handles two
-functions first all (radians, *) tuples are submited and then all (degrees, *).
+functions first all (radians, x) tuples are submited and then all (degrees, x).
 The outer function is evaluated last so for multiple and computationally
 expensive functions the first result might be availble after a long lag phase
 followed by a burst of results.

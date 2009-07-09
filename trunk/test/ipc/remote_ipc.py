@@ -7,9 +7,9 @@ logger.start_logger(log_to_screen =False, log_rotate =True)
 
 @imports([['random', []]])
 def random_list(inbox, list_size):
-    raise Exception
     random.seed()
-    random_list = [random.random() for i in xrange(list_size)]
+    for i in range(1000):
+        random_list = [random.random() for i in xrange(list_size)]
     return random_list
 
 def sum_list(inbox):
@@ -35,8 +35,8 @@ def runtime(options):
     type = options['--type']
     list_size = int(options['--list_size'])
     worker_num = int(options['--worker_num'])
-    #imap1 = IMap(worker_num =0, worker_remote=[['struc6.chem.virginia.edu:18812', 4]])
-    imap1 = IMap(worker_num =0, worker_remote=[['localhost:18888', 4]])
+    imap1 = IMap(worker_num =worker_num, worker_remote=[['struc6.chem.virginia.edu:18812', 8]])
+    #imap1 = IMap(worker_num =0, worker_remote=[['localhost:18888', 4]])
     imap2 = IMap(worker_num =worker_num)
     return (imap1, imap2, type, list_size)
 
