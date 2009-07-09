@@ -1,19 +1,20 @@
+#!/usr/bin/env python
 """ The PaPy gui written in Tkinter.
 """
-#!/usr/bin/env python
+# PaPy/IMap imports
+from papy import Piper, Plumber, Graph, workers
+from IMap import IMap
+
 # Python imports
 from threading import Thread
 from Queue import Queue
 import code
 import os
 # Tkinter/Pmw/idlelib imports
-import Pmw
 from Tkinter import *
 from tkMessageBox import *
 from idlelib.TreeWidget import TreeItem, TreeNode
-# PaPy/IMap imports
-from papy import *
-from IMap import *
+import Pmw
 
 
 class RootItem(TreeItem):
@@ -80,7 +81,11 @@ class AttributeTreeItem(TreeItem):
         return self.attr
 
     def GetText(self):
-        return str(getattr(self.item, self.attr.lower()))
+        attr = getattr(self.item, self.attr.lower())
+        try:
+            return attr.__name__
+        except AttributeError:
+            return repr(attr)
 
     def SetText(self, text):
         text = text.split(':')[1]
@@ -110,6 +115,11 @@ class Tree(object):
         self.item_pyclass = kwargs.get('item_pyclass') or eval(self.name[:-1] + 'TreeItem')
         self.make_widgets()
 
+    def update(self):
+        self.root.children = []
+        self.root.update()
+        self.root.expand()
+
     def make_widgets(self):
         self.frame = Frame(self.parent)
         self.buttons = Pmw.ButtonBox(self.frame, padx =0, pady =0)
@@ -130,7 +140,7 @@ class Tree(object):
         # this patches TreeNode with icons for the specific tree.
         icondir = os.path.join(os.path.dirname(__file__), 'icons', self.name + 'Tree')
         icons = os.listdir(icondir)
-        for icon in icons:
+        for icon in (i for i in icons if i.endswith('gif')):
             image = PhotoImage(master =self.canvas,\
                                 file  =os.path.join(icondir, icon))
             self.root.iconimages[icon] = image
@@ -138,15 +148,13 @@ class Tree(object):
         canvas.pack(fill =BOTH, expand =YES)
         self.group.pack(fill =BOTH, expand =YES)
         
-
     def add_item(self, item):
-        self.root.children = []
-        node = TreeNode(self.canvas, self.root, self.item_pyclass(item))
-        node.update()
-        self.root.expand()
+        TreeNode(self.canvas, self.root, self.item_pyclass(item))
+        self.update()
 
-        #self.root.view()
-        #node.view()
+    def del_item(self, item):
+        self.update()
+
 
 
         
@@ -477,7 +485,7 @@ class PaPyGui(Pmw.MegaToplevel):
 
     def make_namespace(self):
         self.namespace = {}
-        self.namespace['papy'] = self
+        self.namespace['pipeline'] = self
         self.namespace['functions'] = set([])
         self.namespace['imaps'] = set([])
         self.namespace['pipers'] = set([])
@@ -488,20 +496,22 @@ class PaPyGui(Pmw.MegaToplevel):
         self.pipers.add_item(piper)
 
     def del_piper(self, **kwargs):
-        pass
+        self.namespace['pipers'].remove(piper)
+        self.pipers.del_item(piper)
 
     def add_imap(self, **kwargs):
         imap = IMap(**kwargs)
         self.namespace['imaps'].add(imap)
         self.imaps.add_item(imap)
 
-    def del_imap(selfm, **kwargs):
-        pass
+    def del_imap(self, imap, **kwargs):
+        self.namespace['imaps'].remove(imap)
+        self.imaps.del_item(imap)
 
     def make_plumber(self):
         if False: # some input file
             pass
-        else: 
+        else:
             self.namespace['plumber'] = Plumber()
 
 class Options(dict):
@@ -509,6 +519,7 @@ class Options(dict):
     """
 
     defaults = (('app_name', 'PaPy'),
+                ('default_font', ("tahoma", 8)),
                 ('node_color', 'blue'),
                 ('node_status', 'green'),
                 ('graph_background', 'aliceblue'),
@@ -537,9 +548,9 @@ if __name__ == '__main__':
         
     cfg_opts = ConfigOptions()
     cmd_opts = CommandOptions()
-
     O = Options(cfg_opts, cmd_opts)
     root = Tk()
+    root.option_add("*font", O['default_font'])
     root.withdraw()
     Pmw.initialise(root)
     papy = PaPyGui(root)
@@ -547,29 +558,29 @@ if __name__ == '__main__':
 
 
 
-    g = Graph()
-    g.add_node('node_1')
-    g.add_node('node_2')
-    g.add_node('node_3')
-    g['node_1'].xtra['x'] = 25
-    g['node_1'].xtra['y'] = 25
-    g['node_1'].xtra['color'] = 'red'
-    g['node_1'].xtra['status'] = 'green'
-    g['node_1'].xtra['screen_name'] = 'node_1'
-    g['node_2'].xtra['x'] = 75
-    g['node_2'].xtra['y'] = 75
-    g['node_2'].xtra['color'] = 'blue'
-    g['node_2'].xtra['status'] = 'orange'
-    g['node_2'].xtra['screen_name'] = 'node_2'
+    #g = Graph()
+    #g.add_node('node_1')
+    #g.add_node('node_2')
+    #g.add_node('node_3')
+    #g['node_1'].xtra['x'] = 25
+    #g['node_1'].xtra['y'] = 25
+    #g['node_1'].xtra['color'] = 'red'
+    #g['node_1'].xtra['status'] = 'green'
+    #g['node_1'].xtra['screen_name'] = 'node_1'
+    #g['node_2'].xtra['x'] = 75
+    #g['node_2'].xtra['y'] = 75
+    #g['node_2'].xtra['color'] = 'blue'
+    #g['node_2'].xtra['status'] = 'orange'
+    #g['node_2'].xtra['screen_name'] = 'node_2'
 
-    g['node_3'].xtra['x'] = 75
-    g['node_3'].xtra['y'] = 25
-    g['node_3'].xtra['color'] = 'green'
-    g['node_3'].xtra['status'] = 'red'
-    g['node_3'].xtra['screen_name'] = 'node_3'
+    #g['node_3'].xtra['x'] = 75
+    #g['node_3'].xtra['y'] = 25
+    #g['node_3'].xtra['color'] = 'green'
+    #g['node_3'].xtra['status'] = 'red'
+    #g['node_3'].xtra['screen_name'] = 'node_3'
 
-    g.add_edge(('node_1', 'node_2'))
-    g.add_edge(('node_2', 'node_3'))
+    #g.add_edge(('node_1', 'node_2'))
+    #g.add_edge(('node_2', 'node_3'))
 
 
 
@@ -595,7 +606,7 @@ if __name__ == '__main__':
         console_thread = Thread(target =ic)
         console_thread.daemon = True
         console_thread.start()
-
+    
     papy.protocol("WM_DELETE_WINDOW", root.destroy)
     root.mainloop()
 
