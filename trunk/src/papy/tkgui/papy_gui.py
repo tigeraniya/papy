@@ -13,16 +13,18 @@ import os
 # Tkinter/Pmw/idlelib imports
 from Tkinter import *
 from tkMessageBox import *
-from idlelib.TreeWidget import TreeItem, TreeNode
+from TreeWidget import TreeItem, TreeNode
 import Pmw
 
+papy = None
 
 class RootItem(TreeItem):
     
-    def __init__(self, items, item_pyclass, icon_name =None):
+    def __init__(self, items, item_pyclass, tree, icon_name =None):
         self.items = items
-        self.icon_name = icon_name 
         self.item_pyclass = item_pyclass
+        self.tree = tree
+        self.icon_name = icon_name 
 
     def GetLabelText(self):
         return "Name"
@@ -34,7 +36,7 @@ class RootItem(TreeItem):
         return True
 
     def GetSubList(self):
-        return [self.item_pyclass(item) for item in self.items]
+        return [self.item_pyclass(item, self) for item in self.items]
 
     def GetIconName(self):
         return self.icon_name
@@ -42,8 +44,9 @@ class RootItem(TreeItem):
 
 class _TreeItem(TreeItem):
 
-    def __init__(self, item):
+    def __init__(self, item, root):
         self.item = item
+        self.root = root
     
     def GetText(self):
         return self.item.name
@@ -57,6 +60,10 @@ class _TreeItem(TreeItem):
     def IsEditable(self):
         return True
     
+    def OnSelect(self):
+        self.root.tree.update_selected(self.item)
+        
+
     def GetSubList(self):
         return [AttributeTreeItem(self.item, attr) for attr in self.attrs]
 
@@ -76,6 +83,12 @@ class AttributeTreeItem(TreeItem):
     def __init__(self, item, attr):
         self.item = item
         self.attr = attr
+
+    def GetIconName(self):
+        return 'attribute'
+
+    def GetSelectedIconName(self):
+        return 'attribute'
 
     def GetLabelText(self):
         return self.attr
@@ -100,30 +113,31 @@ class AttributeTreeItem(TreeItem):
 
 class Tree(object):
 
-    def __init__(self, parent, items, **kwargs):
+    def __init__(self, parent, items, dialogs, **kwargs):
         self.parent = parent
         self.items = items
-        self.name = kwargs.get('name')
+        self.dialogs = dialogs
+        self.selected_item = None
+        self.name = kwargs.get('name') or self.name
         self.label_text = kwargs.get('label_text') or self.name
-        self.add_text = kwargs.get('add_text') or 'add %s' %\
-                                                        self.name[:-1]
-        self.del_text = kwargs.get('del_text') or 'del %s' %\
-                                                        self.name[:-1]
-        self.add_cmd = kwargs.get('add_cmd')
-        self.del_cmd = kwargs.get('del_cmd')
+        self.new_text = 'new %s' % self.name[:-1]
+        self.del_text = 'remove %s' % self.name[:-1]
         self.root_pyclass = kwargs.get('root_pyclass') or eval('RootItem')
         self.item_pyclass = kwargs.get('item_pyclass') or eval(self.name[:-1] + 'TreeItem')
-        self.make_widgets()
+        self.make_widgets()        
 
     def update(self):
         self.root.children = []
         self.root.update()
         self.root.expand()
 
+    def update_selected(self, item):
+        self.selected_item = item
+        
     def make_widgets(self):
         self.frame = Frame(self.parent)
         self.buttons = Pmw.ButtonBox(self.frame, padx =0, pady =0)
-        self.buttons.add(self.add_text, command =self.add_cmd)
+        self.buttons.add(self.new_text, command =self.new_cmd)
         self.buttons.add(self.del_text, command =self.del_cmd)
 
         self.group = Pmw.Group(self.frame, tag_pyclass =Label,
@@ -135,7 +149,7 @@ class Tree(object):
         self.canvas.config(bg =O[self.name + '_background'], width= 200)
         self.buttons.pack(side =BOTTOM, anchor =W)
         self.root = TreeNode(self.canvas, None,\
-        self.root_pyclass(self.items, self.item_pyclass, O[self.name + '_root_icon']))
+        self.root_pyclass(self.items, self.item_pyclass, self, O[self.name + '_root_icon']))
          
         # this patches TreeNode with icons for the specific tree.
         icondir = os.path.join(os.path.dirname(__file__), 'icons', self.name + 'Tree')
@@ -149,19 +163,41 @@ class Tree(object):
         self.group.pack(fill =BOTH, expand =YES)
         
     def add_item(self, item):
-        TreeNode(self.canvas, self.root, self.item_pyclass(item))
+        #TreeNode(self.canvas, self.root, self.item_pyclass(item, root =self.root))
         self.update()
 
     def del_item(self, item):
         self.update()
 
+class PipersTree(Tree):
+    
+    name = 'Pipers'
+
+    def new_cmd(self):
+        self.dialogs['new_piper'].activate()
+
+    def del_cmd(self):
+        self.dialogs['del_piper'].activate()
+        
 
 
+class IMapsTree(Tree):
+    
+    name = 'IMaps'
+
+    def new_cmd(self):
+        print self.selected_item
+
+    def del_cmd(self):
+        print self.selected_item
+
+        
         
 class MainMenuBar(Pmw.MainMenuBar):
 
-    def __init__(self, parent, **kwargs):
+    def __init__(self, parent, dialogs, **kwargs):
         apply(Pmw.MainMenuBar.__init__, (self, parent), kwargs)
+        self.dialogs = dialogs
         self.make_widgets()
 
     def not_impl(self):
@@ -189,7 +225,7 @@ class MainMenuBar(Pmw.MainMenuBar):
 
         self.addmenu('Help', 'User manuals', name = 'help')
         self.addmenuitem('Help', 'command', 'About this application',
-                command = None,
+                command = self.dialogs['about'].show,
                   label = 'About')
 
 
@@ -429,19 +465,40 @@ class Pipeline(NoteBook):
         self.tab('Pipeline').focus_set()
 
 
+
 class PaPyGui(Pmw.MegaToplevel):
 
     def __init__(self, parent, **kwargs):
         kwargs['title'] = O['app_name']
-        apply(Pmw.MegaToplevel.__init__, (self, parent), kwargs)      
-        self.toplevel = self.interior()
+        apply(Pmw.MegaToplevel.__init__, (self, parent), kwargs)    
         self.make_namespace()
+        self.toplevel = self.interior()
+
+        self.make_dialogs()
         self.make_plumber()
         self.make_widgets()
 
+    def make_dialogs(self):
+        # About
+        self.dialogs = {}
+        self.dialogs['about'] = Pmw.AboutDialog(self.toplevel, applicationname = 'My Application')
+        self.dialogs['about'].withdraw()
+
+        def execute(result):
+            print 'You clicked on', result
+            if result not in ('Help',):
+                self.dialogs['new_piper'].deactivate(result)
+
+        self.dialogs['new_piper'] = Pmw.Dialog(self.toplevel, buttons = ('Create', 'Cancel', 'Help'),
+                                                        defaultbutton = 'Cancel',
+                                                                title = 'Create Piper',
+	                                                          command = execute)
+        self.dialogs['new_piper'].withdraw()
+
+
     def make_widgets(self, title =None):
         #main menu
-        self.menu_bar = MainMenuBar(self.toplevel)
+        self.menu_bar = MainMenuBar(self.toplevel, self.dialogs)
         self.toplevel.config(menu =self.menu_bar)
 
         #toolbar
@@ -458,9 +515,9 @@ class PaPyGui(Pmw.MegaToplevel):
         self.lr.add(self.r, stretch ='always')
         
         # pipers
-        self.pipers = Tree(self.l, self.namespace['pipers'], name ='Pipers')
+        self.pipers = PipersTree(self.l, self.namespace['pipers'], self.dialogs)
         # imaps
-        self.imaps = Tree(self.l, self.namespace['imaps'], name ='IMaps')
+        self.imaps = IMapsTree(self.l, self.namespace['imaps'], self.dialogs)
 
         self.l.add(self.pipers.frame, stretch ='always')
         self.l.add(self.imaps.frame, stretch ='always')
@@ -523,7 +580,7 @@ class Options(dict):
                 ('node_color', 'blue'),
                 ('node_status', 'green'),
                 ('graph_background', 'aliceblue'),
-                ('Pipers_background', 'white'),
+                ('Pipers_background', 'pink'),
                 ('Pipers_root_icon', 'pipe_16.gif'),
                 ('IMaps_root_icon', 'gear_16.gif'),
                 ('IMaps_background', 'white')
@@ -545,15 +602,15 @@ class CommandOptions(dict):
 
 
 if __name__ == '__main__':
-        
     cfg_opts = ConfigOptions()
     cmd_opts = CommandOptions()
     O = Options(cfg_opts, cmd_opts)
     root = Tk()
     root.option_add("*font", O['default_font'])
     root.withdraw()
-    Pmw.initialise(root)
     papy = PaPyGui(root)
+    Pmw.initialise(root)
+
 
 
 

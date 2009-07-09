@@ -16,12 +16,8 @@
 
 import os
 from Tkinter import *
-import imp
 
-import ZoomHeight
-from configHandler import idleConf
-
-ICONDIR = "Icons"
+ICONDIR = "icons"
 
 # Look for Icons subdirectory in the same directory as this module
 try:
@@ -67,9 +63,8 @@ class TreeNode:
         self.children = []
         self.x = self.y = None
         self.iconimages = {} # cache of PhotoImage instances for icons
-	self.font = Button(canvas).cget("font")
-
-
+        self.font = Button(canvas).cget("font")
+        
     def destroy(self):
         for c in self.children[:]:
             self.children.remove(c)
@@ -96,6 +91,8 @@ class TreeNode:
         self.canvas.delete(self.image_id)
         self.drawicon()
         self.drawtext()
+        self.item.OnSelect()
+        return "break"
 
     def deselect(self, event=None):
         if not self.selected:
@@ -124,6 +121,11 @@ class TreeNode:
             self.expand()
         self.item.OnDoubleClick()
         return "break"
+
+    def context(self, event=None):
+        if not self.selected:
+            self.select()
+        self.item.OnRightClick()
 
     def expand(self, event=None):
         if not self.item._IsExpandable():
@@ -219,14 +221,15 @@ class TreeNode:
         if self.selected:
             imagename = (self.item.GetSelectedIconName() or
                          self.item.GetIconName() or
-                         "openfolder")
+                         "select")
         else:
-            imagename = self.item.GetIconName() or "folder"
+            imagename = self.item.GetIconName() or "unselect"
         image = self.geticonimage(imagename)
         id = self.canvas.create_image(self.x, self.y, anchor="nw", image=image)
         self.image_id = id
         self.canvas.tag_bind(id, "<1>", self.select)
         self.canvas.tag_bind(id, "<Double-1>", self.flip)
+        self.canvas.tag_bind(id, "<3>", self.context)
 
     def drawtext(self):
         textx = self.x+20-1
@@ -237,6 +240,7 @@ class TreeNode:
                                          text=labeltext, font=self.font)
             self.canvas.tag_bind(id, "<1>", self.select)
             self.canvas.tag_bind(id, "<Double-1>", self.flip)
+            self.canvas.tag_bind(id, "<3>", self.context)
             x0, y0, x1, y1 = self.canvas.bbox(id)
             textx = max(x1, 200) + 10
         text = self.item.GetText() or "<no text>"
@@ -251,15 +255,16 @@ class TreeNode:
         except AttributeError:
             # padding carefully selected (on Windows) to match Entry widget:
             self.label = Label(self.canvas, text=text, bd=0, padx=2, pady=2)
-        theme = idleConf.GetOption('main','Theme','name')
+        bg = self.canvas.cget('bg')
         if self.selected:
-            self.label.configure(idleConf.GetHighlight(theme, 'hilite'))
+            self.label.configure(foreground ='#000000', background =bg)
         else:
-            self.label.configure(idleConf.GetHighlight(theme, 'normal'))
+            self.label.configure(foreground ='#000000', background =bg)
         id = self.canvas.create_window(textx, texty,
                                        anchor="nw", window=self.label)
         self.label.bind("<1>", self.select_or_edit)
         self.label.bind("<Double-1>", self.flip)
+        self.label.bind("<3>", self.context)
         self.text_id = id
 
     def select_or_edit(self, event=None):
@@ -359,121 +364,9 @@ class TreeItem:
 
     def OnDoubleClick(self):
         """Called on a double-click on the item."""
-
+    def OnSelect(self):
+        """Called on a single-click on the item."""
+    def OnRightClick(self):
+        """Called on a right-click on the item."""
 
 # Example application
-
-class FileTreeItem(TreeItem):
-
-    """Example TreeItem subclass -- browse the file system."""
-
-    def __init__(self, path):
-        self.path = path
-
-    def GetText(self):
-        return os.path.basename(self.path) or self.path
-
-    def IsEditable(self):
-        return os.path.basename(self.path) != ""
-
-    def SetText(self, text):
-        newpath = os.path.dirname(self.path)
-        newpath = os.path.join(newpath, text)
-        if os.path.dirname(newpath) != os.path.dirname(self.path):
-            return
-        try:
-            os.rename(self.path, newpath)
-            self.path = newpath
-        except os.error:
-            pass
-
-    def GetIconName(self):
-        if not self.IsExpandable():
-            return "python" # XXX wish there was a "file" icon
-
-    def IsExpandable(self):
-        return os.path.isdir(self.path)
-
-    def GetSubList(self):
-        try:
-            names = os.listdir(self.path)
-        except os.error:
-            return []
-        names.sort(lambda a, b: cmp(os.path.normcase(a), os.path.normcase(b)))
-        sublist = []
-        for name in names:
-            item = FileTreeItem(os.path.join(self.path, name))
-            sublist.append(item)
-        return sublist
-
-
-# A canvas widget with scroll bars and some useful bindings
-
-class ScrolledCanvas:
-    def __init__(self, master, **opts):
-        if not opts.has_key('yscrollincrement'):
-            opts['yscrollincrement'] = 17
-        self.master = master
-        self.frame = Frame(master)
-        self.frame.rowconfigure(0, weight=1)
-        self.frame.columnconfigure(0, weight=1)
-        self.canvas = Canvas(self.frame, **opts)
-        self.canvas.grid(row=0, column=0, sticky="nsew")
-        self.vbar = Scrollbar(self.frame, name="vbar")
-        self.vbar.grid(row=0, column=1, sticky="nse")
-        self.hbar = Scrollbar(self.frame, name="hbar", orient="horizontal")
-        self.hbar.grid(row=1, column=0, sticky="ews")
-        self.canvas['yscrollcommand'] = self.vbar.set
-        self.vbar['command'] = self.canvas.yview
-        self.canvas['xscrollcommand'] = self.hbar.set
-        self.hbar['command'] = self.canvas.xview
-        self.canvas.bind("<Key-Prior>", self.page_up)
-        self.canvas.bind("<Key-Next>", self.page_down)
-        self.canvas.bind("<Key-Up>", self.unit_up)
-        self.canvas.bind("<Key-Down>", self.unit_down)
-        #if isinstance(master, Toplevel) or isinstance(master, Tk):
-        self.canvas.bind("<Alt-Key-2>", self.zoom_height)
-        self.canvas.focus_set()
-    def page_up(self, event):
-        self.canvas.yview_scroll(-1, "page")
-        return "break"
-    def page_down(self, event):
-        self.canvas.yview_scroll(1, "page")
-        return "break"
-    def unit_up(self, event):
-        self.canvas.yview_scroll(-1, "unit")
-        return "break"
-    def unit_down(self, event):
-        self.canvas.yview_scroll(1, "unit")
-        return "break"
-    def zoom_height(self, event):
-        ZoomHeight.zoom_height(self.master)
-        return "break"
-
-
-# Testing functions
-
-def test():
-    import PyShell
-    root = Toplevel(PyShell.root)
-    root.configure(bd=0, bg="yellow")
-    root.focus_set()
-    sc = ScrolledCanvas(root, bg="white", highlightthickness=0, takefocus=1)
-    sc.frame.pack(expand=1, fill="both")
-    item = FileTreeItem("C:/windows/desktop")
-    node = TreeNode(sc.canvas, None, item)
-    node.expand()
-
-def test2():
-    # test w/o scrolling canvas
-    root = Tk()
-    root.configure(bd=0)
-    canvas = Canvas(root, bg="white", highlightthickness=0)
-    canvas.pack(expand=1, fill="both")
-    item = FileTreeItem(os.curdir)
-    node = TreeNode(canvas, None, item)
-    node.update()
-    canvas.focus_set()
-
-if __name__ == '__main__':
-    test()
