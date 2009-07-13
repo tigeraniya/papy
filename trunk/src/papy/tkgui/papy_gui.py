@@ -10,6 +10,9 @@ from code import InteractiveConsole
 from threading import Thread
 from Queue import Queue, Empty
 import os
+import string
+PRINTABLE = string.letters + string.digits + string.punctuation
+
 # Tkinter/Pmw/idlelib imports
 from Tkinter import *
 from tkMessageBox import *
@@ -19,8 +22,8 @@ import Pmw
 
 class StreamQueue(Queue):
 
-    def read(self):
-        return self.get()
+    #def read(self):
+    #    return self.get()
 
     def readline(self):
         return self.get()
@@ -28,8 +31,8 @@ class StreamQueue(Queue):
     def write(self, cargo):
         return self.put(cargo)
 
-    def writeline(self):
-        return self.put(carg)
+    def writeline(self, cargo):
+        return self.put(cargo)
 
     def writelines(self, lines):
         for line in lines:
@@ -52,7 +55,7 @@ class ShellWidget(Pmw.ScrolledText):
         self.stdout = StreamQueue()
         self.stderr = self.stdout
         self.charbuf = []
-        self.charbuf_position = 0 # position in line
+        self.charbuf_position = 0   # position in line
         self.charbuf_history = None # lines entered
         self.text = self.component('text')
         self.text.bind('<Key>', self.keybuffer)
@@ -61,8 +64,10 @@ class ShellWidget(Pmw.ScrolledText):
     def poll_output(self):
         while self.stdout.qsize():
             try:
-                output = self.stdout.get()
+                output = self.stdout.get(0)
                 self.appendtext(output)
+                a = self.index("%s-1c" % INSERT) # this is a _huge_ hack
+                self.mark_set('LEFT_END', a )
             except Empty:
                 pass
         self.after(100, self.poll_output)
@@ -70,32 +75,42 @@ class ShellWidget(Pmw.ScrolledText):
     def keybuffer(self, key):
         """
         """
-        if '\x04' == key.char: #ctrl-D
-            self.stdin.put('exit()\n')
-            return
-        elif 'Left' == key.keysym:
-            self.charbuf_position -= 1
-        elif 'Right' == key.keysym:
-            papy.status_bar.message('state', '')
-            if self.compare(END, ">", "%s+1c" % INSERT):
-                self.charbuf_position += 1
-        elif 'BackSpace' == key.keysym:
-            try:
-                self.charbuf.pop(self.charbuf_position - 1)
-                self.charbuf_position -= 1
-            except IndexError:
-                pass
-        elif 'Return' == key.keysym:
+        self.text['state'] ='normal'
+        if key.keysym == 'Return':
             self.mark_set(INSERT, END) # move to the END
-            line = "".join(self.charbuf) + "\n"
+            line = "".join(self.charbuf) + '\n'
             self.stdin.put(line)
             self.charbuf = []
             self.charbuf_position = 0
-        elif len(key.char) == 1:
-            self.charbuf_position += 1
-            self.charbuf.insert(self.charbuf_position, key.char)
-        papy.status_bar.message('state', repr(self.charbuf_position))
+        elif key.keysym == 'Tab':
+            self.mark_set(INSERT, END) # move to the END
+            line = 'imp' + key.char
+            self.stdin.put(line)
+            self.charbuf = []
+            self.charbuf_position = 0
+            print readline.get_current_history_length()
+            return 'break'
 
+        elif self.compare('LEFT_END', '>', INSERT):
+            papy.status_bar.message('state',"key: %s"  % (key.keysym,))
+            self.text['state'] ='disabled'
+        elif 'Left' == key.keysym and self.charbuf_position:
+            self.charbuf_position -= 1
+        elif 'Right' == key.keysym and len(self.charbuf) - self.charbuf_position:
+            self.charbuf_position += 1
+        elif 'BackSpace' == key.keysym and self.charbuf_position:
+            self.charbuf_position -= 1
+            self.charbuf.pop(self.charbuf_position)
+        elif 'Delete' == key.keysym and len(self.charbuf) - self.charbuf_position:
+            self.charbuf.pop(self.charbuf_position)
+        elif len(key.char) == 1 and key.char in PRINTABLE:
+            self.charbuf.insert(self.charbuf_position, key.char)
+            self.charbuf_position += 1
+        else:
+            papy.status_bar.message('state',"key: %s"  % (key.keysym,))
+            return 'break'
+        #papy.status_bar.message('state',"LEND: %s"  % (self.index('LEFT_END'),))
+        #papy.status_bar.message('state',"%s"  % (repr(self.charbuf_position),))
 
     def kill_ic(self):
         self.stdin.put('exit()\n')
@@ -1074,6 +1089,9 @@ if __name__ == '__main__':
 
     #root.papy.graph = GraphCanvas(graph =g, parent =root.papy.pipeline.page('Pipeline'))
     #root.papy.graph.pack(expand =YES, fill =BOTH)
+    import readline
+    readline.parse_and_bind('tab: complete')
+    import rlcompleter
 
     # start python gui interpreter
     if O:
@@ -1084,7 +1102,9 @@ if __name__ == '__main__':
             sys.stdin = papy.shell.stdin
             sys.stdout = papy.shell.stdout
             sys.stderr = papy.shell.stderr
-            ic = InteractiveConsole(papy.namespace)
+            # small hack
+            ic = InteractiveConsole()
+            # FIXME
             ic.interact()
         console_thread = Thread(target =ic)
         console_thread.daemon = True
@@ -1096,4 +1116,8 @@ if __name__ == '__main__':
 
   
 
+# tkFileDialog.askopenfilename()
+#        if '\x04' == key.char: #ctrl-D
+#            self.stdin.put('exit()\n')
+#            return
 
