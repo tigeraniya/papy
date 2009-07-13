@@ -2,13 +2,13 @@
 """ The PaPy gui written in Tkinter.
 """
 # PaPy/IMap imports
-from papy import Piper, Plumber, Graph, workers
-from IMap import IMap
+from papy import *
+from IMap import *
 
 # Python imports
+from code import InteractiveConsole
 from threading import Thread
-from Queue import Queue
-import code
+from Queue import Queue, Empty
 import os
 # Tkinter/Pmw/idlelib imports
 from Tkinter import *
@@ -16,7 +16,90 @@ from tkMessageBox import *
 from TreeWidget import TreeItem, TreeNode
 import Pmw
 
-papy = None
+
+class StreamQueue(Queue):
+
+    def read(self):
+        return self.get()
+
+    def readline(self):
+        return self.get()
+
+    def write(self, cargo):
+        return self.put(cargo)
+
+    def writeline(self):
+        return self.put(carg)
+
+    def writelines(self, lines):
+        for line in lines:
+            self.writeline(line)
+
+    def flush(self):
+        pass
+
+    def fileno(self):
+        # this is a work-around the file-like stdin 
+        # assumptions in multiprocessing/process.py
+        raise OSError
+
+
+class ShellWidget(Pmw.ScrolledText):
+
+    def __init__(self, parent, **kwargs):
+        Pmw.ScrolledText.__init__(self, parent, **kwargs)
+        self.stdin = StreamQueue()
+        self.stdout = StreamQueue()
+        self.stderr = self.stdout
+        self.charbuf = []
+        self.charbuf_position = 0 # position in line
+        self.charbuf_history = None # lines entered
+        self.text = self.component('text')
+        self.text.bind('<Key>', self.keybuffer)
+        self.poll_output()
+
+    def poll_output(self):
+        while self.stdout.qsize():
+            try:
+                output = self.stdout.get()
+                self.appendtext(output)
+            except Empty:
+                pass
+        self.after(100, self.poll_output)
+
+    def keybuffer(self, key):
+        """
+        """
+        if '\x04' == key.char: #ctrl-D
+            self.stdin.put('exit()\n')
+            return
+        elif 'Left' == key.keysym:
+            self.charbuf_position -= 1
+        elif 'Right' == key.keysym:
+            papy.status_bar.message('state', '')
+            if self.compare(END, ">", "%s+1c" % INSERT):
+                self.charbuf_position += 1
+        elif 'BackSpace' == key.keysym:
+            try:
+                self.charbuf.pop(self.charbuf_position - 1)
+                self.charbuf_position -= 1
+            except IndexError:
+                pass
+        elif 'Return' == key.keysym:
+            self.mark_set(INSERT, END) # move to the END
+            line = "".join(self.charbuf) + "\n"
+            self.stdin.put(line)
+            self.charbuf = []
+            self.charbuf_position = 0
+        elif len(key.char) == 1:
+            self.charbuf_position += 1
+            self.charbuf.insert(self.charbuf_position, key.char)
+        papy.status_bar.message('state', repr(self.charbuf_position))
+
+
+    def kill_ic(self):
+        self.stdin.put('exit()\n')
+
 
 class RootItem(TreeItem):
     
@@ -36,7 +119,7 @@ class RootItem(TreeItem):
         return True
 
     def GetSubList(self):
-        return [self.item_pyclass(item, self) for item in self.items]
+        return [self.item_pyclass(item, self) for item in self.items.values()]
 
     def GetIconName(self):
         return self.icon_name
@@ -49,8 +132,11 @@ class _TreeItem(TreeItem):
         self.root = root
     
     def GetText(self):
-        return self.item.name
-
+        try:
+            return self.item.name
+        except:
+            return repr(self.item)
+            
     def SetText(self, text):
         self.item.name = text
 
@@ -63,20 +149,11 @@ class _TreeItem(TreeItem):
     def OnSelect(self):
         self.root.tree.update_selected(self.item)
         
-
     def GetSubList(self):
-        return [AttributeTreeItem(self.item, attr) for attr in self.attrs]
-
-
-class IMapTreeItem(_TreeItem):
-
-    attrs = ('worker_type', 'worker_num', 'worker_remote',\
-             'stride', 'buffer', 'ordered', 'skip')
+        return [self.subclass(self.item, subi) for subi in self.GetSubItems()]
     
-class PiperTreeItem(_TreeItem):
-    
-    attrs = ('worker', 'IMap', 'consume', 'produce', 'spawn', 'timeout',
-             'cmp', 'ornament', 'debug', 'track')
+    def GetSubItems(self):
+        return self.subitems
 
 class AttributeTreeItem(TreeItem):
     
@@ -96,9 +173,12 @@ class AttributeTreeItem(TreeItem):
     def GetText(self):
         attr = getattr(self.item, self.attr.lower())
         try:
-            return attr.__name__
+            return attr.name
         except AttributeError:
-            return repr(attr)
+            try:
+                return attr.__name__
+            except AttributeError:
+                return repr(attr)
 
     def SetText(self, text):
         text = text.split(':')[1]
@@ -109,6 +189,56 @@ class AttributeTreeItem(TreeItem):
 
     def IsEditable(self):
         return False
+
+
+class FuncArgsTreeItem(TreeItem):
+    
+    def __init__(self, item, func, args):
+        self.item = item
+        self.func = func
+        self.args = args
+
+    def GetIconName(self):
+        return 'python'
+
+    def GetSelectedIconName(self):
+        return 'python'
+
+    def GetLabelText(self):
+        try:
+            return self.func.name
+        except AttributeError:
+            return self.func.__name__
+
+    def GetText(self):
+        return repr(self.args)
+
+    def SetText(self, text):
+        self.args = eval(text)
+
+    def IsExpandable(self):
+        return False
+
+    def IsEditable(self):
+        return True
+
+
+class IMapTreeItem(_TreeItem):
+
+    subitems = ('worker_type', 'worker_num', 'worker_remote',\
+             'stride', 'buffer', 'ordered', 'skip')
+    subclass = AttributeTreeItem
+    
+class PiperTreeItem(_TreeItem):
+    
+    subitems = ('worker', 'IMap', 'consume', 'produce', 'spawn', 'timeout',\
+             'cmp', 'ornament', 'debug', 'track')
+    subclass = AttributeTreeItem
+
+class WorkerTreeItem(_TreeItem):
+    
+    def GetSubList(self):
+        return [FuncArgsTreeItem(self, f, a) for f, a in zip(self.item.task, self.item.args)]
 
 
 class Tree(object):
@@ -154,10 +284,10 @@ class Tree(object):
         # this patches TreeNode with icons for the specific tree.
         icondir = os.path.join(os.path.dirname(__file__), 'icons', self.name + 'Tree')
         icons = os.listdir(icondir)
-        for icon in (i for i in icons if i.endswith('gif')):
+        for icon in (i for i in icons if i.endswith('.gif')):
             image = PhotoImage(master =self.canvas,\
                                 file  =os.path.join(icondir, icon))
-            self.root.iconimages[icon] = image
+            self.root.iconimages[icon.split('.')[0]] = image
             
         canvas.pack(fill =BOTH, expand =YES)
         self.group.pack(fill =BOTH, expand =YES)
@@ -178,18 +308,31 @@ class PipersTree(Tree):
 
     def del_cmd(self):
         self.dialogs['del_piper'].activate()
-        
 
+
+class WorkersTree(Tree):
+    
+    name = 'Workers'
+
+    def new_cmd(self):
+        self.dialogs['new_worker'].activate()
+
+    def del_cmd(self):
+        self.dialogs['del_worker'].activate()
+        
 
 class IMapsTree(Tree):
     
     name = 'IMaps'
 
     def new_cmd(self):
-        print self.selected_item
+        self.dialogs['new_imap'].activate()
+
 
     def del_cmd(self):
-        print self.selected_item
+        self.dialogs['del_imap'].activate()
+
+
 
         
         
@@ -465,36 +608,282 @@ class Pipeline(NoteBook):
         self.tab('Pipeline').focus_set()
 
 
+class ScrolledLog(Pmw.ScrolledText):
+
+    def write(self, *args, **kwargs):
+        self.appendtext(*args, **kwargs)
+
+    
+
+class RestrictedComboBox(Pmw.ComboBox):
+    
+    def __init__(self, parent, **kwargs):
+        apply(Pmw.ComboBox.__init__, (self, parent), kwargs)  
+        self.component('entryfield_entry').bind('<Button-1>',
+                            lambda event: 'break')
+        self.component('entryfield_entry').bind('<B1-Motion>',
+                            lambda event: 'break')
+
+
+class _CreationDialog(Pmw.Dialog):
+    
+    def __init__(self, parent, **kwargs):
+        kwargs['buttons'] = ('Create', 'Cancel', 'Help')
+        kwargs['title'] = 'Create PaPy %s' % self.name.capitalize()
+        kwargs['command'] = self.create
+        kwargs['defaultbutton'] = 'Cancel'
+        apply(Pmw.Dialog.__init__, (self, parent), kwargs)
+        self.withdraw() # no flash
+        self.parent = parent
+        self.create_widgets()
+
+    def create_widgets(self):
+        self.group = Pmw.Group(self.interior(),\
+                               tag_pyclass =Label,\
+                               tag_text ="%s Arguments" %\
+                               self.name.capitalize())
+        # provided by sub-class
+        self.create_entries()
+        self.named_entries = [(name, getattr(self, name[1])) for name\
+                                     in sorted(self.defaults.keys())] 
+        entries = [e for n, e in self.named_entries] 
+        # align and pack
+        Pmw.alignlabels(entries)
+        for w in entries:
+            w.pack(expand =YES, fill =BOTH)
+        self.group.pack(expand =YES, fill =BOTH)
+        self.wm_resizable(NO, NO)
+
+    def update(self):
+        # reset previous selections
+        for (i, name), default in self.defaults.iteritems():
+            e = getattr(self, name)
+            if default is not None:
+                try:
+                    # combobox
+                    e.setlist(list(default)) 
+                    e.selectitem(0)
+                except AttributeError:
+                    # checkbuttons and counter
+                    try:
+                        # integer counter
+                        e.setvalue(int(default))
+                    except ValueError:
+                        # float counter
+                        e.setvalue(float(default))
+                    except TypeError:
+                        # checkbox
+                        e.setvalue(list(default))
+            else:
+                try:
+                    e.clear()      # clear selection
+                except AttributeError:
+                    e.setvalue([]) # deselect all checkboxes
+        # update entries which change
+        self.update_entries()
+
+    def update_entries(self):
+        pass
+      
+    def activate(self):
+        # super does not work with classic classes
+        self.update()
+        Pmw.Dialog.activate(self)
+
+    def create(self, result):
+        if result == 'Create':
+            self._create()                  
+        elif result == 'Help':
+            self.help()
+        self.deactivate(result)
+
+    def help(self):
+        pass
+
+class IMapDialog(_CreationDialog):
+   
+    name = 'imap'
+    defaults = {(0, 'name'):None, 
+                (1, 'worker_type'): ('process', 'thread'),
+                (2, 'worker_num'):'0',
+                (3, 'worker_remote'):None, 
+                (4, 'stride'):'0',
+                (5, 'buffer'):'0',
+                (6, 'misc'):('ordered',)} # remember to copy
+
+    def _create(self):
+        kwargs = {}
+        for (i, name), entry in self.named_entries:
+            value = entry.getvalue()
+            ns = papy.namespace
+            if value and value != self.defaults[(i, name)]:
+                if name == 'name':
+                    kwargs['name'] = value
+                elif name == 'worker_type':
+                    kwargs['worker_type'] = value[0]
+                elif name == 'worker_remote':
+                    kwargs['worker_remote'] = eval(value)
+                elif name == 'misc':
+                    for arg_true in name:
+                        kwargs[arg_true] = True      
+        papy.add_imap(**kwargs)
+       
+
+    def create_entries(self):
+
+        self.name = Pmw.EntryField(self.group.interior(),\
+                                   labelpos ='w',\
+		                           label_text ='Name:',\
+		                           validate ={'validator':'alphabetic'})
+        
+        self.worker_type = RestrictedComboBox(self.group.interior(),\
+                                 label_text ='Type:',\
+                                 labelpos ='w')
+
+        self.worker_remote = Pmw.EntryField(self.group.interior(),\
+                                   labelpos ='w',\
+		                           label_text ='Remote:')
+
+        self.parallel = RestrictedComboBox(self.group.interior(),\
+                                 label_text = 'IMap:',\
+                                 labelpos = 'w')        
+
+        for a in ('worker_num', 'stride', 'buffer'):
+            label = a.capitalize() + ':' if a != 'worker_num' else 'Number:'
+            setattr(self, a, Pmw.Counter(self.group.interior(),\
+                                label_text = label,\
+		                        labelpos = 'w'))
+
+        self.misc = Pmw.RadioSelect(self.group.interior(),
+                        buttontype = 'checkbutton',
+                        orient = 'vertical',
+                        labelpos = 'w',
+                        label_text = 'Misc.:',
+                        hull_borderwidth = 0)
+        self.misc.add('ordered')
+        self.misc.add('skip')
+
+
+class PiperDialog(_CreationDialog):
+
+    name = 'piper'
+    defaults = {(0,'name'):None, 
+                (1,'worker'):None, 
+                (2,'parallel'):None,
+                (3,'produce'):'1',
+                (4,'spawn'):'1',
+                (5,'consume'):'1',
+                (6,'timeout'):'0.0', 
+                (7,'cmp'):None,
+                (8,'ornament'):None,
+                (9,'runtime'):None}
+
+    def create_entries(self):
+
+        self.name = Pmw.EntryField(self.group.interior(),\
+                                   labelpos ='w',\
+		                           label_text ='Name:',\
+		                           validate ={'validator':'alphabetic'})
+        
+        self.worker = RestrictedComboBox(self.group.interior(),\
+                                 label_text = 'Worker:',\
+                                 labelpos = 'w')
+
+        self.parallel = RestrictedComboBox(self.group.interior(),\
+                                 label_text = 'IMap:',\
+                                 labelpos = 'w')        
+
+        for a in (('produce'),('spawn'),('consume')):
+	        setattr(self, a, Pmw.Counter(self.group.interior(),\
+                                label_text = a.capitalize() + ':',\
+		                        labelpos = 'w',\
+		                        entryfield_value = '1',\
+	                            entryfield_validate = {'validator' : 'integer',\
+			                    'min' : '1'}))
+        
+        self.timeout = Pmw.Counter(self.group.interior(),\
+                                label_text = 'Timeout:',\
+		                        labelpos = 'w',\
+		                        entryfield_value = '0.0',\
+                                increment = 0.1,\
+                                datatype = {'counter' : 'real'},\
+	                            entryfield_validate = \
+                                {'validator' : 'real', 'min' : 0.0})
+
+        self.cmp = RestrictedComboBox(self.group.interior(),\
+                                 label_text = 'Compare:',\
+                                 labelpos = 'w')
+        
+        self.ornament = Pmw.EntryField(self.group.interior(),\
+                                   labelpos ='w',\
+		                           label_text ='Ornament:')
+
+        self.runtime = Pmw.RadioSelect(self.group.interior(),
+                        buttontype = 'checkbutton',
+                        orient = 'vertical',
+                        labelpos = 'w',
+                        label_text = 'Runtime:',
+                        hull_borderwidth = 0)
+        self.runtime.add('debug')
+        self.runtime.add('track')
+
+    def update_entries(self):
+        # HARD CODED locations
+        self.parallel.setlist([i for i in papy.namespace['imaps']])
+        self.worker.setlist([w for w in papy.namespace['workers']])
+        self.cmp.setlist([o for o in papy.namespace['objects']])
+      
+    def _create(self):
+        named_entries = [(name, getattr(self, name[1])) for name\
+                                     in sorted(self.defaults.keys())] 
+        kwargs = {}
+        for (i, name), entry in self.named_entries:
+            value = entry.getvalue()
+            ns = papy.namespace
+            if value and value != self.defaults[(i, name)]:
+                if name == 'name':
+                    kwargs['name'] = value
+                elif name == 'worker':
+                    kwargs['worker'] = ns['workers'][value[0]]
+                elif name == 'parallel':
+                    kwargs['parallel'] = ns['imaps'][value[0]]
+                elif name in ('produce', 'spawn', 'consume'):
+                    kwargs[name] = int(value)
+                elif name == 'cmp':
+                    kwargs['parallel'] = ns['objects'][value[0]]
+                elif name == 'ornament':
+                    kwargs['ornament'] = eval(value)
+                elif name == 'runtime':
+                    for arg_true in value:
+                        kwargs[arg_true] = True
+        papy.add_piper(**kwargs)
+
 
 class PaPyGui(Pmw.MegaToplevel):
 
     def __init__(self, parent, **kwargs):
         kwargs['title'] = O['app_name']
-        apply(Pmw.MegaToplevel.__init__, (self, parent), kwargs)    
+        apply(Pmw.MegaToplevel.__init__, (self, parent), kwargs)
+        self.wm_withdraw() # hide
         self.make_namespace()
         self.toplevel = self.interior()
-
         self.make_dialogs()
         self.make_plumber()
         self.make_widgets()
+        self.start()
+
+
+    def start(self):
+        utils.logger.start_logger(log_filename =O['log_filename'], log_stream =self.log)        
 
     def make_dialogs(self):
         # About
         self.dialogs = {}
-        self.dialogs['about'] = Pmw.AboutDialog(self.toplevel, applicationname = 'My Application')
+        self.dialogs['about'] = Pmw.AboutDialog(self.toplevel, applicationname ='My Application')
         self.dialogs['about'].withdraw()
-
-        def execute(result):
-            print 'You clicked on', result
-            if result not in ('Help',):
-                self.dialogs['new_piper'].deactivate(result)
-
-        self.dialogs['new_piper'] = Pmw.Dialog(self.toplevel, buttons = ('Create', 'Cancel', 'Help'),
-                                                        defaultbutton = 'Cancel',
-                                                                title = 'Create Piper',
-	                                                          command = execute)
-        self.dialogs['new_piper'].withdraw()
-
+        self.dialogs['new_piper'] = PiperDialog(self.toplevel)
+        self.dialogs['new_imap'] = IMapDialog(self.toplevel)
+        
 
     def make_widgets(self, title =None):
         #main menu
@@ -516,18 +905,39 @@ class PaPyGui(Pmw.MegaToplevel):
         
         # pipers
         self.pipers = PipersTree(self.l, self.namespace['pipers'], self.dialogs)
-        # imaps
-        self.imaps = IMapsTree(self.l, self.namespace['imaps'], self.dialogs)
-
-        self.l.add(self.pipers.frame, stretch ='always')
-        self.l.add(self.imaps.frame, stretch ='always')
-        self.l.paneconfigure(self.pipers.frame, sticky =N+E+W+S) 
-        self.l.paneconfigure(self.imaps.frame, sticky =N+E+W+S) 
+        self.workers = WorkersTree(self.l, self.namespace['workers'], self.dialogs)
 
         # pipeline & code, shell & logging
-        self.pipeline = NoteBook(self.r, ['Pipeline', 'Functions'])
+        self.pipeline = NoteBook(self.r, ['Pipeline', 'Functions', 'IMaps'])
         self.io = NoteBook(self.r, ['Shell', 'Logging'])
+        
+        # imaps
+        self.imaps = IMapsTree(self.pipeline.page('IMaps'),\
+                               self.namespace['imaps'],\
+                               self.dialogs)
+        self.imaps.frame.pack(fill =BOTH, expand =YES)
 
+        # logging
+        self.log = ScrolledLog(self.io.page('Logging'),
+                    borderframe = True,
+                    text_padx = O['default_font'][1] // 2, # half-font
+                    text_pady = O['default_font'][1] // 2,
+                    text_wrap='none')
+        self.log.configure(text_state = 'disabled')
+        self.log.pack(fill=BOTH, expand=YES)
+        
+        # shell
+        self.shell = ShellWidget(self.io.page('Shell'),
+                    text_padx = O['default_font'][1] // 2, # half-font
+                    text_pady = O['default_font'][1] // 2)
+        self.shell.configure(text_bg =O['Shell_background'])
+        self.shell.pack(fill=BOTH, expand=YES)
+
+        # packing
+        self.l.add(self.pipers.frame, stretch ='always')
+        self.l.add(self.workers.frame, stretch ='always')
+        self.l.paneconfigure(self.pipers.frame, sticky =N+E+W+S) 
+        self.l.paneconfigure(self.workers.frame, sticky =N+E+W+S) 
         self.r.add(self.pipeline, stretch ='always')
         self.r.add(self.io, stretch ='always')
         self.r.paneconfigure(self.pipeline, sticky =N+E+W+S) 
@@ -543,13 +953,12 @@ class PaPyGui(Pmw.MegaToplevel):
     def make_namespace(self):
         self.namespace = {}
         self.namespace['pipeline'] = self
-        self.namespace['functions'] = set([])
-        self.namespace['imaps'] = set([])
-        self.namespace['pipers'] = set([])
+        for n in ('functions', 'workers', 'pipers', 'imaps', 'objects'):
+            self.namespace[n] = {}
 
-    def add_piper(self, worker, **kwargs):
-        piper = Piper(worker, **kwargs)
-        self.namespace['pipers'].add(piper)
+    def add_piper(self, **kwargs):
+        piper = Piper(**kwargs)
+        self.namespace['pipers'][piper.name] = piper
         self.pipers.add_item(piper)
 
     def del_piper(self, **kwargs):
@@ -558,12 +967,20 @@ class PaPyGui(Pmw.MegaToplevel):
 
     def add_imap(self, **kwargs):
         imap = IMap(**kwargs)
-        self.namespace['imaps'].add(imap)
+        self.namespace['imaps'][imap.name] = imap
         self.imaps.add_item(imap)
 
     def del_imap(self, imap, **kwargs):
         self.namespace['imaps'].remove(imap)
         self.imaps.del_item(imap)
+
+    def add_worker(self, **kwargs):
+        worker = Worker(**kwargs)
+        self.namespace['workers'][worker.name] = worker
+        self.workers.add_item(worker)
+
+    def del_worker(self):
+        pass
 
     def make_plumber(self):
         if False: # some input file
@@ -576,13 +993,17 @@ class Options(dict):
     """
 
     defaults = (('app_name', 'PaPy'),
+                ('log_filename', None),
                 ('default_font', ("tahoma", 8)),
                 ('node_color', 'blue'),
                 ('node_status', 'green'),
                 ('graph_background', 'aliceblue'),
                 ('Pipers_background', 'pink'),
-                ('Pipers_root_icon', 'pipe_16.gif'),
-                ('IMaps_root_icon', 'gear_16.gif'),
+                ('Workers_background', 'LightSteelBlue2'),
+                ('Shell_background', 'white'),
+                ('Pipers_root_icon', 'pipe_16'),
+                ('IMaps_root_icon', 'gear_16'),
+                ('Workers_root_icon', 'component_16'),
                 ('IMaps_background', 'white')
                 )
 
@@ -606,10 +1027,10 @@ if __name__ == '__main__':
     cmd_opts = CommandOptions()
     O = Options(cfg_opts, cmd_opts)
     root = Tk()
-    root.option_add("*font", O['default_font'])
     root.withdraw()
-    papy = PaPyGui(root)
     Pmw.initialise(root)
+    root.option_add("*font", O['default_font'])
+    papy = PaPyGui(root)
 
 
 
@@ -646,8 +1067,10 @@ if __name__ == '__main__':
     papy.add_imap()
     papy.add_imap()
 
-    papy.add_piper(workers.io.dump_item)
-    papy.add_piper(workers.io.print_)
+    papy.add_worker(functions =workers.io.dump_item)
+
+    papy.add_piper(worker =workers.io.dump_item)
+    papy.add_piper(worker =workers.io.print_)
 
     #root.papy.graph = GraphCanvas(graph =g, parent =root.papy.pipeline.page('Pipeline'))
     #root.papy.graph.pack(expand =YES, fill =BOTH)
@@ -658,13 +1081,17 @@ if __name__ == '__main__':
     # start python shell interpreter
     if O:
         def ic():
-            ic = code.InteractiveConsole(papy.namespace)
+            sys.stdin = papy.shell.stdin
+            sys.stdout = papy.shell.stdout
+            sys.stderr = papy.shell.stderr
+            ic = InteractiveConsole(papy.namespace)
             ic.interact()
         console_thread = Thread(target =ic)
         console_thread.daemon = True
         console_thread.start()
     
     papy.protocol("WM_DELETE_WINDOW", root.destroy)
+    papy.wm_deiconify()
     root.mainloop()
 
   

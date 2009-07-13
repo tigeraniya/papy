@@ -802,7 +802,7 @@ class Worker(object):
 
              Worker((function,),((arg1, arg2, arg3),))
     """
-    def __init__(self, functions, arguments =None):
+    def __init__(self, functions, arguments =None, name =None):
         is_p, is_w, is_f, is_ip, is_iw, is_if = inspect(functions)
         if is_f:
             self.task = (functions,)
@@ -822,8 +822,10 @@ class Worker(object):
         if len(self.task) != len(self.args):
             raise TypeError("The Worker expects the arguents as ((args1) ... (argsN)) " +\
             "got: %s" % arguments)
-        # 
+        # for representation
         self.__name__ =  ">".join([f.__name__ for f in self.task])
+        # for identification
+        self.name = "%s_%s" % (self.__name__, id(self))
 
     def __repr__(self):
         """Functions within a worker e.g. (f, g, h) are evaluated from left to right

@@ -6,10 +6,11 @@ import time
 
 
 def start_logger(log_to_file =True,\
-                 log_to_screen =True,\
+                 log_to_stream =True,\
                  log_to_file_level =logging.INFO,\
-                 log_to_screen_level =logging.ERROR,\
+                 log_to_stream_level =logging.INFO,\
                  log_filename =None,\
+                 log_stream =None,\
                  log_rotate =True,\
                  log_size =524288,\
                  log_number =3):
@@ -69,10 +70,13 @@ def start_logger(log_to_file =True,\
         file_handler.setLevel(log_to_file_level)
         file_handler.setFormatter(formatter)
         root_log.addHandler(file_handler)              
-    if log_to_screen:
-        stream_handler = logging.StreamHandler()
-        stream_handler.setLevel(log_to_screen_level)
+    if log_to_stream:
+        stream_handler = logging.StreamHandler(log_stream)
+        stream_handler.setLevel(log_to_stream_level)
         stream_handler.setFormatter(formatter)
         root_log.addHandler(stream_handler)
+
+
+
 
 #EOF
