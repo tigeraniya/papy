@@ -10,6 +10,7 @@ def _async_raise(tid, exctype):
         raise TypeError("Only types can be raised (not instances)")
     res = ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, ctypes.py_object(exctype))
     if res == 0:
+        print tid
         raise ValueError("invalid thread id")
     elif res != 1:
         # """if it returns a number greater than one, you're in trouble, 
@@ -43,4 +44,4 @@ class KThread(threading.Thread):
     def terminate(self):
         """raises SystemExit in the context of the given thread, which should 
         cause the thread to exit silently (unless caught)"""
-        self.raise_exc(SystemExit)
+        self.raise_exc(Exception)

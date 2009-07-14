@@ -7,7 +7,7 @@ from Queue import Queue, Empty
 from code import InteractiveConsole
 import rlcompleter
 import string
-from Tkconstants import *
+from Tkconstants import YES, BOTH, INSERT, END 
 from Tkinter import Tk
 import Pmw
 import sys
@@ -55,17 +55,18 @@ class PythonShell(Pmw.ScrolledText):
         self.stdout = StreamQueue()
         self.stderr = self.stdout
         def ic():
-            sys.stdin = self.stdin
-            sys.stdout = self.stdout
-            sys.stderr = self.stderr
+            #sys.stdin = self.stdin
+            #sys.stdout = self.stdout
+            #sys.stderr = self.stderr
             ic = InteractiveConsole(globals())
             ic.interact()
         self.ic = Thread(target =ic)
         self.ic.daemon = True
         self.ic.start()
 
-    def kill_console(self):       
-        self.ic.terminate()
+    def kill_console(self, *args):
+        self.clear()
+        self.stdin.put('exit()\n')
         self.start_console()
 
     def poll_output(self):

@@ -2,15 +2,20 @@
 """ The PaPy gui written in Tkinter.
 """
 # PaPy/IMap imports
-from papy import *
-from IMap import *
+import papy
+import IMap
 
 # Python imports
 import os
 
 # Tkinter/Pmw/idlelib imports
-from Tkinter import *
-from tkMessageBox import *
+# watch for errors on multiprocessing/Tkinter/linux
+import Tkinter as Tk
+import tkMessageBox as tkm
+from Tkconstants import *
+
+#from Tkinter import *
+#from tkMessageBox import *
 from TreeWidget import TreeItem, TreeNode
 from ShellWidget import PythonShell
 import Pmw
@@ -184,12 +189,12 @@ class Tree(object):
         self.selected_item = item
         
     def make_widgets(self):
-        self.frame = Frame(self.parent)
+        self.frame = Tk.Frame(self.parent)
         self.buttons = Pmw.ButtonBox(self.frame, padx =0, pady =0)
         self.buttons.add(self.new_text, command =self.new_cmd)
         self.buttons.add(self.del_text, command =self.del_cmd)
 
-        self.group = Pmw.Group(self.frame, tag_pyclass =Label,
+        self.group = Pmw.Group(self.frame, tag_pyclass =Tk.Label,
                                               tag_text
                                               =self.label_text)
 
@@ -204,8 +209,8 @@ class Tree(object):
         icondir = os.path.join(os.path.dirname(__file__), 'icons', self.name + 'Tree')
         icons = os.listdir(icondir)
         for icon in (i for i in icons if i.endswith('.gif')):
-            image = PhotoImage(master =self.canvas,\
-                                file  =os.path.join(icondir, icon))
+            image = Tk.PhotoImage(master =self.canvas,\
+                                    file =os.path.join(icondir, icon))
             self.root.iconimages[icon.split('.')[0]] = image
             
         canvas.pack(fill =BOTH, expand =YES)
@@ -491,17 +496,6 @@ class GraphCanvas(Pmw.ScrolledCanvas):
 
 
 
-class ToolBar(Frame):
-    def __init__(self, parent =None):
-        Frame.__init__(self, parent)
-        self.make_widgets()
-
-    def make_widgets(self):
-
-        b1 = Button(master =self, text ='B1', command=None)
-        b1.pack(side=LEFT)
-        b2 = Button(master =self, text ='B2', command=None)
-        b2.pack(side=LEFT)
 
 class NoteBook(Pmw.NoteBook):
     def __init__(self, parent, pages, **kwargs):
@@ -558,7 +552,7 @@ class _CreationDialog(Pmw.Dialog):
 
     def create_widgets(self):
         self.group = Pmw.Group(self.interior(),\
-                               tag_pyclass =Label,\
+                               tag_pyclass =Tk.Label,\
                                tag_text ="%s Arguments" %\
                                self.name.capitalize())
         # provided by sub-class
@@ -777,7 +771,47 @@ class PiperDialog(_CreationDialog):
                         kwargs[arg_true] = True
         papyg.add_piper(**kwargs)
 
+class WorkerDialog(_CreationDialog):
+   
+    name = 'worker'
+    defaults = {(0, 'name'):None, 
+                (1, 'functions'): None}
 
+    #def _create(self):
+    #    kwargs = {}
+    #    for (i, name), entry in self.named_entries:
+    #        value = entry.getvalue()
+    #        ns = papyg.namespace
+    #        if value and value != self.defaults[(i, name)]:
+    #            if name == 'name':
+    #                kwargs['name'] = value
+    #            elif name == 'worker_type':
+    #                kwargs['worker_type'] = value[0]
+    #            elif name == 'worker_remote':
+    #                kwargs['worker_remote'] = eval(value)
+    #            elif name == 'misc':
+    #                for arg_true in name:
+    #                    kwargs[arg_true] = True      
+    #    papyg.add_imap(**kwargs)
+       
+
+    def create_entries(self):
+
+        self.name = Pmw.EntryField(self.group.interior(),\
+                                   labelpos ='w',\
+		                           label_text ='Name:',\
+                                   validate ={'validator':'alphabetic'})
+        self.functions = Pmw.ScrolledListBox(self.group.interior(),
+                                   labelpos='w',
+                                   label_text='Functions:',
+                                   #selectioncommand=self.selectionCommand,
+                                   #dblclickcommand=self.defCmd
+                                   ) 
+    def update_entries(self):
+        # HARD CODED locations
+        self.functions.setlist([i for i in papyg.namespace['functions']])
+
+     
 class PaPyGui(Pmw.MegaToplevel):
 
     def __init__(self, parent, **kwargs):
@@ -791,9 +825,8 @@ class PaPyGui(Pmw.MegaToplevel):
         self.make_widgets()
         self.start()
 
-
     def start(self):
-        utils.logger.start_logger(log_filename =O['log_filename'], log_stream =self.log)        
+        papy.utils.logger.start_logger(log_filename =O['log_filename'], log_stream =self.log)        
 
     def make_dialogs(self):
         # About
@@ -802,6 +835,8 @@ class PaPyGui(Pmw.MegaToplevel):
         self.dialogs['about'].withdraw()
         self.dialogs['new_piper'] = PiperDialog(self.toplevel)
         self.dialogs['new_imap'] = IMapDialog(self.toplevel)
+        self.dialogs['new_worker'] = WorkerDialog(self.toplevel)
+
         
 
     def make_widgets(self, title =None):
@@ -810,15 +845,12 @@ class PaPyGui(Pmw.MegaToplevel):
         self.toplevel.config(menu =self.menu_bar)
 
         #toolbar
-        self.tool_bar = ToolBar(self.toplevel)
-        self.tool_bar.pack(fill =X)
-
         # 4 panes
-        self.lr = PanedWindow(self.toplevel)
+        self.lr = Tk.PanedWindow(self.toplevel)
         self.lr.pack(fill=BOTH, expand=YES)
 
-        self.l = PanedWindow(self.lr, orient=VERTICAL, showhandle =YES, sashwidth =20)
-        self.r = PanedWindow(self.lr, orient=VERTICAL, showhandle =YES, sashwidth =20)
+        self.l = Tk.PanedWindow(self.lr, orient=VERTICAL, showhandle =YES, sashwidth =20)
+        self.r = Tk.PanedWindow(self.lr, orient=VERTICAL, showhandle =YES, sashwidth =20)
         self.lr.add(self.l, stretch ='always')
         self.lr.add(self.r, stretch ='always')
         
@@ -852,9 +884,9 @@ class PaPyGui(Pmw.MegaToplevel):
         self.shell.text['background'] = O['Shell_background']
         self.shell.text['foreground'] = O['Shell_fontcolor']
         self.shell.text['font'] = O['Shell_font']
-
+        self.shell_tab = self.io.tab('Shell')
+        self.shell_tab.bind("<Button-3>", self.shell.kill_console)
         self.shell.pack(fill=BOTH, expand=YES)
-
         # packing
         self.l.add(self.pipers.frame, stretch ='always')
         self.l.add(self.workers.frame, stretch ='always')
@@ -879,7 +911,7 @@ class PaPyGui(Pmw.MegaToplevel):
             self.namespace[n] = {}
 
     def add_piper(self, **kwargs):
-        piper = Piper(**kwargs)
+        piper = papy.Piper(**kwargs)
         self.namespace['pipers'][piper.name] = piper
         self.pipers.add_item(piper)
 
@@ -888,7 +920,7 @@ class PaPyGui(Pmw.MegaToplevel):
         self.pipers.del_item(piper)
 
     def add_imap(self, **kwargs):
-        imap = IMap(**kwargs)
+        imap = IMap.IMap(**kwargs)
         self.namespace['imaps'][imap.name] = imap
         self.imaps.add_item(imap)
 
@@ -897,18 +929,23 @@ class PaPyGui(Pmw.MegaToplevel):
         self.imaps.del_item(imap)
 
     def add_worker(self, **kwargs):
-        worker = Worker(**kwargs)
+        worker = papy.Worker(**kwargs)
         self.namespace['workers'][worker.name] = worker
         self.workers.add_item(worker)
 
     def del_worker(self):
         pass
 
+    def add_function(self, **kwargs):
+        mod = __import__(kwargs['module'], fromlist =[''])
+        function = getattr(mod, kwargs['function'])
+        self.namespace['functions'][function.__name__] = function
+        
     def make_plumber(self):
         if False: # some input file
             pass
         else:
-            self.namespace['plumber'] = Plumber()
+            self.namespace['plumber'] = papy.Plumber()
 
 class Options(dict):
     """ Provide options throughout the PaPy Gui application.
@@ -951,7 +988,7 @@ if __name__ == '__main__':
     cfg_opts = ConfigOptions()
     cmd_opts = CommandOptions()
     O = Options(cfg_opts, cmd_opts)
-    root = Tk()
+    root = Tk.Tk()
     root.withdraw()
     Pmw.initialise(root)
     root.option_add("*font", O['default_font'])
@@ -992,10 +1029,12 @@ if __name__ == '__main__':
     papyg.add_imap()
     papyg.add_imap()
 
-    papyg.add_worker(functions =workers.io.dump_item)
+    papyg.add_function(module ='papy.workers.io', function ='print_')
 
-    papyg.add_piper(worker =workers.io.dump_item)
-    papyg.add_piper(worker =workers.io.print_)
+    papyg.add_worker(functions =papy.workers.io.dump_item)
+
+    papyg.add_piper(worker =papy.workers.io.dump_item)
+    papyg.add_piper(worker =papy.workers.io.print_)
 
     #root.papy.graph = GraphCanvas(graph =g, parent =root.papy.pipeline.page('Pipeline'))
     #root.papy.graph.pack(expand =YES, fill =BOTH)
