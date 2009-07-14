@@ -9,9 +9,11 @@ from IMap import *
 from code import InteractiveConsole
 from threading import Thread
 from Queue import Queue, Empty
+from collections import deque
 import os
 import string
-PRINTABLE = string.letters + string.digits + string.punctuation
+import rlcompleter
+PRINTABLE = string.letters + string.digits + string.punctuation + ' '
 
 # Tkinter/Pmw/idlelib imports
 from Tkinter import *
@@ -54,11 +56,17 @@ class ShellWidget(Pmw.ScrolledText):
         self.stdin = StreamQueue()
         self.stdout = StreamQueue()
         self.stderr = self.stdout
+        self.tabnum = -1
+        self.offset = 1
+        self.words = []
         self.charbuf = []
         self.charbuf_position = 0   # position in line
+        self.linebuf = []
+        self.linebuf_position = 0   # position 
         self.charbuf_history = None # lines entered
         self.text = self.component('text')
         self.text.bind('<Key>', self.keybuffer)
+        self.completer = rlcompleter.Completer()
         self.poll_output()
 
     def poll_output(self):
@@ -66,54 +74,88 @@ class ShellWidget(Pmw.ScrolledText):
             try:
                 output = self.stdout.get(0)
                 self.appendtext(output)
-                a = self.index("%s-1c" % INSERT) # this is a _huge_ hack
-                self.mark_set('LEFT_END', a )
+                last_char = self.index("%s-1c" % INSERT) # this is a _huge_ hack
+                self.mark_set('LEFT_END', last_char)
             except Empty:
                 pass
         self.after(100, self.poll_output)
 
+    def replace(self, last_word):
+        words = []
+        words.extend(self.words[:-1])
+        words.append(last_word)
+        text = " ".join(words)
+        self._replace(text)
+
+    def _replace(self, text):
+        self.charbuf = list(text)
+        self.charbuf_position = len(text)
+        self.delete('LEFT_END+%sc' % 1, END)
+        self.appendtext(text)
+
     def keybuffer(self, key):
         """
         """
-        self.text['state'] ='normal'
-        if key.keysym == 'Return':
-            self.mark_set(INSERT, END) # move to the END
-            line = "".join(self.charbuf) + '\n'
-            self.stdin.put(line)
-            self.charbuf = []
-            self.charbuf_position = 0
-        elif key.keysym == 'Tab':
-            self.mark_set(INSERT, END) # move to the END
-            line = 'imp' + key.char
-            self.stdin.put(line)
-            self.charbuf = []
-            self.charbuf_position = 0
-            print readline.get_current_history_length()
+        if key.keysym == 'Tab':
+            self.tabnum += 1
+            if not self.tabnum:
+                # first-tab, last_word
+                self.words = "".join(self.charbuf).split(' ')      
+            guess = self.completer.complete(self.words[-1], self.tabnum)
+            if guess:
+                self.replace(guess)
+            else:
+                # reached end
+                self.tabnum = -1
+                self.replace(" ".join(self.words))
             return 'break'
-
-        elif self.compare('LEFT_END', '>', INSERT):
-            papy.status_bar.message('state',"key: %s"  % (key.keysym,))
-            self.text['state'] ='disabled'
-        elif 'Left' == key.keysym and self.charbuf_position:
-            self.charbuf_position -= 1
-        elif 'Right' == key.keysym and len(self.charbuf) - self.charbuf_position:
-            self.charbuf_position += 1
-        elif 'BackSpace' == key.keysym and self.charbuf_position:
-            self.charbuf_position -= 1
-            self.charbuf.pop(self.charbuf_position)
-        elif 'Delete' == key.keysym and len(self.charbuf) - self.charbuf_position:
-            self.charbuf.pop(self.charbuf_position)
-        elif len(key.char) == 1 and key.char in PRINTABLE:
-            self.charbuf.insert(self.charbuf_position, key.char)
-            self.charbuf_position += 1
         else:
-            papy.status_bar.message('state',"key: %s"  % (key.keysym,))
-            return 'break'
-        #papy.status_bar.message('state',"LEND: %s"  % (self.index('LEFT_END'),))
-        #papy.status_bar.message('state',"%s"  % (repr(self.charbuf_position),))
-
-    def kill_ic(self):
-        self.stdin.put('exit()\n')
+            self.tabnum = -1
+            self.text['state'] ='normal'
+            if key.keysym == 'Return':
+                self.mark_set(INSERT, END) # move to the END
+                line = "".join(self.charbuf)
+                self.stdin.put(line + '\n')
+                self.linebuf.append(line)
+                self.charbuf = []
+                self.charbuf_position = 0
+                self.linebuf_position = 0
+                if len(self.linebuf) > O['Shell_history']:
+                    del self.linebuf[0]
+            elif self.compare('LEFT_END', '>', INSERT):
+                papyg.status_bar.message('state',"key: %s"  % (key.keysym,))
+                self.text['state'] ='disabled'
+            elif key.keysym in ('Up', 'Down'):
+                if key.keysym == 'Up':
+                    self.linebuf_position -= 1
+                elif key.keysym == 'Down':
+                    self.linebuf_position += 1
+                try:
+                    text = self.linebuf[self.linebuf_position]
+                    self._replace(text)
+                except IndexError:
+                    if key.keysym == 'Up':
+                        self.linebuf_position = 0
+                    elif key.keysym == 'Down':
+                        self.linebuf_position = -1           
+                return 'break'
+            elif 'Left' == key.keysym and self.charbuf_position:
+                self.charbuf_position -= 1
+            elif 'Right' == key.keysym and len(self.charbuf) - self.charbuf_position:
+                self.charbuf_position += 1
+            elif 'BackSpace' == key.keysym and self.charbuf_position:
+                self.charbuf_position -= 1
+                self.charbuf.pop(self.charbuf_position)
+            elif 'Delete' == key.keysym and len(self.charbuf) - self.charbuf_position:
+                self.charbuf.pop(self.charbuf_position)
+            elif len(key.char) == 1 and key.char in PRINTABLE:
+                self.charbuf.insert(self.charbuf_position, key.char)
+                self.charbuf_position += 1
+                if key.char == ' ':
+                    self.offset = self.charbuf_position + 1
+            else:
+                papyg.status_bar.message('state',"key: %s"  % (key.keysym,))
+                return 'break'
 
 
 class RootItem(TreeItem):
@@ -564,7 +606,7 @@ class GraphCanvas(Pmw.ScrolledCanvas):
 
     def mouse1_up(self, event):
         self.lasttag = []
-        root.papy.status_bar.message('state', 'canvas released at: %s-%s' % (event.x, event.y))
+        root.papyg.status_bar.message('state', 'canvas released at: %s-%s' % (event.x, event.y))
 
     def mouse3_down(self, event):
         lasttags = self.gettags(CURRENT)
@@ -730,7 +772,7 @@ class IMapDialog(_CreationDialog):
         kwargs = {}
         for (i, name), entry in self.named_entries:
             value = entry.getvalue()
-            ns = papy.namespace
+            ns = papyg.namespace
             if value and value != self.defaults[(i, name)]:
                 if name == 'name':
                     kwargs['name'] = value
@@ -741,7 +783,7 @@ class IMapDialog(_CreationDialog):
                 elif name == 'misc':
                     for arg_true in name:
                         kwargs[arg_true] = True      
-        papy.add_imap(**kwargs)
+        papyg.add_imap(**kwargs)
        
 
     def create_entries(self):
@@ -844,9 +886,9 @@ class PiperDialog(_CreationDialog):
 
     def update_entries(self):
         # HARD CODED locations
-        self.parallel.setlist([i for i in papy.namespace['imaps']])
-        self.worker.setlist([w for w in papy.namespace['workers']])
-        self.cmp.setlist([o for o in papy.namespace['objects']])
+        self.parallel.setlist([i for i in papyg.namespace['imaps']])
+        self.worker.setlist([w for w in papyg.namespace['workers']])
+        self.cmp.setlist([o for o in papyg.namespace['objects']])
       
     def _create(self):
         named_entries = [(name, getattr(self, name[1])) for name\
@@ -854,7 +896,7 @@ class PiperDialog(_CreationDialog):
         kwargs = {}
         for (i, name), entry in self.named_entries:
             value = entry.getvalue()
-            ns = papy.namespace
+            ns = papyg.namespace
             if value and value != self.defaults[(i, name)]:
                 if name == 'name':
                     kwargs['name'] = value
@@ -871,7 +913,7 @@ class PiperDialog(_CreationDialog):
                 elif name == 'runtime':
                     for arg_true in value:
                         kwargs[arg_true] = True
-        papy.add_piper(**kwargs)
+        papyg.add_piper(**kwargs)
 
 
 class PaPyGui(Pmw.MegaToplevel):
@@ -1016,6 +1058,7 @@ class Options(dict):
                 ('Pipers_background', 'pink'),
                 ('Workers_background', 'LightSteelBlue2'),
                 ('Shell_background', 'white'),
+                ('Shell_history', 1000),
                 ('Pipers_root_icon', 'pipe_16'),
                 ('IMaps_root_icon', 'gear_16'),
                 ('Workers_root_icon', 'component_16'),
@@ -1045,7 +1088,7 @@ if __name__ == '__main__':
     root.withdraw()
     Pmw.initialise(root)
     root.option_add("*font", O['default_font'])
-    papy = PaPyGui(root)
+    papyg = PaPyGui(root)
 
 
 
@@ -1077,21 +1120,20 @@ if __name__ == '__main__':
 
 
 
-    papy.add_imap()
-    papy.add_imap()
-    papy.add_imap()
-    papy.add_imap()
+    papyg.add_imap()
+    papyg.add_imap()
+    papyg.add_imap()
+    papyg.add_imap()
 
-    papy.add_worker(functions =workers.io.dump_item)
+    papyg.add_worker(functions =workers.io.dump_item)
 
-    papy.add_piper(worker =workers.io.dump_item)
-    papy.add_piper(worker =workers.io.print_)
+    papyg.add_piper(worker =workers.io.dump_item)
+    papyg.add_piper(worker =workers.io.print_)
 
     #root.papy.graph = GraphCanvas(graph =g, parent =root.papy.pipeline.page('Pipeline'))
     #root.papy.graph.pack(expand =YES, fill =BOTH)
-    import readline
-    readline.parse_and_bind('tab: complete')
-    import rlcompleter
+    #import readline
+    #readline.parse_and_bind('tab: complete')
 
     # start python gui interpreter
     if O:
@@ -1099,19 +1141,20 @@ if __name__ == '__main__':
     # start python shell interpreter
     if O:
         def ic():
-            sys.stdin = papy.shell.stdin
-            sys.stdout = papy.shell.stdout
-            sys.stderr = papy.shell.stderr
-            # small hack
-            ic = InteractiveConsole()
-            # FIXME
+            ns = {}
+            ns.update(globals())
+            ns.update(papyg.namespace)
+            sys.stdin = papyg.shell.stdin
+            sys.stdout = papyg.shell.stdout
+            sys.stderr = papyg.shell.stderr
+            ic = InteractiveConsole(ns)
             ic.interact()
         console_thread = Thread(target =ic)
         console_thread.daemon = True
         console_thread.start()
     
-    papy.protocol("WM_DELETE_WINDOW", root.destroy)
-    papy.wm_deiconify()
+    papyg.protocol("WM_DELETE_WINDOW", root.destroy)
+    papyg.wm_deiconify()
     root.mainloop()
 
   
