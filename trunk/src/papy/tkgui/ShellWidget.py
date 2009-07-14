@@ -32,7 +32,7 @@ class StreamQueue(Queue):
         raise OSError
 
 
-class ShellWidget(Pmw.ScrolledText):
+class PythonShell(Pmw.ScrolledText):
 
     def __init__(self, parent, **kwargs):
         Pmw.ScrolledText.__init__(self, parent, **kwargs)

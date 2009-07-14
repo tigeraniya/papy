@@ -12,7 +12,7 @@ import os
 from Tkinter import *
 from tkMessageBox import *
 from TreeWidget import TreeItem, TreeNode
-from TkShell import ShellWidget
+from ShellWidget import PythonShell
 import Pmw
 
 
@@ -846,7 +846,7 @@ class PaPyGui(Pmw.MegaToplevel):
         self.log.pack(fill=BOTH, expand=YES)
         
         # shell
-        self.shell = ShellWidget(self.io.page('Shell'), O,
+        self.shell = PythonShell(self.io.page('Shell'),
                     text_padx = O['Shell_font'][1] // 2, # half-font
                     text_pady = O['Shell_font'][1] // 2)
         self.shell.text['background'] = O['Shell_background']
