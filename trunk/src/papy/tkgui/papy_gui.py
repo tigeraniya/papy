@@ -6,156 +6,18 @@ from papy import *
 from IMap import *
 
 # Python imports
-from code import InteractiveConsole
-from threading import Thread
-from Queue import Queue, Empty
-from collections import deque
 import os
-import string
-import rlcompleter
-PRINTABLE = string.letters + string.digits + string.punctuation + ' '
 
 # Tkinter/Pmw/idlelib imports
 from Tkinter import *
 from tkMessageBox import *
 from TreeWidget import TreeItem, TreeNode
+from TkShell import ShellWidget
 import Pmw
 
 
-class StreamQueue(Queue):
-
-    #def read(self):
-    #    return self.get()
-
-    def readline(self):
-        return self.get()
-
-    def write(self, cargo):
-        return self.put(cargo)
-
-    def writeline(self, cargo):
-        return self.put(cargo)
-
-    def writelines(self, lines):
-        for line in lines:
-            self.writeline(line)
-
-    def flush(self):
-        pass
-
-    def fileno(self):
-        # this is a work-around the file-like stdin 
-        # assumptions in multiprocessing/process.py
-        raise OSError
 
 
-class ShellWidget(Pmw.ScrolledText):
-
-    def __init__(self, parent, **kwargs):
-        Pmw.ScrolledText.__init__(self, parent, **kwargs)
-        self.stdin = StreamQueue()
-        self.stdout = StreamQueue()
-        self.stderr = self.stdout
-        self.tabnum = -1
-        self.offset = 1
-        self.words = []
-        self.charbuf = []
-        self.charbuf_position = 0   # position in line
-        self.linebuf = []
-        self.linebuf_position = 0   # position 
-        self.charbuf_history = None # lines entered
-        self.text = self.component('text')
-        self.text.bind('<Key>', self.keybuffer)
-        self.completer = rlcompleter.Completer()
-        self.poll_output()
-
-    def poll_output(self):
-        while self.stdout.qsize():
-            try:
-                output = self.stdout.get(0)
-                self.appendtext(output)
-                last_char = self.index("%s-1c" % INSERT) # this is a _huge_ hack
-                self.mark_set('LEFT_END', last_char)
-            except Empty:
-                pass
-        self.after(100, self.poll_output)
-
-    def replace(self, last_word):
-        words = []
-        words.extend(self.words[:-1])
-        words.append(last_word)
-        text = " ".join(words)
-        self._replace(text)
-
-    def _replace(self, text):
-        self.charbuf = list(text)
-        self.charbuf_position = len(text)
-        self.delete('LEFT_END+%sc' % 1, END)
-        self.appendtext(text)
-
-    def keybuffer(self, key):
-        """
-        """
-        if key.keysym == 'Tab':
-            self.tabnum += 1
-            if not self.tabnum:
-                # first-tab, last_word
-                self.words = "".join(self.charbuf).split(' ')      
-            guess = self.completer.complete(self.words[-1], self.tabnum)
-            if guess:
-                self.replace(guess)
-            else:
-                # reached end
-                self.tabnum = -1
-                self.replace(" ".join(self.words))
-            return 'break'
-        else:
-            self.tabnum = -1
-            self.text['state'] ='normal'
-            if key.keysym == 'Return':
-                self.mark_set(INSERT, END) # move to the END
-                line = "".join(self.charbuf)
-                self.stdin.put(line + '\n')
-                self.linebuf.append(line)
-                self.charbuf = []
-                self.charbuf_position = 0
-                self.linebuf_position = 0
-                if len(self.linebuf) > O['Shell_history']:
-                    del self.linebuf[0]
-            elif self.compare('LEFT_END', '>', INSERT):
-                papyg.status_bar.message('state',"key: %s"  % (key.keysym,))
-                self.text['state'] ='disabled'
-            elif key.keysym in ('Up', 'Down'):
-                if key.keysym == 'Up':
-                    self.linebuf_position -= 1
-                elif key.keysym == 'Down':
-                    self.linebuf_position += 1
-                try:
-                    text = self.linebuf[self.linebuf_position]
-                    self._replace(text)
-                except IndexError:
-                    if key.keysym == 'Up':
-                        self.linebuf_position = 0
-                    elif key.keysym == 'Down':
-                        self.linebuf_position = -1           
-                return 'break'
-            elif 'Left' == key.keysym and self.charbuf_position:
-                self.charbuf_position -= 1
-            elif 'Right' == key.keysym and len(self.charbuf) - self.charbuf_position:
-                self.charbuf_position += 1
-            elif 'BackSpace' == key.keysym and self.charbuf_position:
-                self.charbuf_position -= 1
-                self.charbuf.pop(self.charbuf_position)
-            elif 'Delete' == key.keysym and len(self.charbuf) - self.charbuf_position:
-                self.charbuf.pop(self.charbuf_position)
-            elif len(key.char) == 1 and key.char in PRINTABLE:
-                self.charbuf.insert(self.charbuf_position, key.char)
-                self.charbuf_position += 1
-                if key.char == ' ':
-                    self.offset = self.charbuf_position + 1
-            else:
-                papyg.status_bar.message('state',"key: %s"  % (key.keysym,))
-                return 'break'
 
 
 class RootItem(TreeItem):
@@ -984,10 +846,13 @@ class PaPyGui(Pmw.MegaToplevel):
         self.log.pack(fill=BOTH, expand=YES)
         
         # shell
-        self.shell = ShellWidget(self.io.page('Shell'),
-                    text_padx = O['default_font'][1] // 2, # half-font
-                    text_pady = O['default_font'][1] // 2)
-        self.shell.configure(text_bg =O['Shell_background'])
+        self.shell = ShellWidget(self.io.page('Shell'), O,
+                    text_padx = O['Shell_font'][1] // 2, # half-font
+                    text_pady = O['Shell_font'][1] // 2)
+        self.shell.text['background'] = O['Shell_background']
+        self.shell.text['foreground'] = O['Shell_fontcolor']
+        self.shell.text['font'] = O['Shell_font']
+
         self.shell.pack(fill=BOTH, expand=YES)
 
         # packing
@@ -1059,6 +924,8 @@ class Options(dict):
                 ('Workers_background', 'LightSteelBlue2'),
                 ('Shell_background', 'white'),
                 ('Shell_history', 1000),
+                ('Shell_fontcolor', 'black'),
+                ('Shell_font', ("courier new", 9)),
                 ('Pipers_root_icon', 'pipe_16'),
                 ('IMaps_root_icon', 'gear_16'),
                 ('Workers_root_icon', 'component_16'),
@@ -1133,26 +1000,7 @@ if __name__ == '__main__':
     #root.papy.graph = GraphCanvas(graph =g, parent =root.papy.pipeline.page('Pipeline'))
     #root.papy.graph.pack(expand =YES, fill =BOTH)
     #import readline
-    #readline.parse_and_bind('tab: complete')
-
-    # start python gui interpreter
-    if O:
-        pass
-    # start python shell interpreter
-    if O:
-        def ic():
-            ns = {}
-            ns.update(globals())
-            ns.update(papyg.namespace)
-            sys.stdin = papyg.shell.stdin
-            sys.stdout = papyg.shell.stdout
-            sys.stderr = papyg.shell.stderr
-            ic = InteractiveConsole(ns)
-            ic.interact()
-        console_thread = Thread(target =ic)
-        console_thread.daemon = True
-        console_thread.start()
-    
+    #readline.parse_and_bind('tab: complete')    
     papyg.protocol("WM_DELETE_WINDOW", root.destroy)
     papyg.wm_deiconify()
     root.mainloop()
