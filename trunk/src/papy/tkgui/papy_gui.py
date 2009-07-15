@@ -7,6 +7,7 @@ import IMap
 
 # Python imports
 import os
+import inspect
 
 # Tkinter/Pmw/idlelib imports
 # watch for errors on multiprocessing/Tkinter/linux
@@ -591,7 +592,11 @@ class _CreationDialog(Pmw.Dialog):
                 try:
                     e.clear()      # clear selection
                 except AttributeError:
-                    e.setvalue([]) # deselect all checkboxes
+                    try:
+                        e.setvalue([]) # deselect all checkboxes
+                    except AttributeError:
+                        # labeled widget
+                        pass
         # update entries which change
         self.update_entries()
 
@@ -608,7 +613,8 @@ class _CreationDialog(Pmw.Dialog):
             self._create()                  
         elif result == 'Help':
             self.help()
-        self.deactivate(result)
+        #Pmw.Dialog.deactivate(self)
+        #self.deactivate(result)
 
     def help(self):
         pass
@@ -775,8 +781,9 @@ class WorkerDialog(_CreationDialog):
    
     name = 'worker'
     defaults = {(0, 'name'):None, 
-                (1, 'functions'): None}
-
+                (1, 'funcsargs'): None,
+                (2, 'call'): None}
+    args = []
     #def _create(self):
     #    kwargs = {}
     #    for (i, name), entry in self.named_entries:
@@ -795,21 +802,92 @@ class WorkerDialog(_CreationDialog):
     #    papyg.add_imap(**kwargs)
        
 
-    def create_entries(self):
+    def combo_to_list(self, combo, list):
+        value = combo.getvalue()[0] # value in combobox
+        try:
+            index = int(self.selected_functions.curselection()[0]) + 1
+            self.args.insert(index, [index])
+        except IndexError:
+            index = END
+            self.args.append([index])
+        list.insert(index, value)   # always after selection
+        
+    def add_func(self):
+        self.combo_to_list(self.functions, self.selected_functions)
 
-        self.name = Pmw.EntryField(self.group.interior(),\
-                                   labelpos ='w',\
-		                           label_text ='Name:',\
+
+
+    def sel_args(self):
+        index = int(self.selected_functions.curselection()[0])
+        func_name = self.selected_functions.getvalue()[0]
+        func = papyg.namespace['functions'][func_name]
+        self.call_label.delete('1.0', END)
+        self.call_label.insert(END,inspect.formatargspec(*inspect.getargspec(func)))
+        self.selected_arguments.setlist([i for i in self.args[index]])
+
+    def add_arg(self):
+        self.combo_to_list(self.arguments, self.selected_arguments)
+
+
+    def create_entries(self):
+        # name
+        self.name = Pmw.EntryField(self.group.interior(),
+                                   labelpos ='w',
+		                           label_text ='Name:',
                                    validate ={'validator':'alphabetic'})
-        self.functions = Pmw.ScrolledListBox(self.group.interior(),
-                                   labelpos='w',
-                                   label_text='Functions:',
+        
+        # funcsargs
+        self.funcsargs = Pmw.LabeledWidget(self.group.interior())
+        
+        
+        self.selected_functions = Pmw.ScrolledListBox(self.funcsargs.interior(),
+                                    labelpos='n',
+                                    label_text ='Functions:',
+                                    selectioncommand =self.sel_args)
+        self.functions = RestrictedComboBox(self.funcsargs.interior()
                                    #selectioncommand=self.selectionCommand,
                                    #dblclickcommand=self.defCmd
-                                   ) 
+                                    )
+        self.function_buttons = Pmw.ButtonBox(self.funcsargs.interior())
+        self.function_buttons.add('Add', command =self.add_func)
+        self.function_buttons.add('Remove', command =None)
+        self.selected_functions.grid(row =0, column =0, sticky =N+E+W+S)
+        self.functions.grid(row =1, column =0,sticky =N+E+W+S)
+        self.function_buttons.grid(row =2, column =0,sticky =N+E+W+S)
+
+        self.selected_arguments = Pmw.ScrolledListBox(self.funcsargs.interior(),
+                                    labelpos='n',
+                                    label_text ='Arguments:')
+        self.arguments = Pmw.ComboBox(self.funcsargs.interior()
+                                   #selectioncommand=self.selectionCommand,
+                                   #dblclickcommand=self.defCmd
+                                   )
+        self.argument_buttons = Pmw.ButtonBox(self.funcsargs.interior())
+        self.argument_buttons.add('Add', command =None)
+        self.argument_buttons.add('Remove', command =None)
+        self.selected_arguments.grid(row =0, column =1, sticky =N+E+W+S)
+        self.arguments.grid(row =1, column =1, sticky =N+E+W+S)
+        self.argument_buttons.grid(row =2, column =1,sticky =N+E+W+S)
+        
+        # call
+        self.call = Pmw.LabeledWidget(self.group.interior(),
+                                        labelpos ='w',
+                                        label_text ='Signature:')
+        self.call_label = Tk.Text(self.call.interior(), width =1, height =2,
+        wrap =WORD)
+        self.call_label.pack(expand =YES, fill =BOTH)
+
+
+
+       
+
+
+
     def update_entries(self):
         # HARD CODED locations
         self.functions.setlist([i for i in papyg.namespace['functions']])
+        self.arguments.setlist([i for i in papyg.namespace['objects']])
+
 
      
 class PaPyGui(Pmw.MegaToplevel):
@@ -884,9 +962,9 @@ class PaPyGui(Pmw.MegaToplevel):
         self.shell.text['background'] = O['Shell_background']
         self.shell.text['foreground'] = O['Shell_fontcolor']
         self.shell.text['font'] = O['Shell_font']
-        self.shell_tab = self.io.tab('Shell')
-        self.shell_tab.bind("<Button-3>", self.shell.kill_console)
+        self.io.tab('Shell').bind("<Button-3>", self.shell.kill_console)
         self.shell.pack(fill=BOTH, expand=YES)
+        
         # packing
         self.l.add(self.pipers.frame, stretch ='always')
         self.l.add(self.workers.frame, stretch ='always')
@@ -1030,6 +1108,10 @@ if __name__ == '__main__':
     papyg.add_imap()
 
     papyg.add_function(module ='papy.workers.io', function ='print_')
+    papyg.add_function(module ='papy.workers.io', function ='dump_item')
+    papyg.add_function(module ='papy.workers.io', function ='load_item')
+
+
 
     papyg.add_worker(functions =papy.workers.io.dump_item)
 

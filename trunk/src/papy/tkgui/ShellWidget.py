@@ -55,9 +55,9 @@ class PythonShell(Pmw.ScrolledText):
         self.stdout = StreamQueue()
         self.stderr = self.stdout
         def ic():
-            #sys.stdin = self.stdin
-            #sys.stdout = self.stdout
-            #sys.stderr = self.stderr
+            sys.stdin = self.stdin
+            sys.stdout = self.stdout
+            sys.stderr = self.stderr
             ic = InteractiveConsole(globals())
             ic.interact()
         self.ic = Thread(target =ic)
