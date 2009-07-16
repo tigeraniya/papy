@@ -548,7 +548,7 @@ class _CreationDialog(Pmw.Dialog):
         kwargs['command'] = self.create
         kwargs['defaultbutton'] = 'Cancel'
         apply(Pmw.Dialog.__init__, (self, parent), kwargs)
-        self.withdraw() # no flash
+        self.withdraw()
         self.parent = parent
         self.create_widgets()
 
@@ -614,7 +614,7 @@ class _CreationDialog(Pmw.Dialog):
             self._create()                  
         elif result == 'Help':
             self.help()
-        #Pmw.Dialog.deactivate(self)
+        Pmw.Dialog.deactivate(self)
         #self.deactivate(result)
 
     def help(self):
@@ -786,22 +786,41 @@ class WorkerDialog(_CreationDialog):
                 (2, 'doc'): None}
     fargs = []
 
-    #def _create(self):
-    #    kwargs = {}
-    #    for (i, name), entry in self.named_entries:
-    #        value = entry.getvalue()
-    #        ns = papyg.namespace
-    #        if value and value != self.defaults[(i, name)]:
-    #            if name == 'name':
-    #                kwargs['name'] = value
-    #            elif name == 'worker_type':
-    #                kwargs['worker_type'] = value[0]
-    #            elif name == 'worker_remote':
-    #                kwargs['worker_remote'] = eval(value)
-    #            elif name == 'misc':
-    #                for arg_true in name:
-    #                    kwargs[arg_true] = True      
-    #    papyg.add_imap(**kwargs)
+    def _create(self):
+        objects = papyg.namespace['objects']
+        functions = papyg.namespace['functions']
+        funcs = []
+        args = []
+        func_names = self.funcs.get()
+        for index, fn in enumerate(func_names):
+            f = functions[fn]
+            funcs.append(f)
+            fargs = []
+            for an in inspect.getargspec(f).args:
+                if an == 'inbox':
+                    continue
+                entryfield = self.fargs[index][an].component('entryfield')
+                raw_value = entryfield.getvalue()
+                # this might be a string, number or object
+                if raw_value != "":
+                    try:
+                        value = objects[raw_value]
+                    except KeyError:
+                        try:
+                            value = int(raw_value)
+                        except ValueError:
+                            try:
+                                value = float(raw_value)
+                            except ValueError:
+                                value = raw_value
+                else:
+                    # empty string
+
+
+                fargs.append(self.fargs[index][an].component('entryfield').getvalue())
+            args.append(tuple(fargs))
+        print funcs, args
+
                
     def add_func(self):
         value = self.cfunc.getvalue()[0] # value in combobox
@@ -929,18 +948,15 @@ class WorkerDialog(_CreationDialog):
                                         labelpos ='w',
                                         label_text ='Documentation:',
                                         #usehullsize =YES,
-                                        #text_width =70,
                                         vscrollmode ='static',
                                         hscrollmode =NONE,
                                         text_height =6,
                                         text_width =70,
-                                        text_background ='white',
-                                        text_foreground ='blue',
+                                        text_background =O['Function_doc_background'],
+                                        text_foreground =O['Function_doc_foreground'],
                                         text_wrap =WORD,
                                         #text_state =DISABLED
                                         )
-        #self.doc.pack(expand =YES, fill =BOTH)
-
 
     def update_entries(self):
         # HARD CODED locations
@@ -948,14 +964,14 @@ class WorkerDialog(_CreationDialog):
 
 
      
-class PaPyGui(Pmw.MegaToplevel):
+class PaPyGui(object):
 
-    def __init__(self, parent, **kwargs):
-        kwargs['title'] = O['app_name']
-        apply(Pmw.MegaToplevel.__init__, (self, parent), kwargs)
-        self.wm_withdraw() # hide
+    def __init__(self, parent, **kwargs):   
         self.make_namespace()
-        self.toplevel = self.interior()
+        self.toplevel = parent
+        # globally change fonts
+        self.toplevel.option_add("*font", O['default_font'])
+        self.toplevel.title(O['app_name'])
         self.make_dialogs()
         self.make_plumber()
         self.make_widgets()
@@ -972,8 +988,6 @@ class PaPyGui(Pmw.MegaToplevel):
         self.dialogs['new_piper'] = PiperDialog(self.toplevel)
         self.dialogs['new_imap'] = IMapDialog(self.toplevel)
         self.dialogs['new_worker'] = WorkerDialog(self.toplevel)
-
-        
 
     def make_widgets(self, title =None):
         #main menu
@@ -997,6 +1011,11 @@ class PaPyGui(Pmw.MegaToplevel):
         # pipeline & code, shell & logging
         self.pipeline = NoteBook(self.r, ['Pipeline', 'Functions', 'IMaps'])
         self.io = NoteBook(self.r, ['Shell', 'Logging'])
+
+        # pipeline
+        #root.papy.graph = GraphCanvas(graph =g, parent =self..pipeline.page('Pipeline'))
+        #root.papy.graph.pack(expand =YES, fill =BOTH)
+
         
         # imaps
         self.imaps = IMapsTree(self.pipeline.page('IMaps'),\
@@ -1098,6 +1117,8 @@ class Options(dict):
                 ('graph_background', 'aliceblue'),
                 ('Pipers_background', 'pink'),
                 ('Workers_background', 'LightSteelBlue2'),
+                ('Function_doc_background', 'white'),
+                ('Function_doc_foreground', 'gray'),
                 ('Shell_background', 'white'),
                 ('Shell_history', 1000),
                 ('Shell_fontcolor', 'black'),
@@ -1123,20 +1144,47 @@ class CommandOptions(dict):
     pass
 
 
+
+
+def make_junk():
+    papyg.add_imap()
+    papyg.add_imap()
+    papyg.add_imap()
+    papyg.add_imap()
+    papyg.add_function(module ='papy.workers.io', function ='print_')
+    papyg.add_function(module ='papy.workers.io', function ='dump_item')
+    papyg.add_function(module ='papy.workers.io', function ='load_item')
+    papyg.add_object('None', None)
+    papyg.add_object('False', False)
+    papyg.add_worker(functions =papy.workers.io.dump_item)
+    papyg.add_piper(worker =papy.workers.io.dump_item)
+    papyg.add_piper(worker =papy.workers.io.print_)
+
 if __name__ == '__main__':
     cfg_opts = ConfigOptions()
     cmd_opts = CommandOptions()
     O = Options(cfg_opts, cmd_opts)
+    
     root = Tk.Tk()
-    root.withdraw()
     Pmw.initialise(root)
-    root.option_add("*font", O['default_font'])
+    root.withdraw()
+
+    # make gui
     papyg = PaPyGui(root)
 
+    # temp add junk
+    make_junk()
 
+    # show gui
+    root.deiconify()
+    root.mainloop()
 
+  
 
-
+# tkFileDialog.askopenfilename()
+#        if '\x04' == key.char: #ctrl-D
+#            self.stdin.put('exit()\n')
+#            return
     #g = Graph()
     #g.add_node('node_1')
     #g.add_node('node_2')
@@ -1157,41 +1205,5 @@ if __name__ == '__main__':
     #g['node_3'].xtra['color'] = 'green'
     #g['node_3'].xtra['status'] = 'red'
     #g['node_3'].xtra['screen_name'] = 'node_3'
-
     #g.add_edge(('node_1', 'node_2'))
     #g.add_edge(('node_2', 'node_3'))
-
-
-
-    papyg.add_imap()
-    papyg.add_imap()
-    papyg.add_imap()
-    papyg.add_imap()
-
-    papyg.add_function(module ='papy.workers.io', function ='print_')
-    papyg.add_function(module ='papy.workers.io', function ='dump_item')
-    papyg.add_function(module ='papy.workers.io', function ='load_item')
-    papyg.add_object('None', None)
-    papyg.add_object('False', False)
-
-
-    papyg.add_worker(functions =papy.workers.io.dump_item)
-
-    papyg.add_piper(worker =papy.workers.io.dump_item)
-    papyg.add_piper(worker =papy.workers.io.print_)
-
-    #root.papy.graph = GraphCanvas(graph =g, parent =root.papy.pipeline.page('Pipeline'))
-    #root.papy.graph.pack(expand =YES, fill =BOTH)
-    #import readline
-    #readline.parse_and_bind('tab: complete')    
-    papyg.protocol("WM_DELETE_WINDOW", root.destroy)
-    papyg.wm_deiconify()
-    root.mainloop()
-
-  
-
-# tkFileDialog.askopenfilename()
-#        if '\x04' == key.char: #ctrl-D
-#            self.stdin.put('exit()\n')
-#            return
-
