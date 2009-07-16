@@ -8,6 +8,7 @@ import IMap
 # Python imports
 import os
 import inspect
+from itertools import izip
 
 # Tkinter/Pmw/idlelib imports
 # watch for errors on multiprocessing/Tkinter/linux
@@ -782,8 +783,9 @@ class WorkerDialog(_CreationDialog):
     name = 'worker'
     defaults = {(0, 'name'):None, 
                 (1, 'funcsargs'): None,
-                (2, 'call'): None}
-    args = []
+                (2, 'doc'): None}
+    fargs = []
+
     #def _create(self):
     #    kwargs = {}
     #    for (i, name), entry in self.named_entries:
@@ -800,93 +802,128 @@ class WorkerDialog(_CreationDialog):
     #                for arg_true in name:
     #                    kwargs[arg_true] = True      
     #    papyg.add_imap(**kwargs)
-       
-
-    def combo_to_list(self, combo, list):
-        value = combo.getvalue()[0] # value in combobox
+               
+    def add_func(self):
+        value = self.cfunc.getvalue()[0] # value in combobox
         try:
-            index = int(self.selected_functions.curselection()[0]) + 1
-            self.args.insert(index, [index])
+            index = int(self.funcs.curselection()[0]) + 1
+            self.fargs.insert(index, {}) # a dict for our precious widgets
         except IndexError:
             index = END
-            self.args.append([index])
-        list.insert(index, value)   # always after selection
-        
-    def add_func(self):
-        self.combo_to_list(self.functions, self.selected_functions)
+            self.fargs.append({})   # ...
+        self.funcs.insert(index, value)   # always after selection
+
+    def del_func(self):
+        try:
+            index = int(self.funcs.curselection()[0])
+        except IndexError:
+            return
+        self.funcs.delete(index)
+        self.fargs.pop(index)
+        try:
+            self.funcs.activate(0)
+            self.funcs.selection_set(0)
+            self.sel_func()
+        except:
+            pass
+        # should we destroy widgets they are still in children
+        # widget.destroy()
+
+    def sel_func(self):
+        try:
+            index = int(self.funcs.curselection()[0]) # current function index
+            print index
+        except IndexError:
+            return
+        func_name = self.funcs.getvalue()[0]      # current function name 
+        func = papyg.namespace['functions'][func_name] # the real function
+
+        arg_names = inspect.getargspec(func).args # argument names
+        arg_defaults = inspect.getargspec(func).defaults # argument defaults
+
+        # fill defaults
+
+        frame = self.args.interior()
+        self.noargs.grid_remove()
+        for child in frame.children.values():
+            child.pack_forget()
+
+        wholder = self.fargs[index] # fargs list, wholder dict
+        if not wholder:
+            if arg_names and arg_defaults:
+                for name, default in izip(arg_names, arg_defaults):
+                    if name == 'inbox':
+                        continue
+                    wholder[name] = Pmw.ComboBox(frame,
+                                                label_text = '%s:' % name,
+                                                labelpos = 'w')
+                    wholder[name].component('entryfield').setvalue(repr(default))
+            else:
+                self.noargs.grid(row =0, column =1)
 
 
+        Pmw.alignlabels(frame.children.values()) # all widget labels
+        for widget in wholder.values():
+            widget.pack(expand =NO, fill =X)
+            widget.setlist(papyg.namespace['objects'].keys())
 
-    def sel_args(self):
-        index = int(self.selected_functions.curselection()[0])
-        func_name = self.selected_functions.getvalue()[0]
-        func = papyg.namespace['functions'][func_name]
-        self.call_label.delete('1.0', END)
-        self.call_label.insert(END,inspect.formatargspec(*inspect.getargspec(func)))
-        self.selected_arguments.setlist([i for i in self.args[index]])
-
-    def add_arg(self):
-        self.combo_to_list(self.arguments, self.selected_arguments)
-
+        self.doc_label.delete('1.0', END)
+        self.doc_label.insert(END, func.__doc__)
 
     def create_entries(self):
         # name
         self.name = Pmw.EntryField(self.group.interior(),
-                                   labelpos ='w',
-		                           label_text ='Name:',
-                                   validate ={'validator':'alphabetic'})
-        
+                                    labelpos ='w',
+		                            label_text ='Name:',
+                                    validate ={'validator':'alphabetic'})
         # funcsargs
-        self.funcsargs = Pmw.LabeledWidget(self.group.interior())
-        
-        
-        self.selected_functions = Pmw.ScrolledListBox(self.funcsargs.interior(),
+        self.funcsargs = Pmw.LabeledWidget(self.group.interior(),
+                                    labelpos ='w',
+                                    label_text ='Definition:')
+        # funcs
+        self.funcs = Pmw.ScrolledListBox(self.funcsargs.interior(),
                                     labelpos='n',
                                     label_text ='Functions:',
-                                    selectioncommand =self.sel_args)
-        self.functions = RestrictedComboBox(self.funcsargs.interior()
+                                    selectioncommand =self.sel_func)
+        # cfunc 
+        self.cfunc = RestrictedComboBox(self.funcsargs.interior(),
                                    #selectioncommand=self.selectionCommand,
                                    #dblclickcommand=self.defCmd
                                     )
-        self.function_buttons = Pmw.ButtonBox(self.funcsargs.interior())
-        self.function_buttons.add('Add', command =self.add_func)
-        self.function_buttons.add('Remove', command =None)
-        self.selected_functions.grid(row =0, column =0, sticky =N+E+W+S)
-        self.functions.grid(row =1, column =0,sticky =N+E+W+S)
-        self.function_buttons.grid(row =2, column =0,sticky =N+E+W+S)
 
-        self.selected_arguments = Pmw.ScrolledListBox(self.funcsargs.interior(),
-                                    labelpos='n',
-                                    label_text ='Arguments:')
-        self.arguments = Pmw.ComboBox(self.funcsargs.interior()
-                                   #selectioncommand=self.selectionCommand,
-                                   #dblclickcommand=self.defCmd
-                                   )
-        self.argument_buttons = Pmw.ButtonBox(self.funcsargs.interior())
-        self.argument_buttons.add('Add', command =None)
-        self.argument_buttons.add('Remove', command =None)
-        self.selected_arguments.grid(row =0, column =1, sticky =N+E+W+S)
-        self.arguments.grid(row =1, column =1, sticky =N+E+W+S)
-        self.argument_buttons.grid(row =2, column =1,sticky =N+E+W+S)
+        # bfunc
+        self.bfunc = Pmw.ButtonBox(self.funcsargs.interior())
+        self.bfunc.add('Add', command =self.add_func)
+        self.bfunc.add('Remove', command =self.del_func)
+
+        # args
+        self.args = Pmw.LabeledWidget(self.funcsargs.interior(), 
+                                        labelpos ='n',
+                                        label_text ='Arguments:')
+        self.noargs = Tk.Label(self.funcsargs.interior(), text ='no arguments')
+
+        # barg
+        self.barg = Pmw.ButtonBox(self.funcsargs.interior())
+        self.barg.add('Add', command =None)
+        self.barg.add('Remove', command =None)
         
-        # call
-        self.call = Pmw.LabeledWidget(self.group.interior(),
+        self.cfunc.grid(row =1, column =0, sticky =N+E+W+S) # function combobox
+        self.funcs.grid(row =0, column =0, sticky =N+E+W+S) # function list
+        self.bfunc.grid(row =2, column =0, sticky =N+E+W+S) # function buttons
+        self.args.grid( row =0, column =1, sticky =N+E+W+S) # arguments group  
+        self.barg.grid( row =2, column =1, sticky =N+E+W+S) # argument buttons
+        
+        # documentation
+        self.doc = Pmw.LabeledWidget(self.group.interior(),
                                         labelpos ='w',
-                                        label_text ='Signature:')
-        self.call_label = Tk.Text(self.call.interior(), width =1, height =2,
-        wrap =WORD)
-        self.call_label.pack(expand =YES, fill =BOTH)
-
-
-
-       
-
+                                        label_text ='Documentation:')
+        self.doc_label = Tk.Text(self.doc.interior(), width =1, height =1, wrap =WORD)
+        self.doc_label.pack(expand =YES, fill =BOTH)
 
 
     def update_entries(self):
         # HARD CODED locations
-        self.functions.setlist([i for i in papyg.namespace['functions']])
-        self.arguments.setlist([i for i in papyg.namespace['objects']])
+        self.cfunc.setlist(papyg.namespace['functions'].keys())
 
 
      
@@ -1018,7 +1055,10 @@ class PaPyGui(Pmw.MegaToplevel):
         mod = __import__(kwargs['module'], fromlist =[''])
         function = getattr(mod, kwargs['function'])
         self.namespace['functions'][function.__name__] = function
-        
+
+    def add_object(self, name, object):
+        self.namespace['objects'][name] = object
+
     def make_plumber(self):
         if False: # some input file
             pass
@@ -1110,7 +1150,8 @@ if __name__ == '__main__':
     papyg.add_function(module ='papy.workers.io', function ='print_')
     papyg.add_function(module ='papy.workers.io', function ='dump_item')
     papyg.add_function(module ='papy.workers.io', function ='load_item')
-
+    papyg.add_object('None', None)
+    papyg.add_object('False', False)
 
 
     papyg.add_worker(functions =papy.workers.io.dump_item)
