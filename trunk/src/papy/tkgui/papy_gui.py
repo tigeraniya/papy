@@ -820,16 +820,22 @@ class WorkerDialog(_CreationDialog):
             return
         self.funcs.delete(index)
         self.fargs.pop(index)
+        first_or_previous = 0 if not index else index - 1
         try:
-            self.funcs.activate(0)
-            self.funcs.selection_set(0)
+            self.funcs.activate(first_or_previous)
+            self.funcs.selection_set(first_or_previous)
+        finally:
             self.sel_func()
-        except:
-            pass
         # should we destroy widgets they are still in children
         # widget.destroy()
 
     def sel_func(self):
+        # remove whatever in args
+        frame = self.args.interior()
+        self.noargs.grid_remove()
+        for child in frame.children.values():
+            child.pack_forget()
+        
         try:
             index = int(self.funcs.curselection()[0]) # current function index
             print index
@@ -838,25 +844,30 @@ class WorkerDialog(_CreationDialog):
         func_name = self.funcs.getvalue()[0]      # current function name 
         func = papyg.namespace['functions'][func_name] # the real function
 
-        arg_names = inspect.getargspec(func).args # argument names
-        arg_defaults = inspect.getargspec(func).defaults # argument defaults
+        # get arguments and defaults
+        arg_names = list(inspect.getargspec(func).args) # argument names
+        try:
+            arg_defaults = list(inspect.getargspec(func).defaults) # argument defaults
+        except TypeError:
+            # None if no defaults
+            arg_defaults = []
+        arg_names.reverse()
+        arg_defaults.reverse()
+        # if this tuple has n elements, they correspond to the
+        # last n elements listed in args. (WTF)
 
         # fill defaults
-
-        frame = self.args.interior()
-        self.noargs.grid_remove()
-        for child in frame.children.values():
-            child.pack_forget()
-
         wholder = self.fargs[index] # fargs list, wholder dict
         if not wholder:
             if arg_names and arg_defaults:
-                for name, default in izip(arg_names, arg_defaults):
+                # the map is like zip but fills None for missing.
+                for name, default in map(None, arg_names, arg_defaults):
                     if name == 'inbox':
                         continue
                     wholder[name] = Pmw.ComboBox(frame,
                                                 label_text = '%s:' % name,
-                                                labelpos = 'w')
+                                                labelpos = 'w',
+                                                sticky = N+E+W+S)
                     wholder[name].component('entryfield').setvalue(repr(default))
             else:
                 self.noargs.grid(row =0, column =1)
@@ -867,8 +878,8 @@ class WorkerDialog(_CreationDialog):
             widget.pack(expand =NO, fill =X)
             widget.setlist(papyg.namespace['objects'].keys())
 
-        self.doc_label.delete('1.0', END)
-        self.doc_label.insert(END, func.__doc__)
+        self.doc.delete('1.0', END)
+        self.doc.insert(END, func.__doc__)
 
     def create_entries(self):
         # name
@@ -914,11 +925,21 @@ class WorkerDialog(_CreationDialog):
         self.barg.grid( row =2, column =1, sticky =N+E+W+S) # argument buttons
         
         # documentation
-        self.doc = Pmw.LabeledWidget(self.group.interior(),
+        self.doc = Pmw.ScrolledText(self.group.interior(),
                                         labelpos ='w',
-                                        label_text ='Documentation:')
-        self.doc_label = Tk.Text(self.doc.interior(), width =1, height =1, wrap =WORD)
-        self.doc_label.pack(expand =YES, fill =BOTH)
+                                        label_text ='Documentation:',
+                                        #usehullsize =YES,
+                                        #text_width =70,
+                                        vscrollmode ='static',
+                                        hscrollmode =NONE,
+                                        text_height =6,
+                                        text_width =70,
+                                        text_background ='white',
+                                        text_foreground ='blue',
+                                        text_wrap =WORD,
+                                        #text_state =DISABLED
+                                        )
+        #self.doc.pack(expand =YES, fill =BOTH)
 
 
     def update_entries(self):
