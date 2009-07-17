@@ -15,7 +15,7 @@ from IMap import *
 import logging
 from papy.utils import logger
 from functools import partial
-logger.start_logger(log_level =logging.DEBUG, log_to_screen =False, log_rotate =True)
+#logger.start_logger(log_level =logging.DEBUG, log_to_screen =False, log_rotate =True)
 
 
 
@@ -250,6 +250,8 @@ class test_Worker(GeneratorTest):
         self.assertEqual(pwr((4,)), 16)
         pwr = Worker(powr, (3,))
         self.assertEqual(pwr((2,)), 8)
+        pwr_ = Worker(powr, (), {'arg':2})
+        self.assertEqual(pwr_((4,)), 16)
 
     def xtest_keywords(self):
         mn = Worker(times_m_minus_n, (3,7))
@@ -258,6 +260,10 @@ class test_Worker(GeneratorTest):
         self.assertEqual(mn((4,)), 7)
         mn.args = ((1,1),)
         self.assertEqual(mn((4,)), 3)
+
+    def xtest_kwargs(self):
+        mn = Worker(times_m_minus_n, (), {'m':3, 'n':7})
+        self.assertEqual(mn((4,)), 5)
 
     def xtest_multi(self):
         multi0 = Worker((powr, times_m_minus_n), ((2,),(3,7)))

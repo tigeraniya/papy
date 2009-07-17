@@ -769,59 +769,81 @@ class Piper(object):
 
 
 class Worker(object):
-    """The Worker is an object which wraps tuples of functions and their arguments and
-       and evaluates them when called with a tuple of input data. All exceptions raised
-       by the functions are cought, wrapped and returned.
-
-       The Worker can be initialized in a variety of ways:
-
-         * with a tuple of functions and an (optional)
-           tuple of tuples of their arguments. e.g.::
-
-             Worker((func1, func2, func3), ((arg1_func1, arg2_func1),(), ()))
-
-         * with another worker instance, which results in their functional equivalence
-           e.g.::
-
-             Worker(worker_instance)
-
-         * with multiple worker instances, where the functions and arguments of the
-           workers are combined e.g.::
-
-             Worker((worker1, worker2))
-
-           this is equivalent to::
-
-             Worker(worker1.task + worker2.task, worker1.args + worker2.args)
-
-         * with a single function and its arguments in a tuple e.g.::
-
-             Worker(function,(arg1, arg2, arg3))
-
-           which is equivalent to::
-
-             Worker((function,),((arg1, arg2, arg3),))
     """
-    def __init__(self, functions, arguments =None, name =None):
+    The Worker is an object which composes sequences of functions. When called
+    the functions are evaluated from left to right. Optionally takes sequences
+    of positional (tuples) and keyworded (dictionaries) arguments. All exceptions
+    raised by the functions are cought, wrapped and returned.
+
+    The Worker can be initialized in a variety of ways:
+
+     * with a sequence of functions and a optional sequences of positional and
+       keyworded arguments e.g.::
+
+         Worker((func1,         func2,    func3), 
+               ((arg11, arg21), (arg21,), ()),
+               ({},             {},       {'arg31':arg31}))
+
+     * with another worker instance, which results in their functional equivalence
+       e.g.::
+
+         Worker(worker_instance)
+
+     * with multiple worker instances, where the functions and arguments of the
+       workers are combined e.g.::
+
+         Worker((worker1, worker2))
+
+       this is equivalent to::
+
+         Worker(worker1.task + worker2.task, worker1.args + worker2.args,
+         worker1.kwargs + worker2.kwargs)
+
+     * with a single function and its arguments in a tuple e.g.::
+
+         Worker(function,(arg1, arg2, arg3))
+
+       which is equivalent to::
+
+         Worker((function,),((arg1, arg2, arg3),))
+    """
+    def __init__(self, functions, arguments =None, kwargs =None, name =None):
         is_p, is_w, is_f, is_ip, is_iw, is_if = inspect(functions)
         if is_f:
             self.task = (functions,)
-            self.args = ((arguments or ()),)
-        elif is_w:
+            if arguments is not None:
+                self.args = (arguments,)
+            else:
+                self.args = ((),)
+            if kwargs is not None:
+                self.kwargs = (kwargs,)
+            else:
+                self.kwargs = ({},)
+        elif is_w: # copy from other
             self.task = functions.task
             self.args = functions.args
+            self.kwargs = functions.kwargs
         elif is_if:
-            self.task = tuple(functions)
-            self.args = (arguments or tuple([() for i in self.task]))
+            self.task = tuple(functions) 
+            if arguments is not None:
+                self.args = arguments
+            else:
+                self.args = tuple([() for i in self.task])
+            if kwargs is not None:
+                self.kwargs = kwargs 
+            else:
+                self.kwargs = tuple([{} for i in self.task])
         elif is_iw:
             self.task = tuple(chain(*[w.task for w in functions]))
             self.args = tuple(chain(*[w.args for w in functions]))
+            self.kwargs = tuple(chain(*[w.kwargs for w in functions]))
         else:
             raise TypeError("The Worker expects an iterable of functions or workers " +\
             "got: %s' % functions")
-        if len(self.task) != len(self.args):
+        if len(self.task) != len(self.args) or len(self.task) != len(self.args):
             raise TypeError("The Worker expects the arguents as ((args1) ... (argsN)) " +\
-            "got: %s" % arguments)
+                            "and keyword arguments as ({kwargs}, ... ,{kwargs.}) " +\
+                            "got: %s" % repr(arguments))
         # for representation
         self.__name__ =  ">".join([f.__name__ for f in self.task])
         # for identification
@@ -845,7 +867,8 @@ class Worker(object):
            equal if they have been initialized with the same arguments.
         """
         return  (self.task == getattr(other, 'task', None) and
-                 self.args == getattr(other, 'args', None))
+                 self.args == getattr(other, 'args', None) and 
+                 self.kwargs == getattr(other, 'kwargs', None))
 
     def _inject(self, conn):
         """ Inject/replace all functions into a rpyc connection object.
@@ -871,6 +894,7 @@ class Worker(object):
 
         self.task = [conn.namespace['comp_task']]
         self.args = [[self.args]]
+        self.kwargs = [[self.kwargs]]
         # instead of multiple remote back and the combined functions is
         # evaluated remotely.
         return self
@@ -899,8 +923,8 @@ class Worker(object):
         if not exceptions:
             # upstream did not raise exception, running functions
             try:
-                for f, a in zip(self.task, self.args):
-                    outbox = (f(outbox, *a),)
+                for f, a, k in zip(self.task, self.args, self.kwargs):
+                    outbox = (f(outbox, *a, **k),)
                 outbox = outbox[0]
             except Exception, e:
                 # an exception occured in one of the f's do not raise it
@@ -926,11 +950,11 @@ def inspect(piper):
     return (is_piper, is_worker, is_function, is_iterable_p, is_iterable_w, is_iterable_f)
 
 @imports([['itertools',['izip']]])
-def comp_task(inbox, args):
+def comp_task(inbox, args, kwargs):
     """ Composes the task.
     """
-    for f, a in izip(TASK, args):
-        inbox = (f(inbox, *a),)
+    for f, a, k in izip(TASK, args, kwargs):
+        inbox = (f(inbox, *a, **k),)
     return inbox[0]
 
 class Consume(object):

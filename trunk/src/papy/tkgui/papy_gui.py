@@ -539,8 +539,45 @@ class RestrictedComboBox(Pmw.ComboBox):
         self.component('entryfield_entry').bind('<B1-Motion>',
                             lambda event: 'break')
 
+class _DeleteDialog(Pmw.Dialog):
+    
+    def __init__(self, parent, **kwargs):
+        kwargs['buttons'] = ('Delete', 'Cancel', 'Help')
+        kwargs['title'] = 'Delete PaPy %s' % self.name.capitalize()
+        kwargs['command'] = self.delete
+        kwargs['defaultbutton'] = 'Cancel'
+        apply(Pmw.Dialog.__init__, (self, parent), kwargs)
+        self.create_widgets()
 
-class _CreationDialog(Pmw.Dialog):
+    def create_widgets(self):
+        self.group = Pmw.Group(self.interior())
+        self.group.pack(expand =YES, fill =BOTH)
+        self.wm_resizable(NO, NO)
+
+    def activate(self):
+        # super does not work with classic classes
+        self.update()
+        Pmw.Dialog.activate(self)
+
+    def update(self):
+        pass
+
+    def delete(self):
+        pass
+
+
+
+
+
+
+
+
+
+        
+
+
+
+class _CreateDialog(Pmw.Dialog):
     
     def __init__(self, parent, **kwargs):
         kwargs['buttons'] = ('Create', 'Cancel', 'Help')
@@ -600,9 +637,6 @@ class _CreationDialog(Pmw.Dialog):
                         pass
         # update entries which change
         self.update_entries()
-
-    def update_entries(self):
-        pass
       
     def activate(self):
         # super does not work with classic classes
@@ -790,12 +824,12 @@ class WorkerDialog(_CreationDialog):
         objects = papyg.namespace['objects']
         functions = papyg.namespace['functions']
         funcs = []
-        args = []
+        kwargs = []
         func_names = self.funcs.get()
         for index, fn in enumerate(func_names):
             f = functions[fn]
             funcs.append(f)
-            fargs = []
+            fkwargs = {}
             for an in inspect.getargspec(f).args:
                 if an == 'inbox':
                     continue
@@ -814,12 +848,10 @@ class WorkerDialog(_CreationDialog):
                             except ValueError:
                                 value = raw_value
                 else:
-                    # empty string
-
-
-                fargs.append(self.fargs[index][an].component('entryfield').getvalue())
-            args.append(tuple(fargs))
-        print funcs, args
+                    raise ValueError('XXX')
+                fkwargs[an] = value
+            kwargs.append(fkwargs)
+        papyg.add_worker(funcs, kwargs =kwargs)
 
                
     def add_func(self):
@@ -1083,8 +1115,8 @@ class PaPyGui(object):
         self.namespace['imaps'].remove(imap)
         self.imaps.del_item(imap)
 
-    def add_worker(self, **kwargs):
-        worker = papy.Worker(**kwargs)
+    def add_worker(self, functions, arguments =None, kwargs =None):
+        worker = papy.Worker(functions, arguments, kwargs)
         self.namespace['workers'][worker.name] = worker
         self.workers.add_item(worker)
 
@@ -1156,7 +1188,7 @@ def make_junk():
     papyg.add_function(module ='papy.workers.io', function ='load_item')
     papyg.add_object('None', None)
     papyg.add_object('False', False)
-    papyg.add_worker(functions =papy.workers.io.dump_item)
+    papyg.add_worker(papy.workers.io.dump_item)
     papyg.add_piper(worker =papy.workers.io.dump_item)
     papyg.add_piper(worker =papy.workers.io.print_)
 
