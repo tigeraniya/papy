@@ -111,12 +111,14 @@ class Graph(dict):
         return list(nodes)
 
     def add_node(self, node, xtra =None):
-        """ Adds a node to the graph.
-
+        """ Adds a node to the graph. Returns True if a new node has been added.
         """
         if not node in self:
             n = Node(node, xtra)
             self.update(n)
+            return True
+        return False
+
 
     def del_node(self, node):
         for node_ in self.values():

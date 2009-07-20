@@ -155,14 +155,23 @@ class PiperTreeItem(_TreeItem):
              'cmp', 'ornament', 'debug', 'track')
     subclass = AttributeTreeItem
 
-    def OnSelect(self):
-        print 'aaa'
-        
 
 class WorkerTreeItem(_TreeItem):
     
     def GetSubList(self):
         return [FuncArgsTreeItem(self, f, a) for f, a in zip(self.item.task, self.item.args)]
+
+class ModuleTreeItem(_TreeItem):
+    
+    def get_functions(self):
+        """ Returns a list of function from a 
+        """
+        fs = [v for v in self.item.__dict__.values if inspect.isfunction(v)]
+        return fs
+
+
+    def GetSubList(self):
+        return [FunctionTreeItem(self, f) for f in self.get_functions()]
 
 
 class Tree(object):
@@ -267,7 +276,7 @@ class IMapsTree(Tree):
         self.dialogs['del_imap'].activate()
 
 
-class FunctionsTree(Tree):
+class ModulesTree(Tree):
     
     name = 'Modules'
     _buttons = ('new', 'del', 'add')
@@ -325,13 +334,34 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         return (int(self.canvasx(x)), int(self.canvasy(y)))
 
     def _last_click(self, event):
+        self._update_canvas()
         # canvas position of click
         self.lastxy = self._canvas_coords(event.x, event.y)
         # what did we click
         self.lasttags = self.gettags(CURRENT)
+        print self.lasttags
 
     def _update_canvas(self):
+        # un-clutter
+        self.canvas_menu.unpost()
+        self.pipe_menu.unpost()
         self.resizescrollregion()
+        self.canvas.focus_set()
+
+    def _plumber_error_dialog(self, exception):
+
+        # used to display an exception
+        txt = exception[0]
+        self._canvas_error_dialog(txt)
+
+    def _canvas_error_dialog(self, txt):
+        # used to display an error text
+        error = Pmw.MessageDialog(root,
+                                title = 'PaPy Panic!',
+                                defaultbutton = 0,
+                                message_text =txt)
+        error.iconname('Simple message dialog')
+        error.activate()
 
     def _center_canvas(self):
         pass
@@ -345,8 +375,7 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         self.canvas = self.component('canvas')
         # canvas options
         self.canvas['background'] = O['graph_background']
-        #self.canvas['width'] = 600
-        #self.canvas['height'] = 400
+        self.canvas.background_select = O['graph_background_select']
         self.canvas['relief'] = SUNKEN
         # position of the last click
         self.lastxy = (0, 0)
@@ -368,6 +397,9 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         self.canvas.bind("<Control-Button-1>",        self.mouse3_down)
         self.canvas.bind("<Control-B1-Motion>",       self.mouse3_drag)
         self.canvas.bind("<Control-ButtonRelease-1>", self.mouse3_up)
+        # keyboard
+        self.canvas.bind("<d>", lambda event: self.pop())
+        self.canvas.focus_set()
 
     def make_widgets(self):
         # right click pipe
@@ -379,7 +411,7 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         self.canvas_menu.add_command(label="center graph", command=self._center_canvas)
         self.canvas_menu.add_command(label="align graph",  command =self.align_graph)
 
-    def create_piper_graphics(self, Node):
+    def create_piper_graphics(self, node, Node):
         x = Node.xtra.get('x') or self.lastxy[0]
         y = Node.xtra.get('y') or self.lastxy[1]
         tag = Node.xtra['tag']
@@ -389,7 +421,7 @@ class GraphCanvas(Pmw.ScrolledCanvas):
                                             activewidth=3.0, activefill ="plum")
         self.create_oval(x-8,  y-8,  x+8,  y+8, fill=color,  tags =tag,\
                                             state ='disabled', width =0.0)
-        self.create_text(x+12, y-17, text=tag, fill='black', anchor =NW,\
+        self.create_text(x+12, y-17, text =node.name, fill='black', anchor =NW,\
                                             tags =tag)
         self._update_canvas()
 
@@ -420,11 +452,12 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         Node.xtra['tag'] = tag
         Node.xtra['x'] = self.lastxy[0]
         Node.xtra['y'] = self.lastxy[1]
-        self.create_piper_graphics(Node)
+        self.create_piper_graphics(node, Node)
         self.tag_to_node[tag] = node
         self.tag_to_Node[tag] = Node
+        return tag
 
-    def delete_piper_tag(self, tag):
+    def del_piper_tag(self, tag):
         # also delete edges
         self.delete(tag[1])
         # clean node dicts
@@ -432,15 +465,24 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         self.tag_to_Node.pop(tag[:2])
         # clean pipe dict
         [self.tag_to_pipe.pop(t) for t in self.tag_to_pipe.keys() if tag[1] in t]
+        # clean last 
+        self.lasttags = None
 
     def add_piper(self, piper):
-        self.plumber.add_piper(piper)
-        self.create_piper_tag(piper)
+        if piper:
+            new, piper = self.plumber.add_piper(piper)
+        else:
+            self._canvas_error_dialog('No piper selected.')
+            return
+        if new:
+            tag = self.create_piper_tag(piper)
+            self.lasttags = tag
+        else:
+            self._canvas_error_dialog('Piper alread added.')
 
     def del_piper(self):
-        if self.lasttags and self.lasttags[0] == 'piper':
-            self.plumber.del_piper(self.tag_to_node[self.lasttags[:2]])
-            self.delete_piper_tag(self.lasttags)
+        self.plumber.del_piper(self.tag_to_node[self.lasttags[:2]], forced =True)
+        self.del_piper_tag(self.lasttags)
 
     def create_pipe_graphics(self, xy1, xy2, tags):
         self.create_line(*xy1 + xy2, width =3, arrow =LAST, tags = tags)
@@ -456,22 +498,36 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         xy2 = (N2.xtra['x'], N2.xtra['y'])
         self.create_pipe_graphics(xy1, xy2, tags =tag)
         self.tag_to_pipe[tag] = pipe
+        return tag
 
-    def delete_pipe_tag(self, tag):
+    def del_pipe_tag(self, tag):
         self.tag_to_pipe.pop(tag)
+        self.delete("%s&&%s&&%s" % self.lasttags[:3])
+        #
+        self.lasttags = None
 
-        
-
+    def pop(self):
+        if self.lasttags and self.lasttags[0] == 'pipe':
+            self.del_pipe()
+        elif self.lasttags and self.lasttags[0] == 'piper':
+            self.del_piper()
+        else:
+            # error dialog
+            self._canvas_error_dialog('No piper or pipe selected.')
 
     def add_pipe(self, pipe):
-        self.plumber.add_pipe(pipe)
-        self.create_pipe_tag(pipe)
+        try:
+            self.plumber.add_pipe(pipe)
+            tag = self.create_pipe_tag(pipe)
+            self.lasttags = tag
+        except papy.DaggerError, e:
+            self._plumber_error_dialog(e)
 
     def del_pipe(self):
         n1 = self.tag_to_node[('piper', self.lasttags[1])]
         n2 = self.tag_to_node[('piper', self.lasttags[2])]
         self.plumber.del_edge((n2, n1))
-        self.delete("%s&&%s&&%s" % self.lasttags[:3])
+        self.del_pipe_tag(tag =self.lasttags)
 
     def mouse1_down(self, event):
         self._last_click(event)
@@ -893,7 +949,6 @@ class WorkerDialog(_CreateDialog):
         
         try:
             index = int(self.funcs.curselection()[0]) # current function index
-            print index
         except IndexError:
             return
         func_name = self.funcs.getvalue()[0]      # current function name 
@@ -1057,15 +1112,11 @@ class PaPyGui(object):
         self.pipeline_buttons = Pmw.ButtonBox(pipeline_, 
                                                 orient =VERTICAL,
                                                 padx =0, pady =0)
-        self.pipeline_buttons.add('Add', command =None)
-        def sc():
-            self.graph.scale(ALL, 2.0, 2.0, 0, 0)
-        self.pipeline_buttons.add('Del', command =sc)
+        self.pipeline_buttons.add('Use\n->', command =self.use)
+        self.pipeline_buttons.add('Pop\n<-', command =self.pop)
             
         self.pipeline_buttons.grid(row =0, column =0, sticky =N)
         self.graph.grid(row =0, column =1, sticky =N+E+W+S)
-
-
 
         # imaps
         self.imaps = IMapsTree(self.pipeline.page('IMaps'),\
@@ -1116,13 +1167,23 @@ class PaPyGui(object):
             self.namespace[n] = {}
 
     def add_piper(self, **kwargs):
+        # add to namespace
         piper = papy.Piper(**kwargs)
         self.namespace['pipers'][piper.name] = piper
         self.pipers.add_item(piper)
 
+    def use(self):
+        # add to Dagger
+        self.graph.add_piper(self.pipers.selected_item)
+
     def del_piper(self, **kwargs):
+        # remove from namespace
         self.namespace['pipers'].remove(piper)
         self.pipers.del_item(piper)
+
+    def pop(self):
+        # remove pipe or edge from Dagger
+        self.graph.pop()
 
     def add_imap(self, **kwargs):
         imap = IMap.IMap(**kwargs)
@@ -1164,9 +1225,10 @@ class Options(dict):
                 ('default_font', ("tahoma", 8)),
                 ('node_color', 'blue'),
                 ('node_status', 'green'),
-                ('graph_background', 'aliceblue'),
-                ('Pipers_background', 'pink'),
-                ('Workers_background', 'LightSteelBlue2'),
+                ('graph_background', 'white'),
+                ('graph_background_select', 'gray'),
+                ('Pipers_background', 'white'),
+                ('Workers_background', 'white'),
                 ('Function_doc_background', 'white'),
                 ('Function_doc_foreground', 'gray'),
                 ('Shell_background', 'white'),
@@ -1208,9 +1270,11 @@ def make_junk():
     papyg.add_object('False', False)
     papyg.add_worker(papy.workers.io.dump_item)
     papyg.add_piper(worker =papy.workers.io.dump_item)
+    papyg.add_piper(worker =papy.workers.io.load_item)
     papyg.add_piper(worker =papy.workers.io.print_)
     papyg.graph.add_piper(papyg.namespace['pipers'].values()[0])
     papyg.graph.add_piper(papyg.namespace['pipers'].values()[1])
+    papyg.graph.add_piper(papyg.namespace['pipers'].values()[2])
 
 
 if __name__ == '__main__':

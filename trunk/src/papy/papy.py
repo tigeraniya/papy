@@ -164,6 +164,7 @@ class Dagger(Graph):
 
     def add_piper(self, piper, create =True, xtra =None):
         """Adds a piper to the graph (only if the piper is not already in the graph).
+           Returns a tuple: (new_piper_created, piper_instance). 
 
            Arguments:
 
@@ -173,7 +174,11 @@ class Dagger(Graph):
 
              * create(bool) [default: True]
 
-               Should a new piper be created if necessary? If False and piper is not al
+               Should a new piper be created if necessary?
+
+             * xtra(dict) [default: None]
+            
+               Dictionary of Graph Node properteis.
 
         """
         self.log.info('%s trying to add piper %s' % (repr(self), piper))
@@ -188,9 +193,10 @@ class Dagger(Graph):
             else:
                 self.log.error('%s cannot resolve a piper from %s' % (repr(self), repr(piper)))
                 raise DaggerError('%s cannot resolve a piper from %s' % (repr(self), repr(piper)))
-        self.add_node(piper, xtra)
-        self.log.info('%s added piper %s' % (repr(self), piper))
-        return piper
+        new_piper_created = self.add_node(piper, xtra)
+        if new_piper_created:
+            self.log.info('%s added piper %s' % (repr(self), piper))
+        return (new_piper_created, piper)
 
     def del_piper(self, piper, forced =False):
         """Removes a piper from the graph.
@@ -238,8 +244,8 @@ class Dagger(Graph):
         self.log.info('%s adding pipe: %s' % (repr(self), repr(pipe)))
         for i in xrange(len(pipe)-1):
             edge = (pipe[i+1], pipe[i])
-            edge = (self.add_piper(edge[0], create =True),\
-                    self.add_piper(edge[1], create =True))
+            edge = (self.add_piper(edge[0], create =True)[1],\
+                    self.add_piper(edge[1], create =True)[1])
             if edge[0] in self.dfs(edge[1], []):
                 self.log.error('%s cannot add the %s>>>%s edge (introduces a cycle)' %\
                                 (repr(self), edge[0], edge[1]))
@@ -572,7 +578,6 @@ class Piper(object):
         self.produce = produce
         self.timeout = timeout
         self.debug = debug
-        self.name =  (name or 'piper_%s' % id(self))
         self.track = track
 
         self.log = getLogger('papy')
@@ -600,14 +605,15 @@ class Piper(object):
             self.log.error('Do not know how to create a Piper from %s' % repr(worker))
             raise PiperError('Do not know how to create a Piper from %s' % repr(worker))
 
+        self.name = name or "=%s(%s)=" % (self.worker, id(self))
         self.log.info('Created Piper %s' % self)
 
     def __iter__(self):
         return self
 
     def __repr__(self):
-        return "=%s(%s)=" % (self.worker, id(self))
-
+        return self.name
+        
     def __hash__(self):
         return self.worker.__hash__()
 

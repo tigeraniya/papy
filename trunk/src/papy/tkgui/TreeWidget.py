@@ -63,7 +63,9 @@ class TreeNode:
         self.children = []
         self.x = self.y = None
         self.iconimages = {} # cache of PhotoImage instances for icons
+        #
         self.font = Button(canvas).cget("font")
+
         
     def destroy(self):
         for c in self.children[:]:
@@ -255,9 +257,13 @@ class TreeNode:
         except AttributeError:
             # padding carefully selected (on Windows) to match Entry widget:
             self.label = Label(self.canvas, text=text, bd=0, padx=2, pady=2)
-        bg = self.canvas.cget('bg')
+        bg = self.canvas.cget('background')
+        try:
+            bgs = self.canvas.background_select
+        except AttributeError:
+            bgs = 'gray'
         if self.selected:
-            self.label.configure(foreground ='#000000', background =bg)
+            self.label.configure(foreground ='#000000', background =bgs)
         else:
             self.label.configure(foreground ='#000000', background =bg)
         id = self.canvas.create_window(textx, texty,
