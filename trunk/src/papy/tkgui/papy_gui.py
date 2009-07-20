@@ -155,6 +155,10 @@ class PiperTreeItem(_TreeItem):
              'cmp', 'ornament', 'debug', 'track')
     subclass = AttributeTreeItem
 
+    def OnSelect(self):
+        print 'aaa'
+        
+
 class WorkerTreeItem(_TreeItem):
     
     def GetSubList(self):
