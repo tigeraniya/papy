@@ -197,6 +197,17 @@ class test_Graph(unittest.TestCase):
         self.graph.clear_nodes()
         self.graph.preorder(reverse =True)
 
+    def test_rank_nodes1(self):
+        edges = [(1,2), (3,4), (5,6), (1,5), (1,6), (2,5), (4,6)]
+        self.graph.add_edges(edges)
+        assert self.graph.rank_nodes() == {1: 3, 2: 2, 3: 2, 4: 1, 5: 1, 6: 0}
+
+    def test_rank_nodes1(self):
+        edges = [(1,2), (2,3), (3,4), (4,5), (5,6), (1,6)]
+        self.graph.add_edges(edges)
+        assert self.graph.rank_nodes() == {1: 5, 2: 4, 3: 3, 4: 2, 5: 1, 6: 0}
+        
+
 
 class test_Worker(GeneratorTest):
 
@@ -1405,9 +1416,9 @@ suite_Plumber = unittest.makeSuite(test_Plumber,'test')
 
 if __name__ == "__main__":
     runner = unittest.TextTestRunner()
-#    runner.run(suite_Graph)
-    runner.run(suite_Worker)
-    runner.run(suite_Piper)
+    runner.run(suite_Graph)
+#    runner.run(suite_Worker)
+#    runner.run(suite_Piper)
 #    runner.run(suite_Dagger)
 #    runner.run(suite_Plumber)
 

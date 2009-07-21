@@ -110,6 +110,28 @@ class Graph(dict):
         self.clear_nodes()
         return list(nodes)
 
+    def maxdepth(self):
+        nodes = self.postorder()
+        node_depth = {}
+        for node in nodes:
+            max_depth = 0
+            for child in self[node].nodes():
+                some_depth = node_rank[child] + 1
+                max_depth = max(max_depth, some_depth)
+            node_depth[node] = max_depth
+        return node_depth
+
+    def maxwidth(self):
+        nodes = self.postorder()
+        node_width = {}
+        for node in nodes:
+            max_width = 1
+            for child in self[node].nodes():
+                some_width = node_
+        max_rank = max(node_rank.values())
+        for rank in xrange(max_rank):
+
+
     def add_node(self, node, xtra =None):
         """ Adds a node to the graph. Returns True if a new node has been added.
         """

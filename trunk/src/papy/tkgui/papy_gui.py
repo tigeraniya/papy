@@ -501,8 +501,8 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         return tag
 
     def del_pipe_tag(self, tag):
-        self.tag_to_pipe.pop(tag)
-        self.delete("%s&&%s&&%s" % self.lasttags[:3])
+        self.tag_to_pipe.pop(tag[:3])
+        self.delete("%s&&%s&&%s" % tag[:3])
         #
         self.lasttags = None
 
@@ -566,6 +566,7 @@ class GraphCanvas(Pmw.ScrolledCanvas):
                     n1 = self.tag_to_node[self.lasttags[:2]]
                     n2 = self.tag_to_node[currtags[:2]]
                     self.add_pipe((n1, n2))
+            self.connecting = False
 
     def mouse1_drag(self, event):
         if self.dragging:
@@ -1100,7 +1101,7 @@ class PaPyGui(object):
         self.lr.add(self.r, stretch ='always')
         
         # pipeline & code, shell & logging
-        self.pipeline = NoteBook(self.r, ['Pipeline', 'Functions', 'IMaps'])
+        self.pipeline = NoteBook(self.r, ['Pipeline', 'Functions', 'IMaps', 'Data'])
         self.io = NoteBook(self.r, ['Shell', 'Logging'])
 
         # pipers
@@ -1119,15 +1120,24 @@ class PaPyGui(object):
                                                 padx =0, pady =0)
         self.pipeline_buttons.add('Use\n->', command =self.use)
         self.pipeline_buttons.add('Pop\n<-', command =self.pop)
+        self.pipeline_buttons.add('Run\n|>', command =None)
+        self.pipeline_buttons.add('Stop\n[]', command =None)
             
         self.pipeline_buttons.grid(row =0, column =0, sticky =N)
         self.graph.grid(row =0, column =1, sticky =N+E+W+S)
 
         # fucntions
         functions_ = self.pipeline.page('Functions')
-        self.modules = ModulesTree(functions_, self.namespace['modules'],\
+        self.modules = ModulesTree(functions_, self.namespace['modules'],
                                                             self.dialogs)
-        self.function_text = Pmw.ScrolledText(functions_)
+        self.function_text = Pmw.ScrolledText(functions_, 
+                                            labelpos =N+W,
+                                            text_padx = O['Code_font'][1] // 2,  # half-font
+                                            text_pady = O['Code_font'][1] // 2,
+                                            label_text ='Module code')
+        functions_.grid_rowconfigure(0, weight =1)
+        functions_.grid_columnconfigure(1, weight =1)
+        self.modules.frame.grid(row =0, column =0, sticky =N+E+W+S)
         self.function_text.grid(row =0, column =1, sticky =N+E+W+S)
         
 
@@ -1148,7 +1158,7 @@ class PaPyGui(object):
         
         # shell
         self.shell = PythonShell(self.io.page('Shell'),
-                    text_padx = O['Shell_font'][1] // 2, # half-font
+                    text_padx = O['Shell_font'][1] // 2,  # half-font
                     text_pady = O['Shell_font'][1] // 2)
         self.shell.text['background'] = O['Shell_background']
         self.shell.text['foreground'] = O['Shell_fontcolor']
@@ -1176,7 +1186,7 @@ class PaPyGui(object):
     def make_namespace(self):
         self.namespace = {}
         self.namespace['pipeline'] = self
-        for n in ('functions', 'workers', 'pipers', 'imaps', 'objects'):
+        for n in ('modules','functions', 'workers', 'pipers', 'imaps', 'objects'):
             self.namespace[n] = {}
 
     def add_piper(self, **kwargs):
@@ -1242,15 +1252,18 @@ class Options(dict):
                 ('graph_background_select', 'gray'),
                 ('Pipers_background', 'white'),
                 ('Workers_background', 'white'),
+                ('Modules_background', 'white'),
                 ('Function_doc_background', 'white'),
                 ('Function_doc_foreground', 'gray'),
                 ('Shell_background', 'white'),
                 ('Shell_history', 1000),
                 ('Shell_fontcolor', 'black'),
                 ('Shell_font', ("courier new", 9)),
+                ('Code_font', ("courier new", 9)),
                 ('Pipers_root_icon', 'pipe_16'),
                 ('IMaps_root_icon', 'gear_16'),
                 ('Workers_root_icon', 'component_16'),
+                ('Modules_root_icon', 'python'),
                 ('IMaps_background', 'white')
                 )
 
