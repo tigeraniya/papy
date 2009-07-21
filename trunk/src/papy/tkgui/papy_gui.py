@@ -696,7 +696,11 @@ class _CreateDialog(Pmw.Dialog):
                         # labeled widget
                         pass
         # update entries which change
-        self.update_entries()
+        try:
+            # not all subclasses provide this
+            self.update_entries()
+        except AttributeError:
+            pass
       
     def activate(self):
         # super does not work with classic classes
@@ -1100,16 +1104,17 @@ class PaPyGui(object):
         self.io = NoteBook(self.r, ['Shell', 'Logging'])
 
         # pipers
-        self.pipers = PipersTree(self.l, self.namespace['pipers'], self.dialogs)
-        self.workers = WorkersTree(self.l, self.namespace['workers'], self.dialogs)
-
+        self.pipers = PipersTree(self.l, self.namespace['pipers'],
+                                                        self.dialogs)
+        self.workers = WorkersTree(self.l, self.namespace['workers'],
+                                                        self.dialogs)
         # pipeline
         pipeline_ = self.pipeline.page('Pipeline')
         pipeline_.grid_rowconfigure(0, weight =1)
         pipeline_.grid_columnconfigure(1, weight =1)
 
         self.graph = GraphCanvas(pipeline_)
-        self.pipeline_buttons = Pmw.ButtonBox(pipeline_, 
+        self.pipeline_buttons = Pmw.ButtonBox(pipeline_,
                                                 orient =VERTICAL,
                                                 padx =0, pady =0)
         self.pipeline_buttons.add('Use\n->', command =self.use)
@@ -1117,6 +1122,14 @@ class PaPyGui(object):
             
         self.pipeline_buttons.grid(row =0, column =0, sticky =N)
         self.graph.grid(row =0, column =1, sticky =N+E+W+S)
+
+        # fucntions
+        functions_ = self.pipeline.page('Functions')
+        self.modules = ModulesTree(functions_, self.namespace['modules'],\
+                                                            self.dialogs)
+        self.function_text = Pmw.ScrolledText(functions_)
+        self.function_text.grid(row =0, column =1, sticky =N+E+W+S)
+        
 
         # imaps
         self.imaps = IMapsTree(self.pipeline.page('IMaps'),\
