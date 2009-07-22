@@ -8,9 +8,7 @@ from papy.utils.defaults import DEFAULTS
 SHAREDDICT = {}
 class DictServer(BaseManager):
     pass
-    DictServer.register('dict', lambda: SHAREDDICT, DictProxy)
-
-def fork_waitid():
+DictServer.register('dict', lambda: SHAREDDICT, DictProxy)
 
     
 
