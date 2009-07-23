@@ -99,10 +99,35 @@ def sdist():
 
 @task
 @needs('paver.doctools.html')
-def html():
-    """Build documentation and install it into papy/docs"""
-    print options.sphinx.docroot, options.sphinx.builddir, "html"
-    builtdocs = path("doc") / options.sphinx.builddir / "html"
+def html_local():
+    """Build documentation and install it into papy/doc/build"""
+
+@task
+@needs('paver.doctools.html')
+def html_remote():
+    """Build documentation and install it into papy/doc/html"""
+    # get built documentati
+    builtdocroot = path("doc") / options.sphinx.builddir
+    builtdochtml = builtdocroot / "html"
+    # find destination
+    dochtml = path("doc") / "html"
+    for f in builtdochtml.walk():
+        if f.basename() in ('.svn', '.buildinfo'):
+            try:
+                f.rmtree()
+            except OSError:
+                f.remove()
+    try:
+        sh('svn del doc/html/*')
+    except Exception, e:
+        print e
+    sh('cd doc/html; svn commit -m "documentation update:remove"; svn update; cd ../..')
+    for i in builtdochtml.glob('*'):
+        i.move(dochtml)
+    sh('svn add doc/html/*')
+    sh('cd doc/html/; ../do_mime.sh; svn commit -m "documentation update:add"')
+    builtdocroot.rmtree()
+    
 
 
 
