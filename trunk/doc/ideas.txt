@@ -1,5 +1,0 @@
-Ideas
------
-
-#. Express BSP in PaPy.
-#. Use Paver as a build-tool.

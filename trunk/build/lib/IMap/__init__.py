@@ -1,3 +1,0 @@
-""" 
-"""
-from IMap import IMap
