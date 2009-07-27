@@ -42,7 +42,7 @@ def print_(inbox):
 # INPUT/OUTPUT
 #
 # STREAMS
-@imports([['posix_ipc', ['SharedMemory']], ['mmap',[]], ['os',[]]], forgive =True)
+@imports([['posix_ipc', ['SharedMemory']], ['mmap', []], ['os', []]], forgive=True)
 def open_shm(name):
     """ Equivalent to the built in open function but opens a file in shared
         memory. A single file can be opened multiple times. Only the name of the
@@ -73,7 +73,7 @@ def open_shm(name):
             # try to make some shared memory
             try:
                 # create new file (won't create if exist)
-                SharedMemory.__init__(self, name, flags =posix_ipc.O_CREX)
+                SharedMemory.__init__(self, name, flags=posix_ipc.O_CREX)
             except posix_ipc.ExistentialError:
                 # or open existing file (won't open if not exist)
                 SharedMemory.__init__(self, name)
@@ -107,13 +107,13 @@ def open_shm(name):
         def fileno(self):
             return self.fd
 
-        def truncate(self, size =None):
-            self.mapfile.resize(size or self.tell()) 
-        
+        def truncate(self, size=None):
+            self.mapfile.resize(size or self.tell())
+
     return ShmHandle(name)
 
 
-def dump_stream(inbox, handle, delimiter =None):
+def dump_stream(inbox, handle, delimiter=None):
     """ Writes the first element of the inbox to the provided stream (file
         handle) delimiting the input by the optional delimiter string. Returns
         the name of the file being written.
@@ -138,9 +138,9 @@ def dump_stream(inbox, handle, delimiter =None):
     handle.write(inbox[0])
     delimiter = '\n%s\n' % (delimiter or '')
     handle.write(delimiter)
-    return handle.name    
+    return handle.name
 
-def load_stream(handle, delimiter =None):
+def load_stream(handle, delimiter=None):
     """ Creates a string generator from a stream (file handle) containing
         data delimited by the delimiter strings.
 
@@ -169,7 +169,7 @@ def load_stream(handle, delimiter =None):
                 temp.append(line)
         yield "".join(temp)
 
-@imports([['cPickle',[]]])
+@imports([['cPickle', []]])
 def load_pickle_stream(handle):
     """ Creates an object generator from a stream (file handle) containing data
         in pickles. To be used with the ``dump_pickle_stream``
@@ -190,11 +190,11 @@ def dump_pickle_stream(inbox, handle):
     cPickle.dump(inbox[0], handle, -1)
 
 # ITEMS
-@imports([['tempfile',[]], ['os', []], ['errno', []], ['mmap', []],\
-          ['signal', []],  ['posix_ipc', []], ['socket', []],\
-          ['urllib', []], ['random', []], ['threading', []]], forgive =True)
-def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
-              timeout =320, buffer =None):
+@imports([['tempfile', []], ['os', []], ['errno', []], ['mmap', []], \
+          ['signal', []], ['posix_ipc', []], ['socket', []], \
+          ['urllib', []], ['random', []], ['threading', []]], forgive=True)
+def dump_item(inbox, type='file', prefix=None, suffix=None, dir=None, \
+              timeout=320, buffer=None):
     """ Writes the first element of the inbox as a file of a specified type.
         The type can be 'file', 'fifo', 'shm', 'tcp' or 'udp' corresponding to 
         typical files, named pipes(FIFOs) and posix shared memory. FIFOs and shared
@@ -275,16 +275,16 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
                     raise e
             elif type == 'shm':
                 try:
-                    mem = posix_ipc.SharedMemory(file, size =len(inbox[0]),\
-                                                      flags =posix_ipc.O_CREX)
+                    mem = posix_ipc.SharedMemory(file, size=len(inbox[0]), \
+                                                      flags=posix_ipc.O_CREX)
                     break
                 except posix_ipc.ExistentialError:
                     continue
     # the os will create a random socket for us.
     elif type in ('tcp', 'udp'):
-        
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM 
-                                            if type == 'tcp' else 
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM
+                                            if type == 'tcp' else
                                              socket.SOCK_DGRAM)
         # try to bind to a port
         try:
@@ -333,7 +333,7 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
                 signal.alarm(0)
                 rsock.sendall(inbox[0])               # returns if all data was sent
                 # child closes all sockets and exits
-                rsock.close() 
+                rsock.close()
                 sock.close()
                 os._exit(0)
             # parent closes server socket
@@ -342,7 +342,7 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
         elif type == 'udp':
             #BUFFER = (buffer or PAPY_DEFAULTS['UDP_SNDBUF'])
             BUFFER = 4096
-            pid  = os.fork()
+            pid = os.fork()
             if not pid:
                 # first reply
                 signal.alarm(timeout)
@@ -351,7 +351,7 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
                 i = 0
                 while True:
                     # sends an empty '' when data finishes and exits
-                    data = inbox[0][i:i+BUFFER]
+                    data = inbox[0][i:i + BUFFER]
                     sock.sendto(data, rhost)
                     i += BUFFER
                     if data:
@@ -362,7 +362,7 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
             # parent closes server socket
             sock.close()
             file = (host, port, 'udp')
-        
+
         # 0. get pid list and methods for atomic operations
         # 1. add the child pid to the pid list
         # 2. try to wait each pid in the list without blocking:
@@ -376,7 +376,7 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
             PAPY_RUNTIME[tid] = []
             pids = PAPY_RUNTIME[tid]
         add_pid = pids.append   # list methods are atomic
-        del_pid = pids.remove 
+        del_pid = pids.remove
         # 1.
         add_pid(pid)
         # 2. 
@@ -392,9 +392,9 @@ def dump_item(inbox, type ='file', prefix =None, suffix =None, dir =None,\
     # filename needs still to be unlinked
     return file
 
-@imports([['mmap', []], ['os',[]], ['stat', []],\
-          ['posix_ipc', []], ['warnings', []]], forgive =True)
-def load_item(inbox, type ='string', remove =True, buffer =None):
+@imports([['mmap', []], ['os', []], ['stat', []], \
+          ['posix_ipc', []], ['warnings', []]], forgive=True)
+def load_item(inbox, type='string', remove=True, buffer=None):
     """ Loads data from a file. Determines the file type automatically ('file',
         'fifo', 'shm', 'tcp', 'udp') but allows to specify the representation 
         type 'string' or 'mmap' for memmory mapped access to the file. Returns
@@ -419,7 +419,7 @@ def load_item(inbox, type ='string', remove =True, buffer =None):
     name = inbox[0]
     if len(name) == 2 and isinstance(name[0], basestring):
         is_file = True
-        
+
     if is_file:
         try:
             is_fifo = stat.S_ISFIFO(os.stat(name[0]).st_mode)
@@ -427,18 +427,18 @@ def load_item(inbox, type ='string', remove =True, buffer =None):
             is_shm = os.path.exists(os.path.join('/dev/shm', name[0]))
     else:
         is_item = len(name) == 4
-        is_socket = len(name) == 3 
+        is_socket = len(name) == 3
         is_tcp = name[2] == 'tcp'
         is_udp = name[2] == 'udp'
 
     if (is_fifo or is_socket) and (type == 'mmap'):
-        warnings.warn('memory mapping is not supported for FIFOs and sockets',\
+        warnings.warn('memory mapping is not supported for FIFOs and sockets', \
                                                                 RuntimeWarning)
         type = 'string'
     if (is_fifo or is_socket) and not remove:
-        warnings.warn('FIFOs and sockets have to be removed',\
+        warnings.warn('FIFOs and sockets have to be removed', \
                                                RuntimeWarning)
-        remove = True 
+        remove = True
 
     # get a fd and start/stop
     start = 0
@@ -451,7 +451,7 @@ def load_item(inbox, type ='string', remove =True, buffer =None):
         stop = os.stat(name[0]).st_size - 1
         fd = os.open(name[0], os.O_RDONLY)
         BUFFER = (buffer or PAPY_DEFAULTS['PIPE_BUF'])
-    
+
     elif is_socket:
         host, port = socket.gethostbyname(name[0]), name[1]
         if is_tcp:
@@ -473,14 +473,14 @@ def load_item(inbox, type ='string', remove =True, buffer =None):
         (fd, name), start, stop = name
 
     else:
-        raise ValueError('?')
+        raise ValueError('%s' % (repr(inbox)))
 
     # get the data
-    if type =='mmap':
+    if type == 'mmap':
         offset = start - (start % mmap.ALLOCATIONGRANULARITY)
         start = start - offset
         stop = stop - offset + 1
-        data = mmap.mmap(fd, stop, access=mmap.ACCESS_READ, offset =offset)
+        data = mmap.mmap(fd, stop, access=mmap.ACCESS_READ, offset=offset)
         data.seek(start)
 
     elif type == 'string':
@@ -488,9 +488,9 @@ def load_item(inbox, type ='string', remove =True, buffer =None):
         if stop == -1:
             while True:
                 if is_socket and is_udp:
-                    buffer_  = sock.recv(BUFFER)
+                    buffer_ = sock.recv(BUFFER)
                 else:
-                    buffer_ = os.read(fd, BUFFER)                                          
+                    buffer_ = os.read(fd, BUFFER)
                 if not buffer_:
                     break
                 data.append(buffer_)
@@ -525,9 +525,9 @@ def load_item(inbox, type ='string', remove =True, buffer =None):
 
 
 
-@imports([['papy', []], ['tempfile', []], ['multiprocessing',[]],\
-          ['threading', []]], forgive = True)
-def dump_manager_item(inbox, address =('127.0.0.1', 46779), authkey ='papy'):
+@imports([['papy', []], ['tempfile', []], ['multiprocessing', []], \
+          ['threading', []]], forgive=True)
+def dump_manager_item(inbox, address=('127.0.0.1', 46779), authkey='papy'):
     """ Writes the first element of the inbox as a shared object. The object is
         stored as a value in a shared dictionary served by a *Manager* process.
         Returns the key for the object value the address and the authentication
@@ -554,7 +554,7 @@ def dump_manager_item(inbox, address =('127.0.0.1', 46779), authkey ='papy'):
     manager.connect()
     kv = manager.dict()
     # identify process/thread
-    ptid = hash((threading.current_thread(),\
+    ptid = hash((threading.current_thread(), \
            multiprocessing.current_process()))
     # get a random process/thread safe key
     names = tempfile._get_candidate_names()
@@ -568,8 +568,8 @@ def dump_manager_item(inbox, address =('127.0.0.1', 46779), authkey ='papy'):
     kv[k] = inbox[0]
     return (k, address, authkey)
 
-@imports([['papy', []], ['multiprocessing', []]], forgive =True)
-def load_manager_item(inbox, remove =True):
+@imports([['papy', []], ['multiprocessing', []]], forgive=True)
+def load_manager_item(inbox, remove=True):
     """
     """
     class DictClient(multiprocessing.managers.BaseManager):
@@ -584,10 +584,10 @@ def load_manager_item(inbox, remove =True):
     else:
         v = kv[k]
     return v
-    
 
-@imports([['sqlite3', []], ['MySQLdb', []], ['warnings', []]], forgive =True)
-def dump_db_item(inbox, type='sqlite', table ='temp', **kwargs):
+
+@imports([['sqlite3', []], ['MySQLdb', []], ['warnings', []]], forgive=True)
+def dump_db_item(inbox, type='sqlite', table='temp', **kwargs):
     """ Writes the first element of the inbox as a key/value pair in a database
         of the provided type. Currently supported: "sqlite" and "mysql".
         Returns the information necessary for the load_db_item to retrieve the
@@ -624,14 +624,14 @@ def dump_db_item(inbox, type='sqlite', table ='temp', **kwargs):
     """
     # connect defaults
     kwargs['db'] = kwargs.get('db') or 'papydb'
-    
+
     # backend specific
-    if type =='sqlite':
+    if type == 'sqlite':
         dbapi2 = sqlite3.dbapi2
         ai = 'autoincrement'
-        kwargs['database']  = kwargs.pop('db')
-        kwargs['isolation_level'] ='IMMEDIATE'
-    elif type =='mysql':
+        kwargs['database'] = kwargs.pop('db')
+        kwargs['isolation_level'] = 'IMMEDIATE'
+    elif type == 'mysql':
         dbapi2 = MySQLdb
         ai = 'auto_increment'
         kwargs['host'] = kwargs.get('host') or 'localhost'
@@ -655,14 +655,14 @@ def dump_db_item(inbox, type='sqlite', table ='temp', **kwargs):
         # After a BEGIN IMMEDIATE, you are guaranteed that no other thread or
         # process will be able to write to the database or do a BEGIN IMMEDIATE
         # or BEGIN EXCLUSIVE. 
-            con =dbapi2.connect(**kwargs)
+            con = dbapi2.connect(**kwargs)
             cur = con.cursor()
             cur.execute("create table if not exists %s (id integer primary key %s, value blob)" % (table, ai))
             break
         except dbapi2.OperationalError, e:
             # if locked wait ... forever
             if not e.args[0] == 'database is locked':
-                raise e 
+                raise e
     # inserts are atomic, no locking needed.
 
     if type in ('mysql',):
@@ -683,7 +683,7 @@ def dump_db_item(inbox, type='sqlite', table ='temp', **kwargs):
     return type, id_, table, kwargs
 
 @imports([['sqlite3', []], ])
-def load_db_item(inbox, remove =True):
+def load_db_item(inbox, remove=True):
     """ Loads an item from a sqlite database. Returns the stored string.
 
         Arguments:
@@ -693,10 +693,10 @@ def load_db_item(inbox, remove =True):
             Remove the loaded item from the table (temporary storage).
     """
     type, id_, table, kwargs = inbox[0]
-    
-    if type =='sqlite':
+
+    if type == 'sqlite':
         dbapi2 = sqlite3.dbapi2
-    elif type =='mysql':
+    elif type == 'mysql':
         dbapi2 = MySQLdb
 
     while True:
@@ -707,14 +707,14 @@ def load_db_item(inbox, remove =True):
         except dbapi2.OperationalError, e:
             if not e.args[0] == 'database is locked':
                 raise e
-    if type =='sqlite':
+    if type == 'sqlite':
         get_item = 'select value from %s where id = ?' % table
         item = str(cur.execute(get_item, (id_,)).fetchone()[0])
-    elif type =='mysql':
+    elif type == 'mysql':
         get_item = 'select value from %s where id = %s' % (table, id_)
         cur.execute(get_item)
         item = str(cur.fetchone()[0])
-    
+
     # remove the retrieved item.
     if remove:
         if type in ('sqlite',):
@@ -723,7 +723,7 @@ def load_db_item(inbox, remove =True):
         elif type in ('mysql',):
             del_item = 'delete from %s where id = %s' % (table, id_)
             cur.execute(del_item)
-    
+
     # clean-up connection
     cur.close()
     con.commit()
@@ -733,8 +733,8 @@ def load_db_item(inbox, remove =True):
 
 
 # FILES
-@imports([['time',[]]])
-def make_lines(handle, follow =False, wait =0.1):
+@imports([['time', []]])
+def make_lines(handle, follow=False, wait=0.1):
     """ Creates a line generator from a stream (file handle) containing data in
         lines.
 
@@ -757,7 +757,7 @@ def make_lines(handle, follow =False, wait =0.1):
         else:
             raise StopIteration
 
-@imports([['mmap', []], ['os',['fstat']]])
+@imports([['mmap', []], ['os', ['fstat']]])
 def make_items(handle, size):
     """ Creates a generator of items from a file handle. The size argument is
         the approximate size of the generated chunks in bytes. The main purpose
@@ -803,8 +803,8 @@ def make_items(handle, size):
         # if no chunk the chunk size will be start, start+size+size in next
         # round.
 
-@imports([['glob', []], ['os',[]], ['tempfile',[]]])
-def find_items(prefix ='tmp', suffix ='', dir =None):
+@imports([['glob', []], ['os', []], ['tempfile', []]])
+def find_items(prefix='tmp', suffix='', dir=None):
     """ Creates a file name generator from files matching the supplied
         arguments. Matches the same files as those created by ``dump_chunk``
         for the same arguments.
@@ -834,7 +834,7 @@ def find_items(prefix ='tmp', suffix ='', dir =None):
 # SERIALIZATION
 #
 # cPickle
-@imports([['cPickle',[]], ['gc',[]]])
+@imports([['cPickle', []], ['gc', []]])
 def pickle_dumps(inbox):
     """ Serializes the first element of the input using the pickle protocol.
     """
@@ -844,17 +844,17 @@ def pickle_dumps(inbox):
     gc.enable()
     return str
 
-@imports([['cPickle',[]], ['gc',[]]])
+@imports([['cPickle', []], ['gc', []]])
 def pickle_loads(inbox):
     """ De-serializes the first element of the input using the pickle protocol.
     """
     gc.disable()
     obj = cPickle.loads(inbox[0])
     gc.enable()
-    return obj 
+    return obj
 
 # MARSHAL
-@imports([['marshal',[]], ['gc',[]]])
+@imports([['marshal', []], ['gc', []]])
 def marshal_dumps(inbox):
     """ Serializes the first element of the input using the marshal protocol.
     """
@@ -863,26 +863,26 @@ def marshal_dumps(inbox):
     gc.enable()
     return str
 
-@imports([['marshal',[]], ['gc',[]]])
+@imports([['marshal', []], ['gc', []]])
 def marshal_loads(inbox):
     """ Serializes the first element of the input using the marshal protocol.
     """
     gc.disable()
     obj = marshal.loads(inbox[0])
     gc.enable()
-    return obj 
+    return obj
 
 # JSON
-@imports([['simplejson',[]], ['gc',[]]], forgive =True)
+@imports([['simplejson', []], ['gc', []]], forgive=True)
 def json_dumps(inbox):
     """ Serializes the first element of the input using the JSON protocol.
-    """ 
+    """
     gc.disable()
     str = simplejson.dumps(inbox[0])
     gc.enable()
     return str
 
-@imports([['simplejson',[]], ['gc',[]]], forgive =True)
+@imports([['simplejson', []], ['gc', []]], forgive=True)
 def json_loads(inbox):
     """ De-serializes the first element of the input using the JSON protocol.
     """
@@ -892,14 +892,14 @@ def json_loads(inbox):
     return obj
 
 # CSV
-@imports([['csv',[]], ['cStringIO', []]])
+@imports([['csv', []], ['cStringIO', []]])
 def csv_dumps(inbox, **kwargs):
     handle = cStringIO.StringIO()
     csv_writer = csv.writer(handle, **kwargs)
     csv_writer.writerow(inbox[0])
     return handle.getvalue()
 
-@imports([['csv',[]]])
+@imports([['csv', []]])
 def csv_loads(inbox):
     pass
 

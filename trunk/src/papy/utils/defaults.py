@@ -2,7 +2,6 @@
 :mod:`papy.utils.defaults`
 ==========================
 Provides OS-dependent defaults.
-
 """
 from IMap import imports
 

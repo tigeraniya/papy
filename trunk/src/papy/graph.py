@@ -116,7 +116,7 @@ class Graph(dict):
         for node in nodes:
             max_depth = 0
             for child in self[node].nodes():
-                some_depth = node_rank[child] + 1
+                some_depth = node_depth[child] + 1
                 max_depth = max(max_depth, some_depth)
             node_depth[node] = max_depth
         return node_depth
