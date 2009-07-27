@@ -415,7 +415,8 @@ def load_item(inbox, type='string', remove=True, buffer=None):
             memory. Files can be used to store data persistantly.
     """
     # determine the input type
-    is_file, is_fifo, is_shm, is_socket = False, False, False, False
+    is_file, is_fifo, is_shm, is_socket, is_item = \
+                                               False, False, False, False, False
     name = inbox[0]
     if len(name) == 2 and isinstance(name[0], basestring):
         is_file = True
@@ -426,10 +427,13 @@ def load_item(inbox, type='string', remove=True, buffer=None):
         except OSError:
             is_shm = os.path.exists(os.path.join('/dev/shm', name[0]))
     else:
-        is_item = len(name) == 4
-        is_socket = len(name) == 3
-        is_tcp = name[2] == 'tcp'
-        is_udp = name[2] == 'udp'
+        if len(name) == 3:
+            is_tcp = name[2] == 'tcp'
+            is_udp = name[2] == 'udp'
+        if is_tcp or is_udp:
+            is_socket = True
+        else:
+            is_item = True
 
     if (is_fifo or is_socket) and (type == 'mmap'):
         warnings.warn('memory mapping is not supported for FIFOs and sockets', \
@@ -470,7 +474,7 @@ def load_item(inbox, type='string', remove=True, buffer=None):
             raise ValueError
 
     elif is_item:
-        (fd, name), start, stop = name
+        fd, start, stop = name
 
     else:
         raise ValueError('%s' % (repr(inbox)))
@@ -515,10 +519,12 @@ def load_item(inbox, type='string', remove=True, buffer=None):
         else:
             # pipes and files are just removed
             os.close(fd)
-            os.unlink(name[0])
+            if not is_item:
+                os.unlink(name[0])
     else:
         # a file not remove, but close fh
-        os.close(fd)
+        if not is_item:
+            os.close(fd)
 
     # returns a string or mmap
     return data
@@ -730,8 +736,6 @@ def load_db_item(inbox, remove=True):
     return item
 
 
-
-
 # FILES
 @imports([['time', []]])
 def make_lines(handle, follow=False, wait=0.1):
@@ -792,12 +796,12 @@ def make_items(handle, size):
         stop = (stop or start) + size
         # reached end of file
         if stop >= file_size:
-            yield ((fd, None), start, file_size - 1)
+            yield (fd, start, file_size - 1)
             break
         # try to get a chunk
         last_n = mmaped.rfind('\n', start, stop)
         if last_n != -1:
-            yield ((fd, None), start, last_n)
+            yield (fd, start, last_n)
             start = last_n + 1
             stop = 0
         # if no chunk the chunk size will be start, start+size+size in next
@@ -873,21 +877,21 @@ def marshal_loads(inbox):
     return obj
 
 # JSON
-@imports([['simplejson', []], ['gc', []]], forgive=True)
+@imports([['json', []], ['gc', []]], forgive=True)
 def json_dumps(inbox):
     """ Serializes the first element of the input using the JSON protocol.
     """
     gc.disable()
-    str = simplejson.dumps(inbox[0])
+    str = json.dumps(inbox[0])
     gc.enable()
     return str
 
-@imports([['simplejson', []], ['gc', []]], forgive=True)
+@imports([['json', []], ['gc', []]], forgive=True)
 def json_loads(inbox):
     """ De-serializes the first element of the input using the JSON protocol.
     """
     gc.disable()
-    obj = simplejson.loads(inbox[0])
+    obj = json.loads(inbox[0])
     gc.enable()
     return obj
 

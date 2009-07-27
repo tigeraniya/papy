@@ -37,13 +37,10 @@ from inspect import getsource, isbuiltin, isfunction
 import traceback
 import warnings
 from collections import defaultdict, deque
-import time
-import gc
+# import gc
 # sets-up logging
 from logging import getLogger
 log = getLogger(__name__)
-
-
 
 class IMap(object):
     """
@@ -769,8 +766,7 @@ def imports(modules, forgive=False):
                     if not forgive:
                         raise
                     else:
-                        warnings.warn('module %s cannot be imported' % module)
-
+                        warnings.warn('module %s cannot be imported' % mod)
         return f
     return wrap
 
