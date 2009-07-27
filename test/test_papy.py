@@ -332,7 +332,6 @@ class test_Worker(GeneratorTest):
         plus_minus = partial(compose, funcs=(plus, minus))
         assert 0 == plus_minus([0], ((), ()))
 
-
     def testsys_ver(self):
         assert [['sys', ['version']]] == sys_ver.imports
         assert sys_ver.func_globals.get('version')
@@ -502,7 +501,7 @@ class test_Worker(GeneratorTest):
         assert sorted(b) == sorted(a)
 
     def test_make_items(self):
-        fh = open('chunks.txt', 'rb')
+        fh = open('files/test_make_items', 'rb')
         chunker = workers.io.make_items(fh, 4000)
         mmapc = Worker(workers.io.mmap_item, (False,))
         output = ""

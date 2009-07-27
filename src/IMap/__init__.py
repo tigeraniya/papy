@@ -22,11 +22,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ===========
    :platform: Python 2.6
    :synopsis: Iterated Multi-task parallel map function.
-   
 """
 
 __author__ = 'Marcin Cieslik <mpc4p@virginia.edu>'
 
 from IMap import IMap, Weave, imports, inject_func
+
 
 #EOF

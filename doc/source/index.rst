@@ -6,11 +6,11 @@ This documentation covers the implementation and usage of *PaPy*. It consists of
 hand-written manual and an API-reference. Please refer also to the comments in
 the source code.
 
-project page: http://code.google.com/p/papy/
-repository lives at: http://papy.googlecode.com/svn/trunk/
-most recent documentation: http://papy.googlecode.com/svn/trunk/doc/
-most recent html documentation: http://papy.googlecode.com/svn/trunk/doc/.build/html/index.html
-author email: marcin #d0t# cieslik #at# gmail #d0t# com
+  * project page: http://code.google.com/p/papy/
+  * repository lives at: http://papy.googlecode.com/svn/trunk/
+  * most recent documentation: http://papy.googlecode.com/svn/trunk/doc/sources/
+  * most recent html documentation: http://papy.googlecode.com/svn/trunk/html/index.html
+  * author email: marcin.cieslik@gmail.com
 
 .. warning::
 

@@ -3,7 +3,6 @@
 ================
 
 This module provides classes and functions to construct and run a papy pipeline.
-
 """
 # self-imports
 from IMap import IMap, Weave, imports, inject_func 
@@ -23,42 +22,47 @@ from time import time
 
 
 class WorkerError(Exception):
-    """ Exceptions raised or related to Worker instances.
+    """
+    Exceptions raised or related to Worker instances.
     """
     pass
 
 
 class PiperError(Exception):
-    """ Exceptions raised or related to Piper instances.
+    """
+    Exceptions raised or related to Piper instances.
     """
     pass
 
 
 class DaggerError(Exception):
-    """ Exceptions raised or related to Dagger instances.
+    """
+    Exceptions raised or related to Dagger instances.
     """
     pass
 
 
 class PlumberError(Exception):
-    """ Exceptions raised or related to Plumber instances.
+    """
+    Exceptions raised or related to Plumber instances.
     """
     pass
 
 
 
 class Dagger(Graph):
-    """ The Dagger is a Directed Acyclic Graph.
+    """
+    The Dagger is a Directed Acyclic Graph.
 
-        Arguments:
-
-          * pipers(sequence) [default: ()]
-
-            A sequence of valid add_piper inputs
-
-          * pipes(sequence) [default: ()]
-
-            A sequence of valid add_pipe inputs
+    Arguments:
+    
+        * pipers(sequence) [default: ()]
+        
+          A sequence of valid add_piper inputs
+        
+        * pipes(sequence) [default: ()]
+        
+          A sequence of valid add_pipe inputs
     """
 
     def __init__(self, pipers =(), pipes =(), xtras =None):
@@ -69,12 +73,14 @@ class Dagger(Graph):
 
 
     def __repr__(self):
-        """ Short representation.
+        """
+        Short representation.
         """
         return 'Dagger(%s)' % id(self)
 
     def __str__(self):
-        """ Long representation.
+        """
+        Long representation.
         """
         return repr(self) + "\n"+\
                "\tPipers:\n" +\
@@ -84,23 +90,25 @@ class Dagger(Graph):
     
     @staticmethod
     def _cmp(x, y):
-        """ Compares pipers by ornament.
+        """
+        Compares pipers by ornament.
         """
         return cmp(x.ornament, y.ornament)
 
     def resolve(self, piper, forgive =False):
-        """Given a piper or piper id returns the identical piper in the graph.
-
-           Arguments:
-
-             * piper(Piper instance, id(Piper instance))
-
-               Object to find in the graph.
-
-             * forgive(bool) [default =False]
-
-               If forgive is False a DaggerError is raised whenever a piper cannot
-               be resolved in the graph. If forgive is True False is returned
+        """
+        Given a piper or piper id returns the identical piper in the graph.
+    
+        Arguments:
+    
+            * piper(Piper instance, id(Piper instance))
+            
+              Object to find in the graph.
+            
+            * forgive(bool) [default =False]
+            
+              If forgive is False a DaggerError is raised whenever a piper cannot
+              be resolved in the graph. If forgive is True False is returned
         """
         try:
             if piper in self:
@@ -119,7 +127,8 @@ class Dagger(Graph):
         return resolved
 
     def connect(self):
-        """ Connects pipers in the correct order.
+        """
+        Connects pipers in the correct order.
         """
         postorder = self.postorder()
         self.log.info('%s trying to connect in the order %s' % (repr(self), repr(postorder)))
@@ -129,7 +138,8 @@ class Dagger(Graph):
         self.log.info('%s succesfuly connected' % repr(self))
 
     def connect_inputs(self, datas):
-        """ Connects input *Pipers* to input-data in the correct order.
+        """
+        Connects input *Pipers* to input-data in the correct order.
         """
         start_pipers = self.get_inputs()
         start_pipers.sort(self._cmp)
@@ -137,7 +147,8 @@ class Dagger(Graph):
             piper.connect([data])
 
     def disconnect(self):
-        """ Disconnects pipers in the correct order.
+        """
+        Disconnects pipers in the correct order.
         """ 
         postorder = self.postorder()
         self.log.info('%s trying to disconnect in the order %s' % (repr(self), repr(postorder)))
@@ -147,7 +158,8 @@ class Dagger(Graph):
         self.log.info('%s succesfuly disconnected' % repr(self))
 
     def start(self):
-        """ Starts all pipers in the correct order.
+        """
+        Starts all pipers in the correct order.
         """
         postorder = self.postorder()
         for piper in postorder:
@@ -164,22 +176,23 @@ class Dagger(Graph):
         return end_pipers
 
     def add_piper(self, piper, create =True, xtra =None):
-        """Adds a piper to the graph (only if the piper is not already in the graph).
-           Returns a tuple: (new_piper_created, piper_instance). 
+        """
+        Adds a piper to the graph (only if the piper is not already in the graph).
+        Returns a tuple: (new_piper_created, piper_instance). 
 
-           Arguments:
-
-             * piper(Piper instance, Worker instance or id(Piper instance)
-
-               Piper instance or object which will be converted to a piper instance.
-
-             * create(bool) [default: True]
-
-               Should a new piper be created if necessary?
-
-             * xtra(dict) [default: None]
+        Arguments:
+        
+            * piper(Piper instance, Worker instance or id(Piper instance)
             
-               Dictionary of Graph Node properteis.
+            Piper instance or object which will be converted to a piper instance.
+            
+            * create(bool) [default: True]
+            
+            Should a new piper be created if necessary?
+            
+            * xtra(dict) [default: None]
+            
+            Dictionary of Graph Node properteis.
 
         """
         self.log.info('%s trying to add piper %s' % (repr(self), piper))
@@ -200,18 +213,19 @@ class Dagger(Graph):
         return (new_piper_created, piper)
 
     def del_piper(self, piper, forced =False):
-        """Removes a piper from the graph.
+        """
+        Removes a piper from the graph.
 
-           Arguments:
-
-             * piper(Piper instance, Worker instance or id(Piper instance)
-
-               Piper instance or object which will be converted to a piper instance.
-
-             * forced(bool) [default: False]
-
-               If forced is False pipers with down-stream connections will not be removed
-               and will raise a DaggerError.
+        Arguments:
+        
+            * piper(Piper instance, Worker instance or id(Piper instance)
+            
+              Piper instance or object which will be converted to a piper instance.
+            
+            * forced(bool) [default: False]
+            
+              If forced is False pipers with down-stream connections will not be removed
+              and will raise a DaggerError.
         """
         self.log.info('%s trying to delete piper %s' % (repr(self), repr(piper)))
         try:
@@ -227,20 +241,21 @@ class Dagger(Graph):
 
 
     def add_pipe(self, pipe):
-        """Adds a pipe (A, ..., N) which is an N-tuple tuple of pipers. Adding a pipe
-           means to add all the pipers and connect them in the specified order. If a
+        """
+        Adds a pipe (A, ..., N) which is an N-tuple tuple of pipers. Adding a pipe
+        means to add all the pipers and connect them in the specified order. If a
 
-           Arguments:
-
-             * pipe(sequence)
-
-               N-tuple of Piper instances or objects which can be resolved in the graph
-               (see: resolve). The pipers are added in the specified order
-
-           .. note::
-
-              The direction of the edges in the graph is reversed compared to the data
-              flow  in a pipe i.e. the target node points to the source node.
+        Arguments:
+        
+            * pipe(sequence)
+            
+              N-tuple of Piper instances or objects which can be resolved in the graph
+              (see: resolve). The pipers are added in the specified order
+        
+        .. note::
+        
+             The direction of the edges in the graph is reversed compared to the data
+             flow  in a pipe i.e. the target node points to the source node.
         """
         self.log.info('%s adding pipe: %s' % (repr(self), repr(pipe)))
         for i in xrange(len(pipe)-1):

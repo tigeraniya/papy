@@ -16,13 +16,13 @@ try:
     from multiprocessing.queues import SimpleQueue
     PARALLEL += 1
 except ImportError:
-    print 'mutliprocessing not available get it from:' +\
+    print 'mutliprocessing not available get it from:' + \
           'http://pypi.python.org/pypi/multiprocessing/'
 try:
     import rpyc
     PARALLEL += 1
 except ImportError:
-    print 'RPyC not available get it from:' +\
+    print 'RPyC not available get it from:' + \
           'http://rpyc.wikidot.com/'
 
 # Threading and Queues
@@ -35,6 +35,7 @@ from heapq import heappush, heappop
 from itertools import izip, repeat, cycle, chain
 from inspect import getsource, isbuiltin, isfunction
 import traceback
+import warnings
 from collections import defaultdict, deque
 import time
 import gc
@@ -42,107 +43,113 @@ import gc
 from logging import getLogger
 log = getLogger(__name__)
 
+
+
 class IMap(object):
     """
-    Parallel (thread- or process-based), buffered, multi-task, itertools.imap or Pool.imap
-    function replacment. Like imap it evaluates a function on elements of an iterable, and
-    it does so layzily(with adjusted buffer via the stride and buffer arguments).
+    Parallel (thread- or process-based), buffered, multi-task, itertools.imap or
+    Pool.imap function replacment. Like imap it evaluates a function on elements
+    of an iterable, and it does so layzily(with adjusted buffer via the stride 
+    and buffer arguments).
 
     optional arguments:
 
-      * func, iterable, args, kwargs
-
-        Defines th the first and only task, it *starts* the IMap pool and returns an IMap
-        iterator. For a description of the args, kwargs and iterable input please see
-        the add_task function. Either *both* or *none* func **and** iterable have to be
-        specified. Arguments and keyworded arguments are optional.
-
-      * worker_type('process' or 'thread') [default: 'process']
-
-        Defines the type of internally spawned pool workers. For multiprocessing Process
-        based worker choose 'process' for threading Thread workers choose 'thread'.
-
-        .. note::
-
-          This choice has *fundamental* impact on the performance of the function please
-          understand the difference between processes and threads and refer to the manual
-          documentation. As a general rule use 'process' if you have multiple CPUs or
-          cores and your functions(tasks) are cpu-bound. Use 'thread' if your function is
-          IO-bound e.g. retrieves data from the Web.
-
-          If you specify any remote workers via worker_remote, worker_type has
-          to be the default 'process'. This limitation might go away in future
-          versions.
-
-      * worker_num(int) [default: number of CPUs, min: 1]
-
-        The number of workers to spawn locally. Defaults to the number of availble CPUs, 
-        which is a reasonable choice for process-based IMaps.
-
-        .. note::
-
-          Increasing the number of workers above the number of CPUs makes sense only if
-          these are Thread-based workers and the evaluated functions are IO-bound.
-
-      * worker_remote(sequence or None) [default: None]
-
-         Specify the rpyc hosts and number of workers as a sequence of tuples
-         ("host_ip_etc", worker_num). For example::
-
-           [['localhost', 2], ['127.0.0.1', 2]]
-
-         the TCP port can also be specified::
-
-           [['localhost:6666']]
-
-      * stride(int) [default: worker_num + sum of remote worker_num, min: 1]
-
-        The stride argument defines the number of consecutive tasklets which are
-        submitted to the process/thread pool for a task. This defines the degree
-        of parallelism. It should not be smaller than the size of the pool, which
-        is equal to the sum of local and remote threads/processes.
-
-      * buffer(int) [default: stride * (tasks * spawn), min: variable]
-
-        The buffer argument limits the maximum memory consumption in tasklet units, by
-        limiting the number of tasklets submitted to the pool. By default each task
-        should receive it's own buffer of stride size.
-
-        .. note::
-
-          A tasklet is considered submitted until it is returned by the next method.
-          The minimum stride is 1 this means that starting the IMap causes one tasklet
-          to be submitted to the pool input queue. The following tasklet from the next task
-          can enter the queue only if the first one is calculated and returned by the next
-          method. A completely lazy evaluation (i.e. submitting the first tasklet *after*
-          the next method for the first task has been called is not supported).
-
-          If the buffer is n then n tasklets can enter the pool. Depending on the number of
-          tasks and the stride size these can be tasklets from one or several tasks. If the
-          tasks are chained i.e. the output from one is consumed by another then at most one
-          i-th tasklet is at a given moment in the pool. In those cases the minimum required
-          buffer is lower.
-
-      * ordered(bool) [default: True]
-
-        If True the output will be ordered i.e. the result of job_17 from task_1 will be
-        returned after job_16 from any task *and* job_17 from task_0 **but** before job_18
-        from any task *and* job_17 of task_n (for any n > 1).
-
-      * skip(bool) [default: False]
-
-        Should we skip a result if trying to retrieve it rasied a TimeoutError? If the
-        results are ordered and skip =True then the calling the next method after a
-        TimeoutError will skip the timeouted result and try to get the next. If
-        skip =False it will try to get the same result once more. If the results are not
-        ordered then the next result calculated will be skipped.
+        * func, iterable, args, kwargs
+        
+          Defines th the first and only task, it *starts* the IMap pool and 
+          returns an IMap iterator. For a description of the args, kwargs and 
+          iterable input please see the add_task function. Either *both* or 
+          *none* func **and** iterable have to be specified. Arguments and 
+          keyworded arguments are optional.
+        
+        * worker_type('process' or 'thread') [default: 'process']
+        
+          Defines the type of internally spawned pool workers. For multiprocessing Process
+          based worker choose 'process' for threading Thread workers choose 'thread'.
+        
+          .. note::
+        
+            This choice has *fundamental* impact on the performance of the function please
+            understand the difference between processes and threads and refer to the manual
+            documentation. As a general rule use 'process' if you have multiple CPUs or
+            cores and your functions(tasks) are cpu-bound. Use 'thread' if your function is
+            IO-bound e.g. retrieves data from the Web.
+        
+            If you specify any remote workers via worker_remote, worker_type has
+            to be the default 'process'. This limitation might go away in future
+            versions.
+        
+        * worker_num(int) [default: number of CPUs, min: 1]
+        
+          The number of workers to spawn locally. Defaults to the number of availble CPUs, 
+          which is a reasonable choice for process-based IMaps.
+        
+          .. note::
+        
+            Increasing the number of workers above the number of CPUs makes sense only if
+            these are Thread-based workers and the evaluated functions are IO-bound.
+        
+        * worker_remote(sequence or None) [default: None]
+        
+           Specify the rpyc hosts and number of workers as a sequence of tuples
+           ("host_ip_etc", worker_num). For example::
+        
+             [['localhost', 2], ['127.0.0.1', 2]]
+        
+           the TCP port can also be specified::
+        
+             [['localhost:6666']]
+        
+        * stride(int) [default: worker_num + sum of remote worker_num, min: 1]
+        
+          The stride argument defines the number of consecutive tasklets which are
+          submitted to the process/thread pool for a task. This defines the degree
+          of parallelism. It should not be smaller than the size of the pool, which
+          is equal to the sum of local and remote threads/processes.
+        
+        * buffer(int) [default: stride * (tasks * spawn), min: variable]
+        
+          The buffer argument limits the maximum memory consumption in tasklet units, by
+          limiting the number of tasklets submitted to the pool. By default each task
+          should receive it's own buffer of stride size.
+        
+          .. note::
+        
+            A tasklet is considered submitted until it is returned by the next method.
+            The minimum stride is 1 this means that starting the IMap causes one tasklet
+            to be submitted to the pool input queue. The following tasklet from the next task
+            can enter the queue only if the first one is calculated and returned by the next
+            method. A completely lazy evaluation (i.e. submitting the first tasklet *after*
+            the next method for the first task has been called is not supported).
+        
+            If the buffer is n then n tasklets can enter the pool. Depending on the number of
+            tasks and the stride size these can be tasklets from one or several tasks. If the
+            tasks are chained i.e. the output from one is consumed by another then at most one
+            i-th tasklet is at a given moment in the pool. In those cases the minimum required
+            buffer is lower.
+        
+        * ordered(bool) [default: True]
+        
+          If True the output will be ordered i.e. the result of job_17 from task_1 will be
+          returned after job_16 from any task *and* job_17 from task_0 **but** before job_18
+          from any task *and* job_17 of task_n (for any n > 1).
+        
+        * skip(bool) [default: False]
+        
+          Should we skip a result if trying to retrieve it rasied a TimeoutError? If the
+          results are ordered and skip =True then the calling the next method after a
+          TimeoutError will skip the timeouted result and try to get the next. If
+          skip =False it will try to get the same result once more. If the results are not
+          ordered then the next result calculated will be skipped.
 
     """
     @staticmethod
-    def _pool_put(pool_semaphore, tasks, put_to_pool_in, pool_size, id_self,\
+    def _pool_put(pool_semaphore, tasks, put_to_pool_in, pool_size, id_self, \
                   is_stopping):
-        """ (internal) Intended to be run in a seperate thread. Feeds tasks into to the
-            pool whenever semaphore permits. Finishes if self._stopping is set.
+        """ 
+        (internal) Intended tiuo be run in a seperate thread. Feeds tasks into to the
+        pool whenever semaphore permits. Finishes if self._stopping is set.
+        
         """
         log.debug('IMap(%s) started pool_putter.' % id_self)
         last_tasks = {}
@@ -162,25 +169,25 @@ class IMap(object):
             except StopIteration:
                 # Weaver raised a StopIteration
                 stop_task = tasks.i # current task
-                log.debug('IMap(%s) pool_putter catched StopIteration from task %s.' %\
+                log.debug('IMap(%s) pool_putter catched StopIteration from task %s.' % \
                                                                   (id_self, stop_task))
                 if stop_task not in stop_tasks:
                     # task raised stop for the first time.
-                    log.debug('IMap(%s) pool_putter task %s first-time finished.' %\
+                    log.debug('IMap(%s) pool_putter task %s first-time finished.' % \
                                                                 (id_self, stop_task))
                     stop_tasks.append(stop_task)
                     pool_semaphore.acquire()
-                    log.debug('IMap(%s) pool_putter sends a sentinel for task %s.' %\
+                    log.debug('IMap(%s) pool_putter sends a sentinel for task %s.' % \
                                                                  (id_self, stop_task))
                     put_to_pool_in((stop_task, None, last_tasks[stop_task]))
                 if len(stop_tasks) == tasks.lenght:
-                    log.debug('IMap(%s) pool_putter sent sentinels for all tasks.' %\
+                    log.debug('IMap(%s) pool_putter sent sentinels for all tasks.' % \
                                                                               id_self)
                     # all tasks have been stopped
                     for worker in xrange(pool_size):
                         put_to_pool_in(None)
-                    log.debug('IMap(%s) pool_putter sent sentinel for %s workers' %\
-                                                               (id_self,  pool_size))
+                    log.debug('IMap(%s) pool_putter sent sentinel for %s workers' % \
+                                                               (id_self, pool_size))
                     # this kills the pool_putter
                     break
                 # multiple StopIterations for a tasks are ignored. This is for stride.
@@ -198,11 +205,13 @@ class IMap(object):
         log.debug('IMap(%s) pool_putter returns' % id_self)
 
     @staticmethod
-    def _pool_get(get, results, next_available, task_next_lock, to_skip, task_num,\
+    def _pool_get(get, results, next_available, task_next_lock, to_skip, task_num, \
                   pool_size, id_self):
-        """ (internal) Intended to be run in a seperate thread and take results from the
-            pool and put them into queues depending on the task of the result. It finishes
-            if it receives termination-sentinels from all pool workers.
+        """ 
+        (internal) Intended to be run in a seperate thread and take results from the
+        pool and put them into queues depending on the task of the result. It finishes
+        if it receives termination-sentinels from all pool workers.
+        
         """
         log.debug('IMap(%s) started pool_getter' % id_self)
         # should return when all workers have returned, each worker sends a sentinel
@@ -254,22 +263,22 @@ class IMap(object):
             task, i, is_valid, real_result = result
             # locked if next for this task is in the process of raising a TimeoutError
             task_next_lock[task].acquire()
-            log.debug('IMap(%s) pool_getter received result %s for task %s)' %\
+            log.debug('IMap(%s) pool_getter received result %s for task %s)' % \
                       (id_self, i, task))
 
             if to_skip[task]:
-                log.debug('IMap(%s) pool_getter skips results: %s' % (id_self,\
-                range(last_result_id[task] +1, last_result_id[task] + to_skip[task] + 1)))
+                log.debug('IMap(%s) pool_getter skips results: %s' % (id_self, \
+                range(last_result_id[task] + 1, last_result_id[task] + to_skip[task] + 1)))
                 last_result_id[task] += to_skip[task]
                 to_skip[task] = 0
 
             if i > last_result_id[task]:
                 result_ids[task].add(i)
                 results[task].put((i, is_valid, real_result))
-                log.debug('IMap(%s) pool_getter put result %s for task %s to queue' %\
+                log.debug('IMap(%s) pool_getter put result %s for task %s to queue' % \
                           (id_self, i, task))
             else:
-                log.debug('IMap(%s) pool_getter skips result %s for task %s' %\
+                log.debug('IMap(%s) pool_getter skips result %s for task %s' % \
                           (id_self, i, task))
 
             # this releases the next method for each ordered result in the queue
@@ -285,10 +294,10 @@ class IMap(object):
             task_next_lock[task].release()
         log.debug('IMap(%s) pool_getter returns' % id_self)
 
-    def __init__(self, func =None, iterable =None, args =None, kwargs =None,\
-                 worker_type =None, worker_num =None, worker_remote =None,\
-                 stride =None, buffer =None, ordered =True, skip =False,\
-                 name =None):
+    def __init__(self, func=None, iterable=None, args=None, kwargs=None, \
+                 worker_type=None, worker_num=None, worker_remote=None, \
+                 stride=None, buffer=None, ordered=True, skip=False, \
+                 name=None):
 
         log.debug('%s %s starts initializing' % (self, (name or '')))
         if not PARALLEL:
@@ -311,8 +320,8 @@ class IMap(object):
         self.worker_num = cpu_count() if worker_num is None else worker_num
         self.worker_remote = (worker_remote or [])    # [('host', #workers)]
         self.stride = (stride or self.worker_num + sum([i[1] for i in self.worker_remote]))
-        self.buffer  = buffer                         # defines the maximum number
-        self.name =  (name or 'imap_%s' % id(self))
+        self.buffer = buffer                         # defines the maximum number
+        self.name = (name or 'imap_%s' % id(self))
         # of jobs which are in the input queue, pool and output queues and next method
 
         # next method options
@@ -337,9 +346,9 @@ class IMap(object):
         log.debug('%s finished initializing' % self)
 
         if bool(func) ^ bool(iterable):
-            log.error('%s either, both *or* none func *and* iterable' % self +\
+            log.error('%s either, both *or* none func *and* iterable' % self + \
                       'have to be specified.')
-            raise ValueError('%s either, both *or* none func *and* iterable' % self +\
+            raise ValueError('%s either, both *or* none func *and* iterable' % self + \
                              'have to be specified.')
         elif bool(func) and bool(iterable):
             self.add_task(func, iterable, args, kwargs)
@@ -367,15 +376,15 @@ class IMap(object):
             self._task_results[id_] = PriorityQueue() if self.ordered else Queue()
 
         # start the pool putter thread
-        self._pool_putter = Thread(target =self._pool_put,\
-                                   args = (self._pool_semaphore, self._task_queue, self._putin,\
+        self._pool_putter = Thread(target=self._pool_put, \
+                                   args=(self._pool_semaphore, self._task_queue, self._putin, \
                                            len(self.pool), id(self), self._stopping.isSet))
         self._pool_putter.deamon = True
         self._pool_putter.start()
 
         # start the pool getter thread
-        self._pool_getter = Thread(target =self._pool_get,\
-                                   args = (self._getout, self._task_results, self._next_available,\
+        self._pool_getter = Thread(target=self._pool_get, \
+                                   args=(self._getout, self._task_results, self._next_available, \
                                            self._task_next_lock, self._next_skipped,
                                            len(self._tasks), len(self.pool), id(self)))
         self._pool_getter.deamon = True
@@ -387,66 +396,67 @@ class IMap(object):
         self.pool = []
         for host, worker_num in [(None, self.worker_num)] + list(self.worker_remote):
             for i in range(worker_num):
-                w = Thread(target=worker,  args=(self._inqueue, self._outqueue, host))\
+                w = Thread(target=worker, args=(self._inqueue, self._outqueue, host))\
                   if self.worker_type == 'thread' else\
                     Process(target=worker, args=(self._inqueue, self._outqueue, host))
                 self.pool.append(w)
-        for w in self.pool:    
+        for w in self.pool:
             w.daemon = True
             w.start()
         log.debug('%s started the pool' % self)
 
-    def add_task(self, func, iterable, args =None, kwargs =None, timeout =None,\
-                block =True, track =False):
-        """ Adds a task to evaluate. A task is made of a function an iterable and optional
-            arguments and keyworded arguments. The iterable can be the result iterator of
-            a previously added task. A tasklet is a (func, iterable.next(), args, kwargs).
+    def add_task(self, func, iterable, args=None, kwargs=None, timeout=None, \
+                block=True, track=False):
+        """ 
+        Adds a task to evaluate. A task is made of a function an iterable and optional
+        arguments and keyworded arguments. The iterable can be the result iterator of
+        a previously added task. A tasklet is a (func, iterable.next(), args, kwargs).
 
-              * func(callable)
-
-                Will be called with the elements of the iterable, args and kwargs.
-
-              * iterable(iterable)
-
-                The elements of the iterable will be the first arguments passed to the
-                func.
-
-              * args(tuple) [default =None]
-
-                A tuple of optional constant arguments passed to the function after the
-                argument from the iterable.
-
-              * kwargs(dict) [default =None]
-
-                A dictionary of constant keyworded arguments passed to the function after
-                the variable argument from the iterable and the constant arguments in the
-                args tuple.
-
-              * track(bool) [default =False]
-
-                If true the results (or exceptions) of task are saved withing
-                self._tasks_tracked[%task_id%] as a {index:result} dictionary.
-                This is only useful if the task function involves creation of
-                persistant data. The dictionary can be used to restore the
-                correct order of the data.
-
+            * func(callable)
+            
+              Will be called with the elements of the iterable, args and kwargs.
+            
+            * iterable(iterable)
+            
+              The elements of the iterable will be the first arguments passed to the
+              func.
+            
+            * args(tuple) [default =None]
+            
+              A tuple of optional constant arguments passed to the function after the
+              argument from the iterable.
+            
+            * kwargs(dict) [default =None]
+            
+              A dictionary of constant keyworded arguments passed to the function after
+              the variable argument from the iterable and the constant arguments in the
+              args tuple.
+            
+            * track(bool) [default =False]
+            
+              If true the results (or exceptions) of task are saved withing
+              self._tasks_tracked[%task_id%] as a {index:result} dictionary.
+              This is only useful if the task function involves creation of
+              persistant data. The dictionary can be used to restore the
+              correct order of the data.
+            
             .. note::
-
-               The order in which tasks are added to the IMap instance is
-               important. It affects the order in which tasks are submited to
-               the pool and consequently the order in which results should be
-               retrieved. If the tasks are chained then the order should be a
-               valid topological sort (reverse topological oreder).
+            
+            The order in which tasks are added to the IMap instance is
+            important. It affects the order in which tasks are submited to
+            the pool and consequently the order in which results should be
+            retrieved. If the tasks are chained then the order should be a
+            valid topological sort (reverse topological oreder).
         """
 
         if not self._started.isSet():
-            task = izip(repeat(len(self._tasks)), repeat(func), repeat((args or ())),\
+            task = izip(repeat(len(self._tasks)), repeat(func), repeat((args or ())), \
                         repeat((kwargs or {})), enumerate(iterable))
             task_id = len(self._tasks)
             self._tasks.append(task)
             if track:
                 self._tasks_tracked[task_id] = {} # result:index
-            return self.get_task(task =task_id, timeout =timeout, block =block)
+            return self.get_task(task=task_id, timeout=timeout, block=block)
         else:
             log.error('%s cannot add tasks (is started).' % self)
             raise RuntimeError('%s cannot add tasks (is started).' % self)
@@ -468,7 +478,7 @@ class IMap(object):
             log.error('%s is already started.' % self)
             raise RuntimeError('%s is already started.' % self)
 
-    def stop(self, ends =None):
+    def stop(self, ends=None):
         """ Stops the worker pool threads/processes and the threads which manage the
             input and output queues of the pool respectively. It stops IMap instances
             which did not consume the input and/or calculate the results. Blocks the
@@ -494,7 +504,7 @@ class IMap(object):
                 for task in to_do:
                     try:
                         #for i in xrange(self.stride):
-                        self.next(task =task)
+                        self.next(task=task)
                     except StopIteration:
                         to_do.remove(task)
                         log.debug('%s stopped task %s' % (self, task))
@@ -535,7 +545,7 @@ class IMap(object):
         """
         return self
 
-    def get_task(self, task =0, timeout =None, block =True):
+    def get_task(self, task=0, timeout=None, block=True):
         """ Returns an iterator which results are bound to one task. The default iterator
             the one which e.g. will be used by default in for loops is the iterator for
             the first task (task =0). Compare::
@@ -557,9 +567,9 @@ class IMap(object):
                   pass
 
         """
-        return IMapTask(self, task =task, timeout =timeout, block =block)
+        return IMapTask(self, task=task, timeout=timeout, block=block)
 
-    def next(self, timeout =None, task =0, block =True):
+    def next(self, timeout=None, task=0, block=True):
         """ Returns the next result for the given task (default 0).
 
             .. note::
@@ -594,11 +604,11 @@ class IMap(object):
         try:
             log.debug('%s waits for a result: ordered %s, task %s' % (self, self.ordered, task))
             if self.ordered:
-                got_next = self._next_available[task].get(timeout =timeout, block =block)
+                got_next = self._next_available[task].get(timeout=timeout, block=block)
                 log.debug('%s has been released for task: %s' % (self, task))
                 result = self._task_results[task].get()
             else:
-                result = self._task_results[task].get(timeout =timeout, block =block)
+                result = self._task_results[task].get(timeout=timeout, block=block)
         except Empty:
             self._task_next_lock[task].acquire()
             log.debug('%s timeout for result: ordered %s, task %s' % (self, self.ordered, task))
@@ -608,17 +618,17 @@ class IMap(object):
             # lock the pool getter not to submit more results.
             try:
                 if self.ordered:
-                    got_next = self._next_available[task].get(block =False)
+                    got_next = self._next_available[task].get(block=False)
                     log.debug('%s has been released for task: %s' % (self, task))
                     result = self._task_results[task].get()
                 else:
-                    result = self._task_results[task].get(block =False)
+                    result = self._task_results[task].get(block=False)
             except Empty:
                 if self.skip:
                     self._next_skipped[task] += 1
                     self._pool_semaphore.release()
                 self._task_next_lock[task].release()
-                raise TimeoutError('%s timeout for result: ordered %s, task %s' %\
+                raise TimeoutError('%s timeout for result: ordered %s, task %s' % \
                                    (self, self.ordered, task))
         log.debug('%s got a result: ordered %s, task %s, %s' % (self, self.ordered, task, result))
         # return or raise the result
@@ -642,7 +652,7 @@ class IMap(object):
             raise real_result
 
 
-def worker(inqueue, outqueue, host =None):
+def worker(inqueue, outqueue, host=None):
     """ Function which is executed by processes/threads within the pool.
         It waits for tasks (function, data, arguments) at the input queue
         evaluates the result and passes it to the output queue.
@@ -677,7 +687,7 @@ def worker(inqueue, outqueue, host =None):
             put(task)
             continue
 
-        job, func, args, kwargs, (i, data) = task 
+        job, func, args, kwargs, (i, data) = task
         if host:
             func = func._inject(conn) if hasattr(func, '_inject') else\
                    inject_func(func, conn)
@@ -688,7 +698,7 @@ def worker(inqueue, outqueue, host =None):
         #gc.disable()
         put((job, i, ok, result))
         #gc.enable()
-        
+
 def inject_func(func, conn):
     """ Injects a function object into a rpyc connection object.
     """
@@ -701,7 +711,7 @@ def inject_func(func, conn):
         conn.execute(inject_code)
     return conn.namespace[name]
 
-def imports(modules, forgive =False):
+def imports(modules, forgive=False):
     """ Should be used as a decorator to attach import statments to function
         definitions. And import them in the in the global namespace of the 
         function. 
@@ -758,6 +768,9 @@ def imports(modules, forgive =False):
                 except ImportError:
                     if not forgive:
                         raise
+                    else:
+                        warnings.warn('module %s cannot be imported' % module)
+
         return f
     return wrap
 
@@ -771,7 +784,7 @@ class Weave(object):
         TODO: refactor iterables -> iterators
 
     """
-    def __init__(self, iterables, repeats =1):
+    def __init__(self, iterables, repeats=1):
         self.iterables = iterables          # sequence of iterables
         self.lenght = len(self.iterables)
         self.i = 0                          # index of current iterable
@@ -796,7 +809,7 @@ class Weave(object):
             self.r = 0
 
         self.r += 1
-        if self.stopping and self.i ==0 and self.r ==1:
+        if self.stopping and self.i == 0 and self.r == 1:
             self.stopped = True
         if self.i == 0 and self.stopped:
             raise StopIteration
@@ -842,8 +855,8 @@ class IMapTask(object):
         """ Returns a result if availble within timeout else raises
             a TimeoutError. See documentation for *IMap.next*
         """
-        return self.iterator.next(task =self.task, timeout =self.timeout,
-                                                     block =self.block)
+        return self.iterator.next(task=self.task, timeout=self.timeout,
+                                                     block=self.block)
 
 class PriorityQueue(Queue):
     """ A priority queue using a heap on a list.

@@ -21,8 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 :mod:`papy`
 ===========
    :platform: Python 2.6
-   :synopsis: Create a data processing pipeline.
-
+   :synopsis: Create and parallel/ distributed data processing pipeline.
 """
 
 __author__ = 'Marcin Cieslik <mpc4p@virginia.edu>'

@@ -2,22 +2,21 @@
 :mod:`papy.utils.logger`
 ========================
 Provides loggin facilities for PaPy.
-
 """
 import logging
 from logging import handlers, Formatter
 import time
 
 
-def start_logger(log_to_file =True,\
-                 log_to_stream =True,\
-                 log_to_file_level =logging.INFO,\
-                 log_to_stream_level =logging.INFO,\
-                 log_filename =None,\
-                 log_stream =None,\
-                 log_rotate =True,\
-                 log_size =524288,\
-                 log_number =3):
+def start_logger(log_to_file=True, \
+                 log_to_stream=True, \
+                 log_to_file_level=logging.INFO, \
+                 log_to_stream_level=logging.INFO, \
+                 log_filename=None, \
+                 log_stream=None, \
+                 log_rotate=True, \
+                 log_size=524288, \
+                 log_number=3):
     """ Function to start logging the execution of a PaPy pipeline.
 
         Arguments:
@@ -67,13 +66,13 @@ def start_logger(log_to_file =True,\
     root_log.setLevel(logging.DEBUG)
     if log_to_file:
         if log_rotate:
-            file_handler = handlers.RotatingFileHandler(log_filename,\
-                                    maxBytes=log_size, backupCount =log_number)                      
+            file_handler = handlers.RotatingFileHandler(log_filename, \
+                                    maxBytes=log_size, backupCount=log_number)
         else:
-            file_handler = logging.FileHandler(log_filename, 'w')  
+            file_handler = logging.FileHandler(log_filename, 'w')
         file_handler.setLevel(log_to_file_level)
         file_handler.setFormatter(formatter)
-        root_log.addHandler(file_handler)              
+        root_log.addHandler(file_handler)
     if log_to_stream:
         stream_handler = logging.StreamHandler(log_stream)
         stream_handler.setLevel(log_to_stream_level)

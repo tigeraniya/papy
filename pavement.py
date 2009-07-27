@@ -24,11 +24,11 @@ CLASSIFIERS = [
     "Operating System :: OS Independent"
     ]
 
-PACKAGES =['papy', 'IMap', 'papy.workers', 'papy.utils', 'papy.tkgui']
+PACKAGES = ['papy', 'IMap', 'papy.workers', 'papy.utils', 'papy.tkgui']
 SCRIPTS = ['src/papy/tkgui/papy']
 
-PACKAGE_DIR ={'papy': 'src/papy', 'IMap': 'src/IMap'}
-PACKAGE_DATA ={'papy.utils':['templates/*', 'rpycd/*'], 'papy.tkgui':['icons/*']}
+PACKAGE_DIR = {'papy': 'src/papy', 'IMap': 'src/IMap'}
+PACKAGE_DATA = {'papy.utils':['templates/*', 'rpycd/*'], 'papy.tkgui':['icons/*']}
 
 REQUIRES = [
     # -*- Install requires: -*-
@@ -37,36 +37,36 @@ REQUIRES = [
 
 # compatible with distutils of python 2.3+ or later
 paver.setuputils.setup(
-    name =NAME.lower(),
-    version =VERSION,
+    name=NAME.lower(),
+    version=VERSION,
 
-    description ='Parallel pipelines for Python',
+    description='Parallel pipelines for Python',
     keywords='multiprocessing parallel pipeline workflow rpyc',
-    author ='Marcin Cieslik',
-    author_email ='mpc4p@virginia.edu',
-    url ='http://muralab.org/PaPy',
-    license ='GPLv3',
-    long_description =open('README.rst', 'r').read(),
+    author='Marcin Cieslik',
+    author_email='mpc4p@virginia.edu',
+    url='http://muralab.org/PaPy',
+    license='GPLv3',
+    long_description=open('README.rst', 'r').read(),
 
     include_package_data=True,
-    classifiers =CLASSIFIERS,
-    packages = PACKAGES,
-    scripts = SCRIPTS,
-    package_dir = PACKAGE_DIR,
-    package_data = PACKAGE_DATA,
-    install_requires =REQUIRES,
-    zip_safe =False,
+    classifiers=CLASSIFIERS,
+    packages=PACKAGES,
+    scripts=SCRIPTS,
+    package_dir=PACKAGE_DIR,
+    package_data=PACKAGE_DATA,
+    install_requires=REQUIRES,
+    zip_safe=False,
     )
 
 #paver.easy
 options(
     # -*- Paver options: -*-
-    minilib =Bunch(
+    minilib=Bunch(
         extra_files=[
             # -*- Minilib extra files: -*-
             ]
         ),
-    sphinx =Bunch(
+    sphinx=Bunch(
         docroot="doc",
         builddir="build",
         sourcedir="source"
@@ -127,7 +127,7 @@ def html_remote():
     sh('svn add doc/html/*')
     sh('cd doc/html/; ../do_mime.sh; svn commit -m "documentation update:add"')
     builtdocroot.rmtree()
-    
+
 
 
 
