@@ -5,7 +5,7 @@
 This module provides classes and functions to construct and run a papy pipeline.
 """
 # self-imports
-from IMap import IMap, Weave, imports, inject_func 
+from IMap import IMap, Weave, imports, inject_func
 from graph import Graph
 from utils import logger
 from utils.defaults import get_defaults
@@ -19,6 +19,9 @@ from types import FunctionType
 from inspect import isbuiltin, getsource
 from logging import getLogger
 from time import time
+
+#
+TASK = None
 
 
 class WorkerError(Exception):
@@ -65,7 +68,7 @@ class Dagger(Graph):
           A sequence of valid add_pipe inputs
     """
 
-    def __init__(self, pipers =(), pipes =(), xtras =None):
+    def __init__(self, pipers=(), pipes=(), xtras=None):
         self.log = getLogger('papy')
         self.log.info('Creating %s from %s and %s' % (repr(self), pipers, pipes))
         self.add_pipers(pipers, xtras)
@@ -82,12 +85,12 @@ class Dagger(Graph):
         """
         Long representation.
         """
-        return repr(self) + "\n"+\
-               "\tPipers:\n" +\
-               "\n".join(('\t\t'+repr(p)+' ' for p in self.nodes())) + '\n'\
-               "\tPipes:\n" +\
-               "\n".join(('\t\t'+repr(p[1])+'>>>'+repr(p[0]) for p in self.edges()))
-    
+        return repr(self) + "\n" + \
+               "\tPipers:\n" + \
+               "\n".join(('\t\t' + repr(p) + ' ' for p in self.nodes())) + '\n'\
+               "\tPipes:\n" + \
+               "\n".join(('\t\t' + repr(p[1]) + '>>>' + repr(p[0]) for p in self.edges()))
+
     @staticmethod
     def _cmp(x, y):
         """
@@ -95,7 +98,7 @@ class Dagger(Graph):
         """
         return cmp(x.ornament, y.ornament)
 
-    def resolve(self, piper, forgive =False):
+    def resolve(self, piper, forgive=False):
         """
         Given a piper or piper id returns the identical piper in the graph.
     
@@ -149,7 +152,7 @@ class Dagger(Graph):
     def disconnect(self):
         """
         Disconnects pipers in the correct order.
-        """ 
+        """
         postorder = self.postorder()
         self.log.info('%s trying to disconnect in the order %s' % (repr(self), repr(postorder)))
         for piper in postorder:
@@ -163,7 +166,7 @@ class Dagger(Graph):
         """
         postorder = self.postorder()
         for piper in postorder:
-            piper.start(forced =True)
+            piper.start(forced=True)
 
     def get_inputs(self):
         start_pipers = [p for p in self.postorder() if not self.outgoing_edges(p)]
@@ -175,7 +178,7 @@ class Dagger(Graph):
         self.log.info('%s got output pipers %s' % (repr(self), end_pipers))
         return end_pipers
 
-    def add_piper(self, piper, create =True, xtra =None):
+    def add_piper(self, piper, create=True, xtra=None):
         """
         Adds a piper to the graph (only if the piper is not already in the graph).
         Returns a tuple: (new_piper_created, piper_instance). 
@@ -196,7 +199,7 @@ class Dagger(Graph):
 
         """
         self.log.info('%s trying to add piper %s' % (repr(self), piper))
-        piper = (self.resolve(piper, forgive =True) or piper)
+        piper = (self.resolve(piper, forgive=True) or piper)
         if not isinstance(piper, Piper):
             if create:
                 try:
@@ -212,7 +215,7 @@ class Dagger(Graph):
             self.log.info('%s added piper %s' % (repr(self), piper))
         return (new_piper_created, piper)
 
-    def del_piper(self, piper, forced =False):
+    def del_piper(self, piper, forced=False):
         """
         Removes a piper from the graph.
 
@@ -229,7 +232,7 @@ class Dagger(Graph):
         """
         self.log.info('%s trying to delete piper %s' % (repr(self), repr(piper)))
         try:
-            piper = self.resolve(piper, forgive =False)
+            piper = self.resolve(piper, forgive=False)
         except DaggerError:
             self.log.error('%s cannot resolve piper from %s' % (repr(self), repr(piper)))
             raise DaggerError('%s cannot resolve piper from %s' % (repr(self), repr(piper)))
@@ -258,20 +261,20 @@ class Dagger(Graph):
              flow  in a pipe i.e. the target node points to the source node.
         """
         self.log.info('%s adding pipe: %s' % (repr(self), repr(pipe)))
-        for i in xrange(len(pipe)-1):
-            edge = (pipe[i+1], pipe[i])
-            edge = (self.add_piper(edge[0], create =True)[1],\
-                    self.add_piper(edge[1], create =True)[1])
+        for i in xrange(len(pipe) - 1):
+            edge = (pipe[i + 1], pipe[i])
+            edge = (self.add_piper(edge[0], create=True)[1], \
+                    self.add_piper(edge[1], create=True)[1])
             if edge[0] in self.dfs(edge[1], []):
-                self.log.error('%s cannot add the %s>>>%s edge (introduces a cycle)' %\
+                self.log.error('%s cannot add the %s>>>%s edge (introduces a cycle)' % \
                                 (repr(self), edge[0], edge[1]))
-                raise DaggerError('%s cannot add the %s>>>%s edge (introduces a cycle)' %\
+                raise DaggerError('%s cannot add the %s>>>%s edge (introduces a cycle)' % \
                                 (repr(self), edge[0], edge[1]))
             self.add_edge(edge)
             self.clear_nodes() #dfs
             self.log.info('%s added the %s>>>%s edge' % (repr(self), edge[0], edge[1]))
 
-    def del_pipe(self, pipe, forced =False):
+    def del_pipe(self, pipe, forced=False):
         """Deletes a pipe (A, ..., N) which is an N-tuple of pipers. Deleting a pipe means
            to delete all the connections between pipers and to delete all the pipers.
 
@@ -294,8 +297,8 @@ class Dagger(Graph):
         """
         self.log.info('%s removes pipe%s forced: %s' % (repr(self), repr(pipe), forced))
         pipe = list(reversed(pipe))
-        for i in xrange(len(pipe)-1):
-            edge = (self.resolve(pipe[i]), self.resolve(pipe[i+1]))
+        for i in xrange(len(pipe) - 1):
+            edge = (self.resolve(pipe[i]), self.resolve(pipe[i + 1]))
             self.del_edge(edge)
             self.log.info('%s removed the %s>>>%s edge' % (repr(self), edge[0], edge[1]))
             try:
@@ -326,35 +329,35 @@ class Dagger(Graph):
         """Deletes sequence of pipes in specified order.
         """
         for pipe in pipes:
-            self.del_pipe(pipe *args, **kwargs)
+            self.del_pipe(pipe * args, **kwargs)
 
 
 # imap call signature
-I_SIG = '    %s = IMap(worker_type ="%s", worker_num =%s, stride =%s, buffer =%s,'  +\
+I_SIG = '    %s = IMap(worker_type ="%s", worker_num =%s, stride =%s, buffer =%s,' + \
                   'ordered =%s, skip =%s, name ="%s")\n'
 # piper call signature
-P_SIG = '    %s = Piper(%s, parallel =%s, consume =%s, produce =%s, timeout =%s, '  +\
+P_SIG = '    %s = Piper(%s, parallel =%s, consume =%s, produce =%s, timeout =%s, ' + \
                    'cmp =%s, ornament =%s, debug =%s, name ="%s")\n'
 # worker call signature
 W_SIG = 'Worker((%s,), %s)'
 # list signature
 L_SIG = '(%s, %s)'
 # papy pipeline source-file layout
-P_LAY =  \
-    'from papy import *'                                                  + '\n'   +\
-    'from IMap import IMap'                                               + '\n\n' +\
-    '%s'                                                                  + '\n\n' +\
-    '%s'                                                                  + '\n\n' +\
-    'def pipeline():'                                                     + '\n'   +\
-             '%s'                                                         + '\n\n' +\
-             '%s'                                                         + '\n\n' +\
-    '    ' + 'pipers = %s'                                                + '\n'   +\
-    '    ' + 'xtras = %s'                                                 + '\n'   +\
-    '    ' + 'pipes  = %s'                                                + '\n'   +\
-    '    ' + 'return Dagger(pipers =pipers, pipes =pipes, xtras =xtras)'  + '\n\n' +\
-    'if __name__ == "__main__":'                                          + '\n'   +\
-    '    ' + 'pipeline()'                                                 + '\n'   +\
-    ''                                                                    + '\n'
+P_LAY = \
+    'from papy import *' + '\n' + \
+    'from IMap import IMap' + '\n\n' + \
+    '%s' + '\n\n' + \
+    '%s' + '\n\n' + \
+    'def pipeline():' + '\n' + \
+             '%s' + '\n\n' + \
+             '%s' + '\n\n' + \
+    '    ' + 'pipers = %s' + '\n' + \
+    '    ' + 'xtras = %s' + '\n' + \
+    '    ' + 'pipes  = %s' + '\n' + \
+    '    ' + 'return Dagger(pipers =pipers, pipes =pipes, xtras =xtras)' + '\n\n' + \
+    'if __name__ == "__main__":' + '\n' + \
+    '    ' + 'pipeline()' + '\n' + \
+    '' + '\n'
 
 
 class Plumber(Dagger):
@@ -364,8 +367,8 @@ class Plumber(Dagger):
     def _finish(self, isstopped):
         """ Executes when last output piper raises StopIteration.
         """
-        self.stats['run_time'] = time() - self.stats['start_time'] 
-        self.log.info('%s finished, stopped: %s.' %\
+        self.stats['run_time'] = time() - self.stats['start_time']
+        self.log.info('%s finished, stopped: %s.' % \
         (repr(self), isstopped))
         self._is_finished.set()
 
@@ -375,7 +378,7 @@ class Plumber(Dagger):
         # this should be fixed to monitor not only the last!
         if frame_finished:
             self.stats['last_frame'] += 1
-            self.log.info('%s finished tasklet %s' %\
+            self.log.info('%s finished tasklet %s' % \
             (repr(self), self.stats['last_frame']))
 
     @staticmethod
@@ -395,7 +398,7 @@ class Plumber(Dagger):
                 finish(is_stopping())
                 break
 
-    def __init__(self, dagger =None, **kwargs):
+    def __init__(self, dagger=None, **kwargs):
         self._is_stopping = Event()
         self._is_finished = Event()
 
@@ -421,12 +424,12 @@ class Plumber(Dagger):
             i = piper.imap
             in_ = i.name if hasattr(i, 'name') else False
             if in_ and in_ not in idone:
-                icall += I_SIG % (in_, i.worker_type, i.worker_num, i.stride,\
+                icall += I_SIG % (in_, i.worker_type, i.worker_num, i.stride, \
                                   i.buffer, i.ordered, i.skip, in_)
                 idone.append(in_)
-            ws =  W_SIG % (",".join([t.__name__ for t in w.task]), w.args)
+            ws = W_SIG % (",".join([t.__name__ for t in w.task]), w.args)
             cmp_ = p.cmp__name__ if p.cmp else None
-            pcall += P_SIG % (p.name, ws, in_, p.consume, p.produce, p.timeout,\
+            pcall += P_SIG % (p.name, ws, in_, p.consume, p.produce, p.timeout, \
                               cmp_, p.ornament, p.debug, p.name)
             for t in chain(w.task, [p.cmp]):
                 if (t in tdone) or not t:
@@ -442,10 +445,10 @@ class Plumber(Dagger):
 
         pipers = [p.name for p in self]
         pipers = '[%s]' % ", ".join(pipers)
-        pipes  = [L_SIG % (d.name, s.name) for s, d in self.edges()]
-        pipes  = '[%s]' % ", ".join(pipes)                             # pipes
-        xtras  = [str(self[p].xtra) for p in self]
-        xtras  = '[%s]' % ",".join(xtras)                              # node xtra
+        pipes = [L_SIG % (d.name, s.name) for s, d in self.edges()]
+        pipes = '[%s]' % ", ".join(pipes)                             # pipes
+        xtras = [str(self[p].xtra) for p in self]
+        xtras = '[%s]' % ",".join(xtras)                              # node xtra
         return (icode, tcode, icall, pcall, pipers, xtras, pipes)
 
     def __repr__(self):
@@ -467,7 +470,7 @@ class Plumber(Dagger):
         h.write(P_LAY % self._code())
         h.close()
 
-    def plunge(self, data, tasks =None, stride =1):
+    def plunge(self, data, tasks=None, stride=1):
         """ Runs the plumber which means that the next methods of each output piper are
             called in cycles and the results discarded.
 
@@ -494,7 +497,7 @@ class Plumber(Dagger):
         self.stats['pipers_tracked'] = {}
         for p in self.postorder():
             if hasattr(p.imap, '_tasks_tracked') and p.track:
-                self.stats['pipers_tracked'][p.name] =\
+                self.stats['pipers_tracked'][p.name] = \
                 [p.imap._tasks_tracked[t.task] for t in p.imap_tasks]
 
         # start IMaps
@@ -502,16 +505,11 @@ class Plumber(Dagger):
         self.start()
 
         # remove non-block results for end tasks
-        ins = self.get_inputs()
-       # ins[0].next()
-       # ins[0].next()
-       # ins[0].next()
-
         tasks = (tasks or self.get_outputs())
         tasks[0].next()
         tasks[1].next()
-        wtasks = Weave(tasks, repeats =1)
-        self._plunger = Thread(target =self._plunge, args =(wtasks,\
+        wtasks = Weave(tasks, repeats=1)
+        self._plunger = Thread(target=self._plunge, args=(wtasks, \
                         self._is_stopping.isSet, self._track, self._finish))
         self._plunger.deamon = True
         self._plunger.start()
@@ -587,9 +585,9 @@ class Piper(object):
         """
         return cmp(x.ornament, y.ornament)
 
-    def __init__(self, worker, parallel =False, consume =1, produce =1,\
-                 spawn =1, timeout =None, cmp =None, ornament =None,\
-                 debug =False, name =None, track =False):
+    def __init__(self, worker, parallel=False, consume=1, produce=1, \
+                 spawn=1, timeout=None, cmp=None, ornament=None, \
+                 debug=False, name=None, track=False):
         self.inbox = None
         self.outbox = None
         self.connected = False
@@ -628,19 +626,20 @@ class Piper(object):
             self.log.error('Do not know how to create a Piper from %s' % repr(worker))
             raise PiperError('Do not know how to create a Piper from %s' % repr(worker))
 
+        self._iter = self
         self.name = name or "=%s(%s)=" % (self.worker, id(self))
         self.log.info('Created Piper %s' % self)
 
     def __iter__(self):
-        return self
+        return self._iter
 
     def __repr__(self):
         return self.name
-        
+
     def __hash__(self):
         return self.worker.__hash__()
 
-    def start(self, forced =False):
+    def start(self, forced=False):
         """Start the
         """
         if not hasattr(self.imap, '_started'):
@@ -651,9 +650,9 @@ class Piper(object):
             self.imap.start()
             self.log.info('Piper %s has been started' % self)
         else:
-            self.log.error('Piper %s cannot start. connected: %s, shared: %s' %\
+            self.log.error('Piper %s cannot start. connected: %s, shared: %s' % \
                            (self, self.connected, len(self.imap._tasks)))
-            raise PiperError('Piper %s cannot start. connected: %s, shared: %s' %\
+            raise PiperError('Piper %s cannot start. connected: %s, shared: %s' % \
                            (self, self.connected, len(self.imap._tasks)))
 
     def connect(self, inbox):
@@ -672,22 +671,29 @@ class Piper(object):
             self.log.info('Piper %s connects to %s' % (self, inbox))
             # Make input
             stride = self.imap.stride if hasattr(self.imap, 'stride') else 1
-            self.inbox  = izip(*[tee(i,1)[0] for i in inbox]) if self.consume == 1 else\
-                  Consume(izip(*[tee(i,1)[0] for i in inbox]), n =self.consume,\
-                  stride =stride)
+
+            teed = []
+            for piper in inbox:
+                if hasattr(piper, '_iter'):
+                    piper._iter, piper = tee(piper, 2)
+                teed.append(piper)
+
+            self.inbox = izip(*teed) if self.consume == 1 else\
+                  Consume(izip(*teed), n=self.consume, \
+                  stride=stride)
             for i in xrange(self.spawn):
                 self.imap_tasks.append(\
                     self.imap(self.worker, self.inbox) if self.imap is imap else\
-                    self.imap(self.worker, self.inbox, timeout =self.timeout,\
-                    track =self.track))
-            outbox = Chain(self.imap_tasks, stride =stride)
+                    self.imap(self.worker, self.inbox, timeout=self.timeout, \
+                    track=self.track))
+            outbox = Chain(self.imap_tasks, stride=stride)
             # Make output
             self.outbox = outbox if self.produce == 1 else\
-                  Produce(outbox, n =self.produce, stride =stride)
+                  Produce(outbox, n=self.produce, stride=stride)
             self.connected = True
         return self # this is for __call__
 
-    def stop(self, forced =False):
+    def stop(self, forced=False):
         """Stops the piper. A piper is started if it's IMap instance is started and linear
            pipers need not to be started or stoped. A piper can be safely stoped if it
            either finished or it does not share the IMap instance.
@@ -714,12 +720,12 @@ class Piper(object):
             self.imap.stop((forced or [0]))
             self.log.info('Piper %s stops (finished: %s)' % (self, self.finished))
         else:
-            m = 'Piper %s has not finished is shared and will ' % self +\
+            m = 'Piper %s has not finished is shared and will ' % self + \
                 'not be stopped (use forced =end_task_ids)'
             self.log.error(m)
             raise PiperError(m)
 
-    def disconnect(self, forced =False):
+    def disconnect(self, forced=False):
         """ Disconnects the outbox from the inbox.
         """
 
@@ -742,7 +748,7 @@ class Piper(object):
             self.outbox = None
             self.connected = False
         else:
-            m = 'Piper %s is connected but is shared and will ' % self +\
+            m = 'Piper %s is connected but is shared and will ' % self + \
                 'not be disconnected (use forced =True)'
             self.log.error(m)
             raise PiperError(m)
@@ -782,12 +788,12 @@ class Piper(object):
         if isinstance(next, WorkerError):
             # return the WorkerError instance returned (not raised) by the
             # worker Process.
-            self.log.error('Piper %s generated %s"%s" in func. %s on argument %s' %\
+            self.log.error('Piper %s generated %s"%s" in func. %s on argument %s' % \
                      (self, type(next[0]), next[0], next[1], next[2]))
             if self.debug:
                 # This makes only sense if you are debugging a piper as it will most
                 # probably crash papy and python IMap worker processes/threads will hang.
-                raise PiperError('Piper %s generated %s"%s" in func. %s on argument %s' %\
+                raise PiperError('Piper %s generated %s"%s" in func. %s on argument %s' % \
                                 (self, type(next[0]), next[0], next[1], next[2]))
             next = PiperError(next)
         elif isinstance(next, PiperError):
@@ -835,7 +841,7 @@ class Worker(object):
 
          Worker((function,),((arg1, arg2, arg3),))
     """
-    def __init__(self, functions, arguments =None, kwargs =None, name =None):
+    def __init__(self, functions, arguments=None, kwargs=None, name=None):
         is_p, is_w, is_f, is_ip, is_iw, is_if = inspect(functions)
         if is_f:
             self.task = (functions,)
@@ -852,13 +858,13 @@ class Worker(object):
             self.args = functions.args
             self.kwargs = functions.kwargs
         elif is_if:
-            self.task = tuple(functions) 
+            self.task = tuple(functions)
             if arguments is not None:
                 self.args = arguments
             else:
                 self.args = tuple([() for i in self.task])
             if kwargs is not None:
-                self.kwargs = kwargs 
+                self.kwargs = kwargs
             else:
                 self.kwargs = tuple([{} for i in self.task])
         elif is_iw:
@@ -866,14 +872,14 @@ class Worker(object):
             self.args = tuple(chain(*[w.args for w in functions]))
             self.kwargs = tuple(chain(*[w.kwargs for w in functions]))
         else:
-            raise TypeError("The Worker expects an iterable of functions or workers " +\
+            raise TypeError("The Worker expects an iterable of functions or workers " + \
             "got: %s' % functions")
         if len(self.task) != len(self.args) or len(self.task) != len(self.args):
-            raise TypeError("The Worker expects the arguents as ((args1) ... (argsN)) " +\
-                            "and keyword arguments as ({kwargs}, ... ,{kwargs.}) " +\
+            raise TypeError("The Worker expects the arguents as ((args1) ... (argsN)) " + \
+                            "and keyword arguments as ({kwargs}, ... ,{kwargs.}) " + \
                             "got: %s" % repr(arguments))
         # for representation
-        self.__name__ =  ">".join([f.__name__ for f in self.task])
+        self.__name__ = ">".join([f.__name__ for f in self.task])
         # for identification
         self.name = "%s_%s" % (self.__name__, id(self))
 
@@ -895,7 +901,7 @@ class Worker(object):
            equal if they have been initialized with the same arguments.
         """
         return  (self.task == getattr(other, 'task', None) and
-                 self.args == getattr(other, 'args', None) and 
+                 self.args == getattr(other, 'args', None) and
                  self.kwargs == getattr(other, 'kwargs', None))
 
     def _inject(self, conn):
@@ -915,8 +921,8 @@ class Worker(object):
         # create list of functions called TASK
         # and inject a function comp_task which 
         inject_func(comp_task, conn)
-        conn.execute('TASK = %s' %\
-                     str(tuple([i.__name__ for i in self.task])).replace("'",""))
+        conn.execute('TASK = %s' % \
+                     str(tuple([i.__name__ for i in self.task])).replace("'", ""))
                     # ['func1', 'func2'] -> "(func1, func2)"
         # inject compose function, wil
 
@@ -977,7 +983,7 @@ def inspect(piper):
     is_iterable_w = is_iterable and isinstance(piper[0], Worker)
     return (is_piper, is_worker, is_function, is_iterable_p, is_iterable_w, is_iterable_f)
 
-@imports([['itertools',['izip']]])
+@imports([['itertools', ['izip']]])
 def comp_task(inbox, args, kwargs):
     """ Composes the task.
     """
@@ -989,7 +995,7 @@ class Consume(object):
     """ This iterator-wrapper consumes n results from the input iterator and zips the
         results together. If the result is an exception it is *not* raised.
     """
-    def __init__(self, iterable, n =1, stride =1):
+    def __init__(self, iterable, n=1, stride=1):
         self.iterable = iterable
         self.stride = stride
         self.n = n
@@ -1009,12 +1015,12 @@ class Consume(object):
                 except Exception, r:
                     pass
                 batch_buffer[s].append(r)
-        
+
         for s in xrange(self.stride):
             batch = batch_buffer[s]
             self._stride_buffer.append(batch)
         self._stride_buffer.reverse()
-    
+
     def next(self):
         try:
             results = self._stride_buffer.pop()
@@ -1039,7 +1045,7 @@ class Chain(object):
     it is also resistant to exceptions i.e. if one of the iterables
     raises an exception the Chain does not end in a StopIteration, but continues.
     """
-    def __init__(self, iterables, stride =1):
+    def __init__(self, iterables, stride=1):
         self.iterables = iterables
         self.stride = stride
         self.l = len(self.iterables)
@@ -1053,21 +1059,35 @@ class Chain(object):
         if self.s:
             self.s -= 1
         else:
-            self.s = self.stride -1
+            self.s = self.stride - 1
             self.i = (self.i + 1) % self.l # new iterable
         return self.iterables[self.i].next()
 
 
-class Produce(object):
-    """ This iterator-wrapper yields n-times each result of the input. i.e. if n =2 and
-        input results are (1, Exception, 2) then the Produce instance will return 2*3
-        results in the order [1, 1, Exception, Exception, 2, 2] if the stride
-        =1. If stride =2 the output will look like this: [1, Exception, 1,
-        Exception, 2, 2].
-
-        Note that StopIteration is also an exception!
+class ListProduce(object):
+    """ 
     """
-    def __init__(self, iterable, n =1, stride =1):
+    def __init__(self, iterable, stride=1):
+        self.iterable = iterable
+        self.stride = stride
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        pass
+
+
+class Produce(object):
+    """ 
+    This iterator-wrapper yields n-times each result of the input. i.e. if n =2 and
+    input results are (1, Exception, 2) then the Produce instance will return 2*3
+    results in the order [1, 1, Exception, Exception, 2, 2] if the stride
+    =1. If stride =2 the output will look like this: [1, Exception, 1,
+    Exception, 2, 2].
+    Note that StopIteration is also an exception!
+    """
+    def __init__(self, iterable, n=1, stride=1):
         self.iterable = iterable
         self.stride = stride
         self.n = n             # times the results in the buffer are repeated

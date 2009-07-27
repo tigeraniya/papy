@@ -7,11 +7,11 @@ from itertools import repeat, izip
 class Node(dict):
     """ Node of a Graph.
     """
-    def __init__(self, entity =None, xtra =None):
+    def __init__(self, entity=None, xtra=None):
         self.clear()
         try:
             if entity is not None:
-                dict.__init__(self, {entity:Node(xtra =xtra)})
+                dict.__init__(self, {entity:Node(xtra=xtra)})
             else:
                 self.xtra = (xtra or {})
         except Exception, e:
@@ -33,7 +33,7 @@ class Node(dict):
         """
         return self.iterkeys()
 
-    def deep_nodes(self, allnodes =None):
+    def deep_nodes(self, allnodes=None):
         """ A recursive method to return _all_ nodes reachable from this node.
         """
         allnodes = (allnodes or [])
@@ -47,21 +47,21 @@ class Node(dict):
 class Graph(dict):
     """ Dictionary based Graph class.
     """
-     #This Graph implementation is a little bit unusual as it does not explicitly
-     #hold a list of edges. The graph is a dictionary where the keys of the dictionary
-     #are any hashable objects, while the values are Node instances. A Node instance is
-     #also a dictionary, where the keys are objects and the values are Node instances.
-     #A node instance(value) is basically a dictionary of outgoing edges from the
-     #object(key). The edges are indexed by the incoming objects. So we end up with a
-     #recursivly nested dictionary which defines the topology of the graph.
+    #This Graph implementation is a little bit unusual as it does not explicitly
+    #hold a list of edges. The graph is a dictionary where the keys of the dictionary
+    #are any hashable objects, while the values are Node instances. A Node instance is
+    #also a dictionary, where the keys are objects and the values are Node instances.
+    #A node instance(value) is basically a dictionary of outgoing edges from the
+    #object(key). The edges are indexed by the incoming objects. So we end up with a
+    #recursivly nested dictionary which defines the topology of the graph.
 
-    def __init__(self, nodes =(), edges =(), xtras =None):
+    def __init__(self, nodes=(), edges=(), xtras=None):
         """ Accepts a list of nodes and edges as input.
         """
         self.add_nodes(nodes, xtras)
         self.add_edges(edges)
 
-    def dfs(self, node, bucket =None, order ='append'):
+    def dfs(self, node, bucket=None, order='append'):
         """ Recursive depth first search. By default (order = 'append') this returns the
             nodes in the reverse postorder. To change this into the preorder use a
             collections.deque bucket and order 'appendleft'.
@@ -86,7 +86,7 @@ class Graph(dict):
         self[node].examined = True
         return bucket
 
-    def postorder(self, reverse =False):
+    def postorder(self, reverse=False):
         """ Returns the postorder of nodes if the graph.
             If it is a directed acyclic graph.
         """
@@ -98,13 +98,13 @@ class Graph(dict):
         self.clear_nodes()
         return nodes
 
-    def preorder(self, reverse =False):
+    def preorder(self, reverse=False):
         """ Returns the preorder of nodes if the graph.
             If it is a directed acyclic graph.
         """
         nodes = deque([])
         for node in self.nodes():
-            self.dfs(node, nodes, order ='appendleft')
+            self.dfs(node, nodes, order='appendleft')
             if not reverse: nodes.rotate()
         if not reverse: nodes.rotate()
         self.clear_nodes()
@@ -132,7 +132,7 @@ class Graph(dict):
         for rank in xrange(max_rank):
             pass
 
-    def add_node(self, node, xtra =None):
+    def add_node(self, node, xtra=None):
         """ Adds a node to the graph. Returns True if a new node has been added.
         """
         if not node in self:
@@ -148,7 +148,7 @@ class Graph(dict):
                 node_.pop(node)
         self.pop(node)
 
-    def add_edge(self, edge, double =False):
+    def add_edge(self, edge, double=False):
         (left_entity, right_entity) = edge
         self.add_node(left_entity)
         self.add_node(right_entity)
@@ -156,13 +156,13 @@ class Graph(dict):
         if double:
             self.add_edge((edge[1], edge[0]))
 
-    def del_edge(self, edge, double =False):
+    def del_edge(self, edge, double=False):
         (left_entity, right_entity) = edge
         self[left_entity].pop(right_entity)
         if double:
             self.del_edge((edge[1], edge[0]))
 
-    def add_nodes(self, nodes, xtras =None):
+    def add_nodes(self, nodes, xtras=None):
         for node, xtra in izip(nodes, (xtras or repeat(None))):
             self.add_node(node, xtra)
 
@@ -191,7 +191,7 @@ class Graph(dict):
     def deep_nodes(self, node):
         return self[node].deep_nodes()
 
-    def edges(self, nodes =None):
+    def edges(self, nodes=None):
         """ Returns all edges in the Graph.
         """
         # If a Node has been directly updated (__not__ recommended)

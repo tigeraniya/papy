@@ -55,10 +55,6 @@ def lshift(inbox, b):
     return operator.lshift(inbox[0], b)
 
 @imports([['operator',[]]])
-def lshift(inbox):
-    return operator.lshift(*inbox)
-
-@imports([['operator',[]]])
 def mod(inbox, b):
     return operator.mod(inbox[0], b)
 

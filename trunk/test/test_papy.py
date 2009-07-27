@@ -38,8 +38,13 @@ def double(i):
 def sleeper(i):
     sleep(i[0])
     return i
+
 def pow2(i):
     return i[0] * i[0]
+
+def mul2(i):
+    return i[0] * 2
+
 def sum2(i):
     return i[0] + i[1]
 def ss2(i):
@@ -323,14 +328,14 @@ class test_Worker(GeneratorTest):
             return (re, sys)
         pr(1)
 
-    def testcompose(self):
+    def testcomp_task(self):
         def plus(i):
             return i[0] + 1
         def minus(i):
             return i[0] - 1
-        assert 0 == compose([0], ((), ()), funcs=(plus, minus))
-        plus_minus = partial(compose, funcs=(plus, minus))
-        assert 0 == plus_minus([0], ((), ()))
+
+        papy.TASK = (plus, minus)
+        assert 0 == comp_task([0], ((), ()), ({}, {}))
 
     def testsys_ver(self):
         assert [['sys', ['version']]] == sys_ver.imports
@@ -503,12 +508,11 @@ class test_Worker(GeneratorTest):
     def test_make_items(self):
         fh = open('files/test_make_items', 'rb')
         chunker = workers.io.make_items(fh, 4000)
-        mmapc = Worker(workers.io.mmap_item, (False,))
         output = ""
-        for chunk in chunker:
-            fillike = mmapc([chunk])
+        for item in chunker:
+            mmap = workers.io.load_item([item], type='mmap', remove=False)
             while True:
-                line = fillike.readline()
+                line = mmap.readline()
                 if line:
                     output += line
                 else:
@@ -551,11 +555,6 @@ class test_Worker(GeneratorTest):
         b = workers.io.load_pickle_stream(fh)
         fh.unlink()
         assert a == list(b)
-
-
-
-
-
 
 
 class test_Piper(GeneratorTest):
@@ -800,9 +799,6 @@ class test_Piper(GeneratorTest):
                     p_loader.stop()
                     p_dumper.stop()
 
-
-
-
     def testsort(self):
         p2 = Piper(workers.core.ipasser, ornament=2)
         p1 = Piper(workers.core.ipasser, ornament=1)
@@ -995,6 +991,7 @@ class test_Piper(GeneratorTest):
                 result.append('s')
         self.assertEqual(result,
         [0, 1, 2, 0, 1, 2, 3, 4, 5, 3, 4, 5, 6, 's', 's', 6, 's', 's', 's', 's', 's', 's', 's', 's'])
+
     def testConsume(self):
         consumpt = \
         Consume(iter([0, 1, 2, 0, 1, 2, 3, 4, 5, 3, 4, 5, 6, 's', 's', 6, 's', 's', 's', 's', 's', 's', 's', 's']), stride=3, n=2)
@@ -1004,6 +1001,7 @@ class test_Piper(GeneratorTest):
         self.assertEqual(result, [[0, 0], [1, 1], [2, 2], [3, 3],
                                 [4, 4], [5, 5], [6, 6], ['s', 's'],
                                 ['s', 's'], ['s', 's'], ['s', 's'], ['s', 's']])
+
     def testproduce(self):
         inp = [0, 1, 2, 3, 4, 5, 6]
         par = IMap(stride=3)
@@ -1126,6 +1124,35 @@ class test_Piper(GeneratorTest):
         assert piper.next()[0] == 0.5
         piper.stop()
 
+    def test_tee(self):
+        inp = iter([1, 2, 3, 4, 5, 6])
+        w_ip = Worker(workers.core.ipasser)
+        w_p2 = Worker(pow2)
+        w_m2 = Worker(mul2)
+        p_ip = Piper(w_ip)
+        p_p2 = Piper(w_p2)
+        p_m2 = Piper(w_m2)
+        p_ip([inp])
+        p_p2([p_ip])
+        p_m2([p_ip])
+        assert list(p_p2) == [1, 4, 9, 16, 25, 36]
+        assert list(p_m2) == [2, 4, 6, 8, 10, 12]
+
+    def test_tee_produce(self):
+        inp = iter([1, 2, 3, 4, 5, 6])
+        w_ip = Worker(workers.core.ipasser)
+        w_p2 = Worker(workers.core.npasser, (2,))
+        w_m2 = Worker(workers.core.npasser, (2,))
+        p_ip = Piper(w_ip, produce=2)
+        p_p2 = Piper(w_p2, consume=2)
+        p_m2 = Piper(w_m2, consume=2)
+        p_ip([inp])
+        p_p2([p_ip])
+        p_m2([p_ip])
+        assert list(p_p2) == [[(1,), (1,)], [(2,), (2,)], [(3,), (3,)], [(4,), \
+                                              (4,)], [(5,), (5,)], [(6,), (6,)]]
+        assert list(p_m2) == [[(1,), (1,)], [(2,), (2,)], [(3,), (3,)], [(4,), \
+                                              (4,)], [(5,), (5,)], [(6,), (6,)]]
 
 
 class test_Dagger(unittest.TestCase):
@@ -1347,7 +1374,6 @@ class test_Dagger(unittest.TestCase):
             self.assertRaises(DaggerError, self.dag.add_pipe, (pwr2, pwr))
 
 
-
 class test_Plumber(GeneratorTest):
 
     def setUp(self):
@@ -1409,7 +1435,7 @@ class test_Plumber(GeneratorTest):
 
 suite_Graph = unittest.makeSuite(test_Graph, 'test')
 suite_Worker = unittest.makeSuite(test_Worker, 'test')
-#suite_Piper = unittest.makeSuite(test_Piper,'xtest')
+suite_Piper = unittest.makeSuite(test_Piper, 'test')
 #suite_Dagger = unittest.makeSuite(test_Dagger,'test')
 #suite_Plumber = unittest.makeSuite(test_Plumber,'test')
 
@@ -1417,7 +1443,7 @@ if __name__ == "__main__":
     runner = unittest.TextTestRunner()
     runner.run(suite_Graph)
     runner.run(suite_Worker)
-#    runner.run(suite_Piper)
+    runner.run(suite_Piper)
 #    runner.run(suite_Dagger)
 #    runner.run(suite_Plumber)
 
