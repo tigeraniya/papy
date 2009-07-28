@@ -9,7 +9,7 @@ import os
 import operator
 from multiprocessing import TimeoutError
 from papy import *
-from papy.papy import comp_task, imports, Produce, Consume, Chain
+from papy.papy import comp_task, imports, Produce, ProduceFromSequence, Consume, Chain
 from IMap import *
 import logging
 from papy.utils import logger
@@ -992,6 +992,17 @@ class test_Piper(GeneratorTest):
         self.assertEqual(result,
         [0, 1, 2, 0, 1, 2, 3, 4, 5, 3, 4, 5, 6, 's', 's', 6, 's', 's', 's', 's', 's', 's', 's', 's'])
 
+    def testProduceFromSequence(self):
+        product = ProduceFromSequence(iter([(11, 12), (21, 22), (31, 32), (41, 42), (51, 52), (61, 62), (71, 72)]), n=2, stride=3)
+        result = []
+        for i in range(24):
+            try:
+                result.append(product.next())
+            except StopIteration:
+                result.append('s')
+        self.assertEqual(result,
+        [11, 21, 31, 12, 22, 32, 41, 51, 61, 42, 52, 62, 71, 's', 's', 72, 's', 's', 's', 's', 's', 's', 's', 's'])
+
     def testConsume(self):
         consumpt = \
         Consume(iter([0, 1, 2, 0, 1, 2, 3, 4, 5, 3, 4, 5, 6, 's', 's', 6, 's', 's', 's', 's', 's', 's', 's', 's']), stride=3, n=2)
@@ -1001,6 +1012,23 @@ class test_Piper(GeneratorTest):
         self.assertEqual(result, [[0, 0], [1, 1], [2, 2], [3, 3],
                                 [4, 4], [5, 5], [6, 6], ['s', 's'],
                                 ['s', 's'], ['s', 's'], ['s', 's'], ['s', 's']])
+
+    def testproduce_from_sequence(self):
+        inp = [(11, 12), (21, 22), (31, 32), (41, 42), (51, 52), (61, 62), (71, 72)]
+        par = IMap(stride=3)
+        w_p2 = Worker(workers.core.ipasser)
+        p_p2 = Piper(w_p2, parallel=par, produce=2, produce_from_sequence=True)
+        p_p2 = p_p2([inp])
+        p_p2.start()
+        result = []
+        for i in range(24):
+            try:
+                result.append(p_p2.next())
+            except StopIteration:
+                result.append('s')
+        self.assertEqual(result,
+        [11, 21, 31, 12, 22, 32, 41, 51, 61, 42,
+         52, 62, 71, 's', 's', 72, 's', 's', 's', 's', 's', 's', 's', 's'])
 
     def testproduce(self):
         inp = [0, 1, 2, 3, 4, 5, 6]
@@ -1017,6 +1045,7 @@ class test_Piper(GeneratorTest):
                 result.append('s')
         self.assertEqual(result,
         [0, 1, 4, 0, 1, 4, 9, 16, 25, 9, 16, 25, 36, 's', 's', 36, 's', 's', 's', 's', 's', 's', 's', 's', 's'])
+
 
     def testproduce_error(self):
         inp = [0, 1, 'z', 3, 4, 5, 6]
@@ -1078,6 +1107,38 @@ class test_Piper(GeneratorTest):
         p_s2 = p_s2([p_p2])
         p_s2.start(forced=True)
         self.assertEqual(list(p_s2), [0, 2, 8, 18, 32, 50, 72])
+
+    def testproduce_from_sequence_consume(self):
+        inp = [(11, 12), (21, 22), (31, 32), (41, 42), (51, 52), (61, 62)]
+        par = IMap(stride=3)
+        w_p2 = Worker(workers.core.ipasser)
+        p_p2 = Piper(w_p2, parallel=par, produce=2, produce_from_sequence=True)
+        p_p2 = p_p2([inp])
+        w_s2 = Worker(ss2)
+        p_s2 = Piper(w_s2, parallel=par, consume=2)
+        p_s2 = p_s2([p_p2])
+        p_s2.start(forced=True)
+        self.assertEqual(list(p_s2), [23, 43, 63, 83, 103, 123])
+
+    def testproduce_from_sequence_spawn_consume(self):
+        inp = [(11, 12), (21, 22), (31, 32), (41, 42), (51, 52), (61, 62)]
+        par = IMap(stride=3)
+
+        w_p2 = Worker(workers.core.ipasser)
+        p_p2 = Piper(w_p2, parallel=par, produce=2, produce_from_sequence=True)
+        p_p2 = p_p2([inp])
+
+        w_m2 = Worker(mul2)
+        p_m2 = Piper(w_m2, parallel=par, spawn=2)
+        p_m2 = p_m2([p_p2])
+
+        w_s2 = Worker(ss2)
+        p_s2 = Piper(w_s2, parallel=par, consume=2)
+        p_s2 = p_s2([p_m2])
+
+        p_s2.start(forced=True)
+        self.assertEqual(list(p_s2), [46, 86, 126, 166, 206, 246])
+
 
     def testproduce_spawn_consume(self):
         inp = [0, 1, 2, 3, 4, 5, 6]
