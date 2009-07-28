@@ -5,14 +5,14 @@
 This module provides classes and functions to construct and run a papy pipeline.
 """
 # self-imports
-from IMap import IMap, Weave, imports, inject_func
+from IMap import Weave, imports, inject_func
 from graph import Graph
 from utils import logger
 from utils.defaults import get_defaults
 from utils.runtime import get_runtime
 # python imports
-from multiprocessing import TimeoutError, cpu_count
-from itertools import izip, tee, imap, chain, cycle, repeat
+from multiprocessing import TimeoutError
+from itertools import izip, tee, imap, chain, repeat
 from threading import Thread, Event
 from collections import defaultdict
 from types import FunctionType
