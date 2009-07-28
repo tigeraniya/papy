@@ -524,13 +524,15 @@ class Plumber(Dagger):
 
 
 class Piper(object):
-    """Creates a new Piper instance.
+    """
+    Creates a new Piper instance.
 
        arguments:
 
          * worker(Worker, Piper or sequence)
 
-           Can be a worker or piper instance or a sequence of workers or functions.
+           Can be a worker or piper instance or a sequence of workers or 
+           functions.
 
          * parallel(False or IMap instance) [default: 0]
 
@@ -546,7 +548,14 @@ class Piper(object):
 
          * produce(int) [default: 1]
 
-           The number of repetitions of each calculated result.
+           The number of results to generate per input. See 
+           produce_from_sequence
+           
+         * produce_from_sequence(bool) [default: False]
+    
+           If True and produce > 1 the results are produced from the sequence 
+           returned by the worker. If False the result returned by the worker
+           is repeated. If produce = 1 this option is ignored.
 
          * spawn(int) [default: 1]
 
@@ -577,7 +586,7 @@ class Piper(object):
 
            .. warning:: 
              
-             this will most-likely hang the python interpreter.
+             this will most-likely hang the Python interpreter.
     """
     @staticmethod
     def _cmp(x, y):
@@ -815,41 +824,52 @@ class Piper(object):
 class Worker(object):
     """
     The Worker is an object which composes sequences of functions. When called
-    the functions are evaluated from left to right. Optionally takes sequences
-    of positional (tuples) and keyworded (dictionaries) arguments. All exceptions
-    raised by the functions are cought, wrapped and returned.
+    the functions are evaluated from left to right. The function on the right 
+    will receive the return value from the function on the left.
+    Optionally takes sequences of positional and keyworded arguments for none or
+    all composed functions. Positional arguments should be given in a tuple.
+    Each element of this tuple should be a tuple of positional arguments for the
+    corresponding function. If a function does not take positional arguments its 
+    corresponding element in the arguments tuple should be an empty tuple (). 
+    Keyworded  arguments should be given in a tuple. Each element of this tuple 
+    should be a dictionary of arguments for the corresponding function. If a 
+    function does not take a keyworded arguments its corresponding element in 
+    the keyworded arguments tuple should be an empty dictionary {}.
+    If none of the functions takes arguments of a given type the positional and
+    or keyworded argument tuple can be omitted.
+    
+    All exceptions raised by the functions are caught, wrapped and returned.
 
     The Worker can be initialized in a variety of ways:
-
-     * with a sequence of functions and a optional sequences of positional and
-       keyworded arguments e.g.::
-
-         Worker((func1,         func2,    func3), 
-               ((arg11, arg21), (arg21,), ()),
-               ({},             {},       {'arg31':arg31}))
-
-     * with another worker instance, which results in their functional equivalence
-       e.g.::
-
-         Worker(worker_instance)
-
-     * with multiple worker instances, where the functions and arguments of the
-       workers are combined e.g.::
-
-         Worker((worker1, worker2))
-
-       this is equivalent to::
-
-         Worker(worker1.task + worker2.task, worker1.args + worker2.args,
-         worker1.kwargs + worker2.kwargs)
-
-     * with a single function and its arguments in a tuple e.g.::
-
-         Worker(function,(arg1, arg2, arg3))
-
-       which is equivalent to::
-
-         Worker((function,),((arg1, arg2, arg3),))
+        * with a sequence of functions and a optional sequences of positional and
+          keyworded arguments e.g.::
+        
+            Worker((func1,         func2,    func3), 
+                  ((arg11, arg21), (arg21,), ()),
+                  ({},             {},       {'arg31':arg31}))
+        
+        * with another worker instance, which results in their functional equivalence
+          e.g.::
+        
+            Worker(worker_instance)
+        
+        * with multiple worker instances, where the functions and arguments of the
+          workers are combined e.g.::
+        
+            Worker((worker1, worker2))
+        
+          this is equivalent to::
+        
+            Worker(worker1.task + worker2.task, worker1.args + worker2.args,
+            worker1.kwargs + worker2.kwargs)
+        
+        * with a single function and its arguments in a tuple e.g.::
+        
+            Worker(function,(arg1, arg2, arg3))
+        
+          which is equivalent to::
+        
+            Worker((function,),((arg1, arg2, arg3),))
     """
     def __init__(self, functions, arguments=None, kwargs=None, name=None):
         is_p, is_w, is_f, is_ip, is_iw, is_if = inspect(functions)
@@ -981,8 +1001,10 @@ class Worker(object):
 
 
 def inspect(piper):
-    """ This function determines the instance (Piper, Worker, FunctionType, Iterable).
-        It returns a tuple of boolean variables. (is_piper, is_worker, is_function, is_iterable).
+    """
+    Determines the instance (Piper, Worker, FunctionType, Iterable). It returns 
+    a tuple of boolean variables i.e: (is_piper, is_worker, is_function, 
+    is_iterable_of_pipers, is_iterable_of_workers, is_iterable_of_functions).
     """
     is_piper = isinstance(piper, Piper)
     is_function = isinstance(piper, FunctionType) or isbuiltin(piper)
@@ -995,15 +1017,21 @@ def inspect(piper):
 
 @imports([['itertools', ['izip']]])
 def comp_task(inbox, args, kwargs):
-    """ Composes the task.
     """
+    Composes functions in the global sequence variable TASK and evaluates the
+    composition given input (inbox) and arguments (args, kwargs).
+    """
+    # Note. this function uses a global variable which must be defined on the 
+    # remote host.
     for f, a, k in izip(TASK, args, kwargs):
         inbox = (f(inbox, *a, **k),)
     return inbox[0]
 
+
 class Consume(object):
-    """ This iterator-wrapper consumes n results from the input iterator and zips the
-        results together. If the result is an exception it is *not* raised.
+    """
+    This iterator-wrapper consumes n results from the input iterator and zips 
+    the results together. If the result is an exception it is *not* raised.
     """
     def __init__(self, iterable, n=1, stride=1):
         self.iterable = iterable
@@ -1048,12 +1076,13 @@ class Chain(object):
     behaves like itertools.zip, if stride =len(iterable) it behaves like
     itertools.chain in any other case it zips iterables in strides e.g::
 
-      a = Chain([iter([1,2,3]), iter([4,5,6], stride =2)
-      list(a)
-      >>> [1,2,4,5,3,6]
+        a = Chain([iter([1,2,3]), iter([4,5,6], stride =2)
+        list(a)
+        >>> [1,2,4,5,3,6]
         
     it is also resistant to exceptions i.e. if one of the iterables
-    raises an exception the Chain does not end in a StopIteration, but continues.
+    raises an exception the Chain does not end in a StopIteration, but 
+    continues.
     """
     def __init__(self, iterables, stride=1):
         self.iterables = iterables
@@ -1076,10 +1105,10 @@ class Chain(object):
 
 class Produce(object):
     """ 
-    This iterator-wrapper yields n-times each result of the input. i.e. if n =2 and
-    input results are (1, Exception, 2) then the Produce instance will return 2*3
-    results in the order [1, 1, Exception, Exception, 2, 2] if the stride
-    =1. If stride =2 the output will look like this: [1, Exception, 1,
+    This iterator-wrapper yields n-times each result of the input. i.e. if n =2 
+    and input results are (1, Exception, 2) then the Produce instance will 
+    return 2*3 results in the order [1, 1, Exception, Exception, 2, 2] if the 
+    stride = 1. If stride = 2 the output will look like this: [1, Exception, 1,
     Exception, 2, 2].
     Note that StopIteration is also an exception!
     """
@@ -1121,8 +1150,11 @@ class Produce(object):
 
 class ProduceFromSequence(Produce):
     """
-    This iterator wrapper assumes yields n-times the results returned by the 
-    iterator as a sequence.
+    This iterator wrapper yields n-times the results returned by the iterator 
+    as a sequence. i.e. if the input iterator results are ((11, 12), (21, 22), 
+    (31, 32)) then n *should* equal 2. For stride =1 the result will be: [11, 
+    12, 21, 22, 31, 32]. For stride =2 [11, 21, 12, 22, 31, 32].
+    Note that StopIteration is also an exception!
     """
     def _rebuffer(self):
         # collect a stride worth of results(result lists) or exceptions
@@ -1146,6 +1178,8 @@ class ProduceFromSequence(Produce):
                 else:
                     flat_results.append(result_list)
             res_exc.append((flat_results, exceptions))
-        # make an iterator o
+        # make an iterator (like repeat)
         self._repeat_buffer = iter(res_exc)
 
+
+#EOF
