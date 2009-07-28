@@ -586,8 +586,8 @@ class Piper(object):
         return cmp(x.ornament, y.ornament)
 
     def __init__(self, worker, parallel=False, consume=1, produce=1, \
-                 spawn=1, timeout=None, cmp=None, ornament=None, \
-                 debug=False, name=None, track=False):
+                 spawn=1, produce_from_sequence=False, timeout=None, cmp=None,
+                 ornament=None, debug=False, name=None, track=False):
         self.inbox = None
         self.outbox = None
         self.connected = False
@@ -597,6 +597,7 @@ class Piper(object):
         self.consume = consume
         self.spawn = spawn
         self.produce = produce
+        self.produce_from_sequence = produce_from_sequence
         self.timeout = timeout
         self.debug = debug
         self.track = track
@@ -669,28 +670,37 @@ class Piper(object):
             # sort input
             inbox.sort((self.cmp or self._cmp))
             self.log.info('Piper %s connects to %s' % (self, inbox))
+
             # Make input
             stride = self.imap.stride if hasattr(self.imap, 'stride') else 1
 
+            # copy input iterators
             teed = []
             for piper in inbox:
                 if hasattr(piper, '_iter'):
                     piper._iter, piper = tee(piper, 2)
                 teed.append(piper)
 
+            # set how much to consume from input iterators 
             self.inbox = izip(*teed) if self.consume == 1 else\
                   Consume(izip(*teed), n=self.consume, \
                   stride=stride)
+
+            # set how much to 
             for i in xrange(self.spawn):
                 self.imap_tasks.append(\
                     self.imap(self.worker, self.inbox) if self.imap is imap else\
                     self.imap(self.worker, self.inbox, timeout=self.timeout, \
                     track=self.track))
+
+            # chain the results together.
             outbox = Chain(self.imap_tasks, stride=stride)
             # Make output
+            P = ProduceFromSequence if self.produce_from_sequence else Produce
             self.outbox = outbox if self.produce == 1 else\
-                  Produce(outbox, n=self.produce, stride=stride)
+                  P(outbox, n=self.produce, stride=stride)
             self.connected = True
+
         return self # this is for __call__
 
     def stop(self, forced=False):
@@ -1064,20 +1074,6 @@ class Chain(object):
         return self.iterables[self.i].next()
 
 
-class ListProduce(object):
-    """ 
-    """
-    def __init__(self, iterable, stride=1):
-        self.iterable = iterable
-        self.stride = stride
-
-    def __iter__(self):
-        return self
-
-    def next(self):
-        pass
-
-
 class Produce(object):
     """ 
     This iterator-wrapper yields n-times each result of the input. i.e. if n =2 and
@@ -1123,4 +1119,33 @@ class Produce(object):
             return r
 
 
+class ProduceFromSequence(Produce):
+    """
+    This iterator wrapper assumes yields n-times the results returned by the 
+    iterator as a sequence.
+    """
+    def _rebuffer(self):
+        # collect a stride worth of results(result lists) or exceptions
+        results = []
+        exceptions = []
+        for i in xrange(self.stride):
+            try:
+                results.append(self.iterable.next())
+                exceptions.append(False)
+            except Exception, e:
+                results.append(e)
+                exceptions.append(True)
+        # un-roll the result lists
+        res_exc = []
+        for r in xrange(self.n):
+            flat_results = []
+            for i in xrange(self.stride):
+                result_list, exception = results[i], exceptions[i]
+                if not exception:
+                    flat_results.append(result_list[r])
+                else:
+                    flat_results.append(result_list)
+            res_exc.append((flat_results, exceptions))
+        # make an iterator o
+        self._repeat_buffer = iter(res_exc)
 
