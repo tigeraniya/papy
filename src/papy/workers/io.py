@@ -31,6 +31,22 @@ from papy.utils.runtime import get_runtime # provided by worker._inject
 PAPY_DEFAULTS = get_defaults() # init by worker._inject
 PAPY_RUNTIME = get_runtime()   # init by worker._inject
 
+
+import cPickle, csv, cStringIO, errno, gc, glob, marshal, mmap, os, signal, \
+       socket, stat, tempfile, threading, time, urllib, warnings, sqlite3
+
+try:
+    import posix_ipc
+except ImportError:
+    pass
+
+try:
+    import MySQLdb
+except ImportError:
+    pass
+
+
+
 #
 # LOGGING
 # 
@@ -42,7 +58,7 @@ def print_(inbox):
 # INPUT/OUTPUT
 #
 # STREAMS
-@imports([['posix_ipc', ['SharedMemory']], ['mmap', []], ['os', []]], forgive=True)
+@imports([['posix_ipc', []], ['mmap', []], ['os', []]], forgive=True)
 def open_shm(name):
     """ Equivalent to the built in open function but opens a file in shared
         memory. A single file can be opened multiple times. Only the name of the
@@ -73,10 +89,10 @@ def open_shm(name):
             # try to make some shared memory
             try:
                 # create new file (won't create if exist)
-                SharedMemory.__init__(self, name, flags=posix_ipc.O_CREX)
+                posix_ipc.SharedMemory.__init__(self, name, flags=posix_ipc.O_CREX)
             except posix_ipc.ExistentialError:
                 # or open existing file (won't open if not exist)
-                SharedMemory.__init__(self, name)
+                posix_ipc.SharedMemory.__init__(self, name)
             try:
                 self.mapfile = mmap.mmap(self.fd, 0)
             except mmap.error:
@@ -644,7 +660,7 @@ def dump_db_item(inbox, type='sqlite', table='temp', **kwargs):
         #warnings.simplefilter('ignore')
 
     else:
-        raise ValueError('Database format %s not understood!' % db)
+        raise ValueError('Database format %s not understood!' % kwargs['db'])
 
     # Under Unix, you should not carry an open SQLite database across a fork() 
     # system call into the child process. Problems will result if you do.
@@ -761,7 +777,7 @@ def make_lines(handle, follow=False, wait=0.1):
         else:
             raise StopIteration
 
-@imports([['mmap', []], ['os', ['fstat']]])
+@imports([['mmap', []], ['os', []]])
 def make_items(handle, size):
     """ Creates a generator of items from a file handle. The size argument is
         the approximate size of the generated chunks in bytes. The main purpose
@@ -785,7 +801,7 @@ def make_items(handle, size):
             Approximate chunk size in bytes.
     """
     fd = handle.fileno()
-    file_size = fstat(fd).st_size
+    file_size = os.fstat(fd).st_size
     size = (size or mmap.ALLOCATIONGRANULARITY)
     mmaped = mmap.mmap(fd, file_size, access=mmap.ACCESS_READ)
     # start at the beginning of file

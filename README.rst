@@ -22,7 +22,7 @@ and grid.
 Installation
 ------------
 
-The easiest way to get zuuu is if you have setuptools_ installed::
+The easiest way to get PaPy is if you have setuptools_ installed::
 
         easy_install papy
 
