@@ -171,8 +171,8 @@ class ModuleTreeItem(_TreeItem):
         return fs
 
 
-    def GetSubList(self):
-        return [FunctionTreeItem(self, f) for f in self.get_functions()]
+#   def GetSubList(self):
+#        return [FunctionTreeItem(self, f) for f in self.get_functions()]
 
 
 class Tree(object):
@@ -1288,6 +1288,7 @@ O = Options(cfg_opts, cmd_opts)
 
 def main():
     global root
+    global papyg
     root = Tk.Tk()
     Pmw.initialise(root)
     root.withdraw()

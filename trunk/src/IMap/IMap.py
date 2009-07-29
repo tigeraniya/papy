@@ -2,9 +2,9 @@
 :mod:`IMap.IMap`
 ================
 
-This module provides a parallel, buffered, multi-task, imap function.
-It evaluates results as they are needed, where the need is relative to
-the buffer size. It can use threads and processes.
+This module provides a parallel, buffered, multi-task, imap function. It 
+evaluates results as they are needed, where the need is relative to the buffer
+size. It can use threads and processes.
 """
 # Multiprocessing requires Python 2.6 or the backport of this package to the 2.5 line
 # get it from http://pypi.python.org/pypi/multiprocessing/
@@ -46,107 +46,117 @@ class IMap(object):
     """
     Parallel (thread- or process-based), buffered, multi-task, itertools.imap or
     Pool.imap function replacment. Like imap it evaluates a function on elements
-    of an iterable, and it does so layzily(with adjusted buffer via the stride 
+    of an iterable, and it does so layzily (with adjusted buffer via the stride 
     and buffer arguments).
 
     optional arguments:
 
         * func, iterable, args, kwargs
         
-          Defines th the first and only task, it *starts* the IMap pool and 
-          returns an IMap iterator. For a description of the args, kwargs and 
-          iterable input please see the add_task function. Either *both* or 
-          *none* func **and** iterable have to be specified. Arguments and 
-          keyworded arguments are optional.
+            Defines th the first and only task, it *starts* the IMap pool and 
+            returns an IMap iterator. For a description of the args, kwargs and 
+            iterable input please see the add_task function. Either *both* or 
+            *none* func **and** iterable have to be specified. Arguments and 
+            keyworded arguments are optional.
         
         * worker_type('process' or 'thread') [default: 'process']
         
-          Defines the type of internally spawned pool workers. For multiprocessing Process
-          based worker choose 'process' for threading Thread workers choose 'thread'.
-        
-          .. note::
-        
-            This choice has *fundamental* impact on the performance of the function please
-            understand the difference between processes and threads and refer to the manual
-            documentation. As a general rule use 'process' if you have multiple CPUs or
-            cores and your functions(tasks) are cpu-bound. Use 'thread' if your function is
-            IO-bound e.g. retrieves data from the Web.
-        
-            If you specify any remote workers via worker_remote, worker_type has
-            to be the default 'process'. This limitation might go away in future
-            versions.
+            Defines the type of internally spawned pool workers. For 
+            multiprocessing Process based worker choose 'process' for threading
+            Thread workers choose 'thread'.
+            
+            .. note::
+            
+                This choice has *fundamental* impact on the performance of the
+                function please understand the difference between processes 
+                and threads and refer to the manual documentation. As a 
+                general rule use 'process' if you have multiple CPUs or cores
+                and your functions(tasks) are cpu-bound. Use 'thread' if your
+                function is IO-bound e.g. retrieves data from the Web.
+                
+                If you specify any remote workers via worker_remote, worker_type
+                has to be the default 'process'. This limitation might go away 
+                in future versions.
         
         * worker_num(int) [default: number of CPUs, min: 1]
         
-          The number of workers to spawn locally. Defaults to the number of availble CPUs, 
-          which is a reasonable choice for process-based IMaps.
+            The number of workers to spawn locally. Defaults to the number of 
+            availble CPUs, which is a reasonable choice for process-based 
+            IMaps.
+            
+            .. note::
         
-          .. note::
-        
-            Increasing the number of workers above the number of CPUs makes sense only if
-            these are Thread-based workers and the evaluated functions are IO-bound.
+                Increasing the number of workers above the number of CPUs makes
+                sense only if these are Thread-based workers and the evaluated 
+                functions are IO-bound.
         
         * worker_remote(sequence or None) [default: None]
         
-           Specify the rpyc hosts and number of workers as a sequence of tuples
-           ("host_ip_etc", worker_num). For example::
-        
-             [['localhost', 2], ['127.0.0.1', 2]]
-        
-           the TCP port can also be specified::
-        
-             [['localhost:6666']]
+            Specify the rpyc hosts and number of workers as a sequence of tuples
+            ("host_ip_etc", worker_num). For example::
+            
+                  [['localhost', 2], ['127.0.0.1', 2]]
+            
+            the TCP port can also be specified::
+            
+                  [['localhost:6666']]
         
         * stride(int) [default: worker_num + sum of remote worker_num, min: 1]
         
-          The stride argument defines the number of consecutive tasklets which are
-          submitted to the process/thread pool for a task. This defines the degree
-          of parallelism. It should not be smaller than the size of the pool, which
-          is equal to the sum of local and remote threads/processes.
+            The stride argument defines the number of consecutive tasklets which
+            are submitted to the process/thread pool for a task. This defines 
+            the degree of parallelism. It should not be smaller than the size of
+            the pool, which is equal to the sum of local and remote 
+            threads/processes.
         
         * buffer(int) [default: stride * (tasks * spawn), min: variable]
         
-          The buffer argument limits the maximum memory consumption in tasklet units, by
-          limiting the number of tasklets submitted to the pool. By default each task
-          should receive it's own buffer of stride size.
-        
-          .. note::
-        
-            A tasklet is considered submitted until it is returned by the next method.
-            The minimum stride is 1 this means that starting the IMap causes one tasklet
-            to be submitted to the pool input queue. The following tasklet from the next task
-            can enter the queue only if the first one is calculated and returned by the next
-            method. A completely lazy evaluation (i.e. submitting the first tasklet *after*
-            the next method for the first task has been called is not supported).
-        
-            If the buffer is n then n tasklets can enter the pool. Depending on the number of
-            tasks and the stride size these can be tasklets from one or several tasks. If the
-            tasks are chained i.e. the output from one is consumed by another then at most one
-            i-th tasklet is at a given moment in the pool. In those cases the minimum required
-            buffer is lower.
+            The buffer argument limits the maximum memory consumption in tasklet
+            units, by limiting the number of tasklets submitted to the pool. By 
+            default each task should receive it's own buffer of stride size.
+            
+            .. note::
+            
+                A tasklet is considered submitted until it is returned by the
+                next method. The minimum stride is 1 this means that starting 
+                the IMap causes one tasklet to be submitted to the pool input 
+                queue. The following tasklet from the next task can enter the 
+                queue only if the first one is calculated and returned by the
+                next method. A completely lazy evaluation (i.e. submitting the
+                first tasklet *after* the next method for the first task has 
+                been called is not supported).
+                
+                If the buffer is n then n tasklets can enter the pool. 
+                Depending on the number of tasks and the stride size these can
+                be tasklets from one or several tasks. If the tasks are 
+                chained i.e. the output from one is consumed by another then
+                at most one i-th tasklet is at a given moment in the pool. In 
+                those cases the minimum required
+                buffer is lower.
         
         * ordered(bool) [default: True]
         
-          If True the output will be ordered i.e. the result of job_17 from task_1 will be
-          returned after job_16 from any task *and* job_17 from task_0 **but** before job_18
-          from any task *and* job_17 of task_n (for any n > 1).
+            If True the output will be ordered. Task result will be returned in
+            the order they are queued not in the order they are computed. If 
+            False the first computed result will be returned first.
         
         * skip(bool) [default: False]
         
-          Should we skip a result if trying to retrieve it rasied a TimeoutError? If the
-          results are ordered and skip =True then the calling the next method after a
-          TimeoutError will skip the timeouted result and try to get the next. If
-          skip =False it will try to get the same result once more. If the results are not
-          ordered then the next result calculated will be skipped.
+            Should we skip a result if trying to retrieve it raised a 
+            TimeoutError? If the results are ordered and skip =True then the 
+            calling the next method after a TimeoutError will skip the result, 
+            which did not arrive on time and try to get the next. If skip =False
+            it will try to get the same result once more. If the results are not
+            ordered then the next result calculated will be skipped.
 
     """
     @staticmethod
     def _pool_put(pool_semaphore, tasks, put_to_pool_in, pool_size, id_self, \
                   is_stopping):
         """ 
-        (internal) Intended tiuo be run in a seperate thread. Feeds tasks into to the
-        pool whenever semaphore permits. Finishes if self._stopping is set.
-        
+        (internal) Intended tiuo be run in a seperate thread. Feeds tasks into 
+        to the pool whenever semaphore permits. Finishes if self._stopping is 
+        set.
         """
         log.debug('IMap(%s) started pool_putter.' % id_self)
         last_tasks = {}
@@ -156,11 +166,13 @@ class IMap(object):
         while True:
             # are we stopping the Weaver?
             if is_stopping():
-                log.debug('IMap(%s) pool_putter has been told to stop.' % id_self)
+                log.debug('IMap(%s) pool_putter has been told to stop.' % \
+                           id_self)
                 tasks.stop()
             # try to get a task
             try:
-                log.debug('IMap(%s) pool_putter waits for next task.' % id_self)
+                log.debug('IMap(%s) pool_putter waits for next task.' % \
+                           id_self)
                 task = tasks.next()
                 log.debug('IMap(%s) pool_putter received next task.' % id_self)
             except StopIteration:
@@ -205,16 +217,15 @@ class IMap(object):
     def _pool_get(get, results, next_available, task_next_lock, to_skip, task_num, \
                   pool_size, id_self):
         """ 
-        (internal) Intended to be run in a seperate thread and take results from the
-        pool and put them into queues depending on the task of the result. It finishes
-        if it receives termination-sentinels from all pool workers.
-        
+        (internal) Intended to be run in a seperate thread and take results from
+        the pool and put them into queues depending on the task of the result. 
+        It finishes if it receives termination-sentinels from all pool workers.
         """
         log.debug('IMap(%s) started pool_getter' % id_self)
-        # should return when all workers have returned, each worker sends a sentinel
-        # before returning. Before returning it should send sentinels to all tasks
-        # but the next availble queue should be released only if we now that no new
-        # results will arrive.
+        # should return when all workers have returned, each worker sends a 
+        #sentinel before returning. Before returning it should send sentinels to
+        # all tasks but the next available queue should be released only if we 
+        # now that no new results will arrive.
         sentinels = 0
         result_ids, last_result_id, very_last_result_id = {}, {}, {}
         for i in xrange(task_num):

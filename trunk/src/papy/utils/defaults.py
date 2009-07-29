@@ -4,6 +4,7 @@
 Provides OS-dependent defaults.
 """
 from IMap import imports
+import os, socket
 
 @imports([['os', []], ['socket', []], ['collections', []]])
 def get_defaults():
