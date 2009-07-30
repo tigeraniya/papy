@@ -33,7 +33,8 @@ PAPY_RUNTIME = get_runtime()   # init by worker._inject
 
 
 import cPickle, csv, cStringIO, errno, gc, glob, marshal, mmap, os, signal, \
-       socket, stat, tempfile, threading, time, urllib, warnings, sqlite3
+       socket, stat, tempfile, threading, time, urllib, warnings, sqlite3, json, \
+       multiprocessing
 
 try:
     import posix_ipc
