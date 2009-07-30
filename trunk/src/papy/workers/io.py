@@ -75,7 +75,7 @@ def open_shm(name):
     # TODO: Determine which I/O methods should be implemented.
     # TODO: Document methods.  
     # http://www.python.org/dev/peps/pep-3116/
-    class ShmHandle(SharedMemory):
+    class ShmHandle(posix_ipc.SharedMemory):
         """ This is wrapper around memory mapped shared memory provided by
             posix shm.
 

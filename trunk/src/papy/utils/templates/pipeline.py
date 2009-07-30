@@ -11,22 +11,22 @@
 """
 # Part 0: import the PaPy infrastructure.
 # interface of the API: 
-from papy import Plumber, Dagger, Piper, Worker
+from papy import Plumber, Piper, Worker
 # the parallel IMap function and importrs wrapper: 
 from IMap import IMap, imports
 # all example workers
 from papy import workers
 # logging support
 from papy.utils import logger
-logger.start_logger(log_rotate =False)
+logger.start_logger(log_rotate=False)
 
 
 # Part 1: Define user functions
-@imports([['socket',[]], ['os',[]], ['threading',[]]])
+@imports([['socket', []], ['os', []], ['threading', []]])
 def who(inbox):
     """ This function identifies the host/process/thread.
     """
-    return "input: %s, host:%s, parent %s, process:%s, thread:%s" %\
+    return "input: %s, host:%s, parent %s, process:%s, thread:%s" % \
     (inbox[0], socket.gethostname(), os.getppid(), os.getpid(), threading._get_ident())
 
 # Part 2: Define the topology
@@ -37,9 +37,9 @@ def pipeline(resources):
     w_who = Worker(who)
     w_prn = Worker(workers.io.print_)
     # initialize Piper instances (i.e. attach functions to runtime)
-    p_mul = Piper(w_mul, parallel =imap1)
-    p_who = Piper(w_who, parallel =imap2)
-    p_prn = Piper(w_prn, parallel =imap3)
+    p_mul = Piper(w_mul, parallel=imap1)
+    p_who = Piper(w_who, parallel=imap2)
+    p_prn = Piper(w_prn, parallel=imap3)
     # create the pipeline and connect pipers
     pipes = Plumber()
     pipes.add_pipe((p_mul, p_who, p_prn))
@@ -54,8 +54,8 @@ def options(args):
 # Part 4: define the resources
 def resources(args):
     size, worker_num = args
-    imap1 = IMap(worker_num =worker_num)
-    imap2 = IMap(worker_num =worker_num)
+    imap1 = IMap(worker_num=worker_num)
+    imap2 = IMap(worker_num=worker_num)
     imap3 = None
     return imap1, imap2, imap3
 
@@ -69,7 +69,7 @@ if __name__ == '__main__':
     # get command-line arguments using getopt 
     import sys
     from getopt import getopt
-    args = dict(getopt(sys.argv[1:], '',['size=', 'worker_num='])[0])
+    args = dict(getopt(sys.argv[1:], '', ['size=', 'worker_num='])[0])
     # parse options
     opts = options(args)
     # definie/initialize resources
@@ -81,6 +81,6 @@ if __name__ == '__main__':
     # connect and start pipeline
     pipes.plunge([inpt])
     # wait until pipeline is finished
-    pipes._is_finished.wait() 
+    pipes._is_finished.wait()
 
 
