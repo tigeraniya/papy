@@ -1,7 +1,7 @@
 Installation
 ============
 
-This guide will go through all the steps required to install a bleeding-edge
+This guide will go through the steps required to install a bleeding-edge
 version of PaPy on a UNIX machine.
 
        
@@ -23,7 +23,7 @@ The optional run-time dependencies of PaPy are::
 Dependencies to install/build/deploy PaPy are::
 
     * setuptools ()
-    * sphinx ()
+    * sphinx () (requires docutils, jinja2 and Pygments)
     * paver ()
     
 PaPy and Python development is much easier using the following tools::
@@ -267,6 +267,14 @@ environement::
     #. installing RPyC to use PaPy on a grid::
     
         $ easy_install-2.6 rpyc
+        
+       if the above did not work because the tarfile could not be downloaded 
+       we have to do it manually from: 
+       http://sourceforge.net/projects/rpyc/files/
+       be sure to download the source distribution e.g.: rpyc-3.0.6.tar.gz
+       and from the directory to which the file has been downloaded::
+       
+        $ easy_install rpyc-3.0.6.tar.gz
 
     #. installing posix_ipc for shared memory::
         
