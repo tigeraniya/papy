@@ -63,6 +63,7 @@ options(
     # -*- Paver options: -*-
     minilib=Bunch(
         extra_files=[
+            'doctools', 'virtual'
             # -*- Minilib extra files: -*-
             ]
         ),
@@ -92,10 +93,17 @@ def clean():
         pyc.remove()
 
 
+
 @task
 @needs('generate_setup', 'minilib', 'setuptools.command.sdist')
 def sdist():
     """Overrides sdist to make sure that our setup.py is generated."""
+
+@needs('setuptools.command.sdist')
+def snapshot():
+    """"""
+    tarfile = path('dist').listdir()[0]
+    tarfile.move(path('snapshots') / tarfile.name)
 
 @task
 @needs('paver.doctools.html')

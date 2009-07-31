@@ -2,45 +2,54 @@ Installation
 ============
 
 This guide will go through the steps required to install a bleeding-edge
-version of PaPy on a UNIX machine.
+version of *PaPy* on a UNIX machine using the ``bash`` shell.
 
        
 Installing PaPy the easy way
----------------------------- 
+++++++++++++++++++++++++++++ 
 
-PaPy is indexed on the PyPI (Python package index). And can be installed simply 
-via::
+*PaPy* is indexed on the *PyPI* (Python Package Index). And can be installed 
+simply via::
 
     $ su -c "easy_install papy"
-
-The optional run-time dependencies of PaPy are::
-
-    * rpyc ()
-    * Pmw  ()
-    * posix_ipc ()
-    * mysql-python ()
     
-Dependencies to install/build/deploy PaPy are::
+If this did not work please try to use the source snapshot.
 
-    * setuptools ()
-    * sphinx () (requires docutils, jinja2 and Pygments)
-    * paver ()
+    * download a snapshot from the project page
     
-PaPy and Python development is much easier using the following tools::
+    * install it via easy_install::
+    
+        su -c "easy_install papy-1.0.tar.gz"
 
-    * virtualenv
-    * virtualevnwrapper
+The optional run-time dependencies of *PaPy* are:
 
-But this assumes that you default interpreter is Python2.6 and you have 
-setuptools installed and you want to install PaPy into system-wide site-packages
-(the location where Python looks for libraries). If the default Python 
-interpreter for your operating system is different from Python2.6 or you do not
-want to put PaPy or its optional dependencies into the system directories or 
-finally you'd like the latest source-code revision of PaPy reed further.
+    * *RPyC*            (``rpyc``)
+    * *Pmw*             (``Pmw``)
+    * ``posix_ipc``
+    * *MySQL-python*    (``MySQLdb``)
+    
+Optional dependencies to install/build/deploy *PaPy* are:
+
+    * ``easy_install``  (``setuptools``)
+    * *Sphinx*          (``sphinx``)
+    * *Paver*           (``paver``)
+    
+*PaPy* and Python development is much easier using the following tools:
+
+    * ``virtualenv``
+    * ``virtualevnwrapper``
+
+An easy install assumes that you default interpreter is Python2.6 (in future 
+Python2.5 will also be supported), you have ``setuptools`` installed and you 
+want to install *PaPy* into system-wide site-packages (the location where Python
+looks for installed libraries). If the default Python interpreter for your 
+operating system is different from Python2.6 or you do not want to put *PaPy* or 
+its optional dependencies into the system directories or finally you'd like the 
+latest source-code revision of *PaPy* read further.
 
 
 Installing PaPy the fancy way
------------------------------
++++++++++++++++++++++++++++++
 
 The fancy (and cleaner) way of using PaPy is to create a virtual environment and
 use PaPy sources checked out from the ``subversion`` repository. The general 
@@ -54,7 +63,7 @@ version of something UNIX-like.
 
 
 Getting Python
---------------
+______________
 
 Most distributions will ship a recent version of Python. You can and should skip
 this step if you have Python 2.6 and it is the default Python interpreter. 
@@ -67,18 +76,18 @@ This should return something similar to this::
     Python 2.6.2 (r262:71600, Jun 12 2009, 10:38:05)
     [GCC 4.1.2 (Gentoo 4.1.2 p1.1)] on linux2
     Type "help", "copyright", "credits" or "license" for more information.
-    >>>
     
- If this is correct go to the next step if the Python version is not 2.6.x it is 
- possible that your operating system provides Python2.6 but it is not the 
- default interpreter try::
+If this is correct you can go to the next step. Otherwise if the Python version 
+is not 2.6.x it is possible that your operating system still provides Python2.6 
+but it is not the default interpreter try::
  
     $ python2.6
     
-If (and only if) this fails with "bash: python2.6: command not found" or 
-something similar proceed with a manual system-wide installation of Python2.6.
-This installation will not change the default Python interpreter for your
-distribution.
+If, and only if, this fails with ``bash: python2.6: command not found`` or 
+something similar proceed with the manual system-wide installation of Python2.6 
+below. This installation will not change the default Python interpreter for your
+distribution. A compiled version of Python 2.6 for your distribution might be
+available from third-party repositories. 
     
     #. Download Python2.6 from http://www.python.org/download/ you want a 
        source tarball and the highest 2.6.x version available. You do not want
@@ -108,7 +117,7 @@ side.
 
 
 Getting ``setuptools``
-----------------------
+______________________
 
 We will use setuptools to install PaPy, tools to create a virtual environment 
 and PaPy's dependencies. This is a very common package and is most likely 
@@ -187,7 +196,7 @@ Python2.6 interpreter.
         
         
 Creating a virtual environment
-------------------------------
+______________________________
 
 Generally we do not want to pollute the system-wide distribution with PaPy 
 and its dependencies, but we can and this step is optional, although maintanence
@@ -231,13 +240,13 @@ to leave it type ``deactivate``.
 
 
 Installing PaPy dependencies and tools
---------------------------------------
+______________________________________
 
 All PaPy dependencies are optional in the sense that the core-functionality does 
 not depend on them. However using the gui, databases, posix-style shared memory
-and grid functionality will require a few packages to be installed.::
+and grid functionality will require a few packages to be installed.
 
-    * switch to the virtual environement (optionally)::
+    * (optional) switch to the virtual environement::
     
         $ workon papy26
 
@@ -254,7 +263,7 @@ or::
     $ sudo easy_install-2.6 PACKAGE_NAME
 
 You do not have to be root to install the packages into the virtual 
-environement::
+environement:
 
     #. install Paver to build/deploy PaPy::
     
@@ -313,44 +322,46 @@ environement::
         $ ls /usr/include/mysql/mysql.h
         /usr/include/mysql/mysql.h 
     
-        Now download and install MySQL-python.
+       Now download and install MySQL-python.
     
-            #. Go to: http://sourceforge.net/projects/mysql-python/files/
+           #. Go to: http://sourceforge.net/projects/mysql-python/files/
                and download: MySQL-python-1.2.3c1.tar.gz or a newer source 
                distribution.
                
-            #. Unpack it::
+           #. Unpack it::
             
                 $ tar xvf MySQL-python-1.2.3c1.tar.gz
                 
-            #. Go to the unpacked directory::
+           #. Go to the unpacked directory::
             
                 $ cd MySQL-python-1.2.3c1
                 
-            #. determine the location of mysql_config:
+           #. determine the location of mysql_config::
             
                 $ which mysql_config
                 
-            #. make sure the site.cfg has the correct location for mysql_config
+           #. make sure the ``site.cfg`` file has the correct location for the 
+              mysql_config binary::
             
-                # change if neccessary
-                mysql_config = __REPLACE_ME__
-                
-            #. build and install install
+               # change if neccessary
+               mysql_config = __REPLACE_ME__
+               
+           #. build and install install::
             
-                $ python2.6 setup.py install
+               $ python2.6 setup.py install
+               
+              If it failed make sure gcc can find the mysql.h file.
                 
-               If it failed make sure gcc can find the mysql.h file.
-                
-            #. verify it worked:
+           #. verify it worked::
             
-                $ python2.6
-                >>> import MySQLdb
-                >>>
+               $ python2.6
+               >>> import MySQLdb
+                
+              This should not generate any errors. 
                 
                 
 Get PaPy sources
-----------------
+________________
 
 In this step we will use the latest revision of PaPy source code to either 
 and provide it within the virtual environment or per-user python path.
@@ -369,7 +380,7 @@ and provide it within the virtual environment or per-user python path.
         # On Ubuntu
         $ sudo apt-get install subversion
         
-    #. check-out the sources
+    #. check-out the sources::
     
         $ svn checkout http://papy.googlecode.com/svn/trunk/ papy
         
@@ -378,18 +389,18 @@ and provide it within the virtual environment or per-user python path.
         
         $ cd papy/src
         
-       If you decided to use a virtual environment:
+       If you decided to use a virtual environment::
         
         $ add2virtualenv .
         
        If not we update the ``$PYTHONPATH`` variable with this path in 
-       ``.bashrc``
+       ``.bashrc``::
        
         $ pwd
         SOME_PATH
         
        And add this line to ``.bashrc``. Remember to replace SOME_PATH with the 
-       output from ``pwd``.
+       output from ``pwd``::
        
         export PYTHONPATH=SOME_PATH:$PYTHONPATH 
         
@@ -398,32 +409,9 @@ and provide it within the virtual environment or per-user python path.
         $ python2.6
         >>> import papy
         >>> import IMap
-    
-        
-       
         
         
-              
-
         
-        
-       
-            
-        
-            
-            
-    
-    
-    
-
-
-
-    
-
-
-    
-
-
       
       
       

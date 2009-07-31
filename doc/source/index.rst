@@ -8,15 +8,15 @@ the source code. You will find *PaPy* useful if you need to establish a  data
 processing pipeline using Python libraries or external tools.
 
     * project page: 
-    http://code.google.com/p/papy/
+        http://code.google.com/p/papy/
     * repository lives at: 
-    http://papy.googlecode.com/svn/trunk/
+        http://papy.googlecode.com/svn/trunk/
     * most recent documentation: 
-    http://papy.googlecode.com/svn/trunk/doc/sources/
+        http://papy.googlecode.com/svn/trunk/doc/sources/
     * most recent html documentation: 
-    http://papy.googlecode.com/svn/trunk/html/index.html
+        http://papy.googlecode.com/svn/trunk/html/index.html
     * author email: 
-    marcin.cieslik@gmail.com
+        marcin.cieslik@gmail.com
   
 .. warning::
 
