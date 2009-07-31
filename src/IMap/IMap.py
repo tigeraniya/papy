@@ -15,7 +15,8 @@ try:
     PARALLEL += 1
 except ImportError:
     print 'mutliprocessing not available get it from:' + \
-          'http://pypi.python.org/pypi/multiprocessing/'
+          'http://pypi.python.org/pypi/multiprocessing/' + \
+          'or via su -c "easy_install multiprocessing"'
 try:
     import rpyc
     PARALLEL += 1
@@ -40,12 +41,18 @@ import warnings
 
 class IMap(object):
     """
-    Parallel (thread- or process-based), buffered, multi-task, 
-    ``itertools.imap`` or ``Pool.imap`` function replacment. Like imap it 
+    Parallel (thread- or process-based, local or remote), buffered, multi-task, 
+    ``itertools.imap`` or ``Pool.imap`` function replacment. Like ``imap`` it 
     evaluates a function on elements of a sequence or iterator, and it does so 
-    layzily with an adjusted buffer via the stride and buffer arguments. All 
-    sequences or iterators are **required** to be of the same lenght.
-
+    lazily with an adjustable buffer. This is accomplished  via the stride and
+    buffer arguments. All sequences or iterators are **required** to be of the
+    same lenght. The tasks can be interdependent, the result from one task 
+    being the input to a second taks if the tasks are added to the ``IMap`` in 
+    the right order.
+    
+    A completely lazy evaluation, i.e. submitting the first tasklet *after* the
+    next method for the first task has been called, is not supported.
+    
     Arguments:
 
         * func, iterable, args, kwargs [default: None]
@@ -80,7 +87,9 @@ class IMap(object):
         
             The number of workers to spawn locally. Defaults to the number of 
             availble CPUs, which is a reasonable choice for process-based  
-            IMaps.
+            ``IMaps``. For thread-based ``IMaps`` a larger number of might 
+            improve performance. This number does *not* include workers needed
+            to run remote processes and can be =0 for a purely remote *IMap*.
             
             .. note::
         
@@ -92,64 +101,78 @@ class IMap(object):
         
         * worker_remote(sequence or None) [default: None]
         
-            A sequence of remote host identifiers, and remote worker numbers.
-            Specify the *RPyC* hosts and number of workers as a sequence of tuples
-            ("host_ip_etc", worker_num). For example::
+            A sequence of remote host identifiers, and remote worker number 
+            pairs. Specifies the number of workers per *RPyC* host in the form 
+            of ("host:port", worker_num). For example::
             
                   [['localhost', 2], ['127.0.0.1', 2]]
             
-            the TCP port can also be specified::
+            with a custom TCP port::
             
-                  [['localhost:6666']]
+                  [['localhost:6666'], ['remotehost:8888', 4]]
         
         * stride(int) [default: worker_num + sum of remote worker_num, min: 1]
         
-            The stride argument defines the number of consecutive tasklets which
-            are submitted to the process/thread pool for a task. This defines 
-            the degree of parallelism. It should not be smaller than the size of
-            the pool, which is equal to the sum of local and remote 
-            threads/processes.
+            Defines the number of tasklets which are submitted to the process 
+            thread, consecutively from a single task. See the documentation for
+            ``add_task`` and the manual for an explanation of a task and 
+            tasklet. The stride defines the laziness of the pipeline. A long 
+            stride improves parallelism, but increases memory consumption. It 
+            should not be smaller than the size of the pool, because of idle
+            processes or threads.
         
         * buffer(int) [default: stride * (tasks * spawn), min: variable]
         
-            The buffer argument limits the maximum memory consumption in tasklet
-            units, by limiting the number of tasklets submitted to the pool. By 
-            default each task should receive it's own buffer of stride size.
+            The buffer argument limits the maximum memory consumption, by 
+            limiting the number of tasklets submitted to the pool. This number 
+            is larger then stride because a task might depend on results from
+            multiple tasks. The minimum buffer is the maximum possible number
+            of queued results. This number depends on the interdependencies 
+            between tasks, the produce/spawn/consume numbers and the stride.
+            The default is conservative and equals will always be enough 
+            regardless of the task interdependencies. Please consult the manual
+            before adjusting this setting.
             
             .. note::
             
-                A tasklet is considered submitted until it is returned by the
-                next method. The minimum stride is 1 this means that starting 
-                the IMap causes one tasklet to be submitted to the pool input 
-                queue. The following tasklet from the next task can enter the 
-                queue only if the first one is calculated and returned by the
-                next method. A completely lazy evaluation (i.e. submitting the
-                first tasklet *after* the next method for the first task has 
-                been called is not supported).
-                
-                If the buffer is n then n tasklets can enter the pool. 
-                Depending on the number of tasks and the stride size these can
-                be tasklets from one or several tasks. If the tasks are 
-                chained i.e. the output from one is consumed by another then
-                at most one i-th tasklet is at a given moment in the pool. In 
-                those cases the minimum required
-                buffer is lower.
-        
+                A tasklet is considered submitted until the result is returned 
+                by the next method. The minimum stride is 1 this means that 
+                starting the IMap will cause one tasklet (the first from the 
+                first task) to be submitted to the pool input queue. The first 
+                tasklet from the second task can enter the queue only if either
+                the result from the first tasklet is returned or the buffer size
+                is larger then the stride size.
+                If the buffer is n then n tasklets can enter the pool. A Stride
+                of n requires n tasklets to enter the pool, therefore buffer 
+                can never be smaller then stride. If the tasks are chained i.e. 
+                the output from one is consumed by another then the first at 
+                most one tasklet i-th tasklet from each chained task is at a 
+                given moment in the pool. In those cases the minimum buffer to 
+                satisfy the worst case number of queued results is lower then 
+                the safe default.
+       
         * ordered(bool) [default: True]
         
-            If True the output will be ordered. Task result will be returned in
-            the order they are queued not in the order they are computed. If 
-            False the first computed result will be returned first.
+            If True the output of all tasks will be ordered. This means that for
+            specific task the result from the n-th tasklet will be return before
+            the result from the n+1-th tasklet. If false the results will be 
+            returned in the order they are calculated.
         
         * skip(bool) [default: False]
         
             Should we skip a result if trying to retrieve it raised a 
-            TimeoutError? If the results are ordered and skip =True then the 
-            calling the next method after a TimeoutError will skip the result, 
-            which did not arrive on time and try to get the next. If skip =False
-            it will try to get the same result once more. If the results are not
-            ordered then the next result calculated will be skipped.
-
+            ``TimeoutError``? If ordered =True and skip =True then the calling 
+            the next method after a TimeoutError will skip the result, which did
+            not arrive on time and try to get the next. If skip =False it will 
+            try to get the same result once more. If the results are not
+            ordered then the next result calculated will be skipped. If tasks
+            are chained a TimeoutError will collapse the *IMap* evaluation. Do 
+            *not* use specify timeouts (this argument becomes irrelevant). 
+        
+        * name(string) [default: 'imap_id(object)']
+        
+            An optional name to associate with this *IMap* instance. Should be 
+            unique. Useful for nicer code generation.
     """
     @staticmethod
     def _pool_put(pool_semaphore, tasks, put_to_pool_in, pool_size, id_self, \
@@ -179,7 +202,7 @@ class IMap(object):
             except StopIteration:
                 # Weaver raised a StopIteration
                 stop_task = tasks.i # current task
-                log.debug('IMap(%s) pool_putter catched StopIteration from task %s.' % \
+                log.debug('IMap(%s) pool_putter caught StopIteration from task %s.' % \
                                                                   (id_self, stop_task))
                 if stop_task not in stop_tasks:
                     # task raised stop for the first time.
@@ -222,7 +245,7 @@ class IMap(object):
     def _pool_get(get, results, next_available, task_next_lock, to_skip, \
                   task_num, pool_size, id_self):
         """ 
-        (internal) Intended to be run in a seperate thread and take results from
+        (internal) Intended to be run in a separate thread and take results from
         the pool and put them into queues depending on the task of the result. 
         It finishes if it receives termination-sentinels from all pool workers.
         """
@@ -299,7 +322,7 @@ class IMap(object):
 
             # this releases the next method for each ordered result in the queue
             # if the IMap instance is ordered =False this information is 
-            # ommited.
+            # ommitted.
             while last_result_id[task] + 1 in result_ids[task]:
                 next_available[task].put(True)
                 last_result_id[task] += 1
@@ -317,7 +340,9 @@ class IMap(object):
                  stride=None, buffer=None, ordered=True, skip=False, \
                  name=None):
 
-        log.debug('%s %s starts initializing' % (self, (name or '')))
+        self.name = (name or 'imap_%s' % id(self))
+        log.debug('%s %s starts initializing' % (self, self.name))
+        # TODO: refactor run-time checks in IMap.__init__
         if not PARALLEL:
             if worker_type == 'process':
                 log.error('worker_type ="process" requires multiprocessing')
@@ -341,7 +366,6 @@ class IMap(object):
         self.stride = stride or \
                       self.worker_num + sum([i[1] for i in self.worker_remote])
         self.buffer = buffer            # defines the maximum number
-        self.name = (name or 'imap_%s' % id(self))
         # of jobs which are in the input queue, pool and output queues
         # and next method
 
