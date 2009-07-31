@@ -82,7 +82,20 @@ This is a pipeline of three functions f, g, h. Functions f and g are up-stream
 relative to h. Because of the ``izip`` function input_for_f and input_for_g have
 to be of the same lenght. In *PaPy* the lazy `imap` functions is replaced with
 a pool implementation *IMap*, which allows for a parallelism vs. laziness
-trade-off. 
+trade-off.
+
+
+What does an *IMap* do?
+-----------------------
+
+The ``IMap.IMap`` object provides a method to evaluate a functions on a sequence 
+of changing arguments provided with optional positional and keyworded arguments
+to modify the behaviour of the function. Just like ``multiprocessing.Pool.imap`` 
+or ``itertools.imap`` with the key differences that unlike ``itertools.IMap`` it 
+evaluates results in parallel. Compared to ``multiprocessing.Pool.imap`` it 
+supports multiple functions (called tasks), which are evaluated not one after
+another, but in an alternating fashion. *IMap* is completely independent from 
+*PaPy* although they are boundled in a single Python package.
 
 
 Feature summary:
@@ -97,8 +110,9 @@ This is a list of features of a pipeline constructed using the *PaPy* module com
     * robustness to exceptions
     * support for time-outs
     * real-time logging
-    * os-independent (really a feature of multiprocessing)
-    * cross-platform (really a feature of RPyC)
+    * os-independent (really a feature of ``multiprocessing``)
+    * cross-platform (really a feature of *RPyC*)
     * small code-base
-    * tested & documented. 
+    * a preliminary GUI based on ``Tkinter``
+    * tested & documented.
 
