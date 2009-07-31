@@ -5,25 +5,29 @@ Many computational tasks require sequential processing of data i.e. the global
 task is split into sub-tasks which are evaluated in some order on the data to be
 processed.
 
-*PaPy* allows to create a data-processing pipeline intuitive components:
+*PaPy* allows to create a data-processing pipeline from components of isolated
+functionality:
 
-  * the function wrapping *Pipers*
+  * the function wrapping *Workers*
+  * the connection capable *Pipers*
   * the topology defining *Dagger*
   * the parallel executors *IMaps*
 
 The *Dagger* connects *Pipers* via pipes into a directed acyclic graph, while
-the *IMaps* are assigned to *Pipers* and evaluate their function either locally
-using threads or processes or on remote hosts.
+the *IMaps* are assigned to *Pipers* and evaluate their *Workers* either locally
+using threads or processes or on remote hosts. The *Workers* allow to compose 
+multiple functions while the *Pipers* allow to connect the inputs and outputs of
+*Workers* as defined by the *Dagger* topology.
 
-The input data can be processed in parallel if the input is a collection (or can
-be split into one) of data-items: files, messages, sequences, arrays etc. (in
-general picklable python objects).
+The input data can be processed in parallel if it is a collection (or it can be 
+split into one) of data-items: files, messages, sequences, arrays etc. (in
+general all picklable python objects are valid input items).
 
-*PapPy* is written in and for Python this means that the user is expected to
+*PaPy* is written in and for Python this means that the user is expected to
 write Python functions with defined call/return semantics, but the function code
 is largely arbitrary e.g. they can call a perl script or import a library.
 *PaPy* focuses on modularity, functions should be re-used and composed within
-pipelines and *Pipers*.
+pipelines and *Workers*.
 
 The *PaPy* pipeline automatically logs it's execution is resistant to exceptions
 and timeouts should work on all platforms where ``multiprocessing`` is available

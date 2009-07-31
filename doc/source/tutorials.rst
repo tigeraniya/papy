@@ -4,83 +4,12 @@ Tutorials
 In this section practical aspects of *PaPy* usage are covered especially
 creating, running and monitoring a *PaPy* pipeline. The tutorials cover:
 
-  * installation 
   * writing functions for Workers
-  * working with inputs.
+  * working with input data
   * writing functions for output Workers
   * creating a pipeline skeleton
   * optimizing parallelism
   * logging
-
-
-Installation
-------------
-
-*PaPy* is written in and for Python and it should run on all platforms which
-have a full Python 2.6 implementation or Python 2.5 with the ``multiprocessing``
-module backported from 2.6. The multiprocessing module is supported on Linux and
-MacOSX and to a sufficient extent on Windows. Other UNIX systems might not be
-supported.
-
-
-Dependancies
-++++++++++++
-
-  * Python 2.6 (get it from: http://www.python.org/download/) or 
-    Python 2.5 (get it from: http://www.python.org/download/) + multiprocessing
-    (get it from: http://pypi.python.org/pypi/multiprocessing)
-
-  * RPyC 3.0.5 (get it from: http://rpyc.wikidot.com/) Other version are
-    untested.
-
-
-
-Distribution
-++++++++++++
-
-*PaPy* source code can be obtained from the code google repository::
-
-  http://papy.googlecode.com/svn/trunk/
-
-To get the code it is necessary to check it out using a subversion client e.g.
-``svn``::
-  
-  $ svn checkout http://papy.googlecode.com/svn/trunk/ papy
-  
-
-
-The next steps are: 1) build 2) install 3) test if it worked
-
-  1a. build (on UNIX)::
-
-    $ cd papy
-    $ python setup.py build
-  
-  1b. build
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-Source
-^^^^^^
-
-  * dummy
-
-Egg
-^^^
-
-  * dummy
-
 
 Writing functions for Workers
 -----------------------------
