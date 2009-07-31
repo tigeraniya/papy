@@ -60,17 +60,17 @@ class IMap(object):
         * worker_type('process' or 'thread') [default: 'process']
         
             Defines the type of internally spawned pool workers. For 
-            multiprocessing Process based worker choose 'process' for threading
-            Thread workers choose 'thread'.
+            ``multiprocessing.Process`` based worker choose 'process' for 
+            ``threading.Thread`` workers choose 'thread'.
             
             .. note::
             
                 This choice has *fundamental* impact on the performance of the
-                function please understand the difference between processes 
+                function. Please understand the difference between processes 
                 and threads and refer to the manual documentation. As a 
-                general rule use 'process' if you have multiple CPUs or cores
-                and your functions(tasks) are cpu-bound. Use 'thread' if your
-                function is IO-bound e.g. retrieves data from the Web.
+                general rule use 'process' if you have multiple CPUs or 
+                CPU-cores and your task functions are cpu-bound. Use 'thread' 
+                if your function is IO-bound e.g. retrieves data from the Web.
                 
                 If you specify any remote workers via worker_remote, worker_type
                 has to be the default 'process'. This limitation might go away 
@@ -79,18 +79,21 @@ class IMap(object):
         * worker_num(int) [default: number of CPUs, min: 1]
         
             The number of workers to spawn locally. Defaults to the number of 
-            availble CPUs, which is a reasonable choice for process-based 
+            availble CPUs, which is a reasonable choice for process-based  
             IMaps.
             
             .. note::
         
                 Increasing the number of workers above the number of CPUs makes
                 sense only if these are Thread-based workers and the evaluated 
-                functions are IO-bound.
+                functions are IO-bound. Some CPU-bound tasks might evaluate 
+                faster if the number of worker processes equals the number of 
+                CPUs + 1.
         
         * worker_remote(sequence or None) [default: None]
         
-            Specify the rpyc hosts and number of workers as a sequence of tuples
+            A sequence of remote host identifiers, and remote worker numbers.
+            Specify the *RPyC* hosts and number of workers as a sequence of tuples
             ("host_ip_etc", worker_num). For example::
             
                   [['localhost', 2], ['127.0.0.1', 2]]

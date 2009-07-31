@@ -31,16 +31,16 @@ pipelines and *Workers*.
 
 The *PaPy* pipeline automatically logs it's execution is resistant to exceptions
 and timeouts should work on all platforms where ``multiprocessing`` is available
-and allows to utilize a cross-platform grid wherever *RPyC* is supported.
+and allows to utilize a cross-platform ad-hoc grid wherever *RPyC* is supported.
 
 
 Where/When should *PaPy* be used?
 ---------------------------------
 
-It is likely that you will benefit from using PaPy if any of the following is
+It is likely that you will benefit from using *PaPy* if any of the following is
 true:
 
-  * you need to process large collections of data-items.
+  * you need to process large collections of data items.
   * your data collection is to large to fit into memory.
   * you want to utilize an ad-hoc grid.
   * you have to construct a complex data-flow.
@@ -62,7 +62,7 @@ What is a pipeline?
 -------------------
 
 *PaPy* understands a pipeline as any directed acyclic graph. The direction of
-the graph is defined by the data-flow (edges, pipes) between the data-processing
+the graph is defined by the data flow (edges, pipes) between the data-processing
 units (nodes, *Pipers*).  To be precise the direction of the edges is opposite
 to the direction of the data stream (pipes). Up-stream *Pipers* have incomming
 edges from down-stream *Pipers* this is represented as a pipe with a opposite

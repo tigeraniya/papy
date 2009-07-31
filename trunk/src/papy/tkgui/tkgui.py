@@ -48,14 +48,14 @@ class RootItem(TreeItem):
 
 class _TreeItem(TreeItem):
 
-    def __init__(self, item, root):
+    def __init__(self, item, root_):
         self.item = item
-        self.root = root
+        self.root = root_
 
     def GetText(self):
         try:
             return self.item.name
-        except:
+        except AttributeError:
             return repr(self.item)
 
     def SetText(self, text):
