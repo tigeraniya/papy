@@ -789,43 +789,43 @@ def inject_func(func, conn):
 def imports(modules, forgive=False):
     """
     Should be used as a decorator to attach import statments to function
-    definitions. And import them in the in the global namespace of the function. 
+    definitions. These imports are added to the global i.e. module level 
+    namespace of the decorated function.
         
     Two forms of import statements are supported::
 
         import module                    # e.q. to ['module', []]
         from module import sub1, func2   # e.q. to ['module', ['sub1', func2]]
 
-    The imported modules should be considered as availble only inside the 
-    decorated functions. 
+    All required imports should be defined for every function.
 
     Arguments:
 
         * modules(list)
+          
+          A list of modules in the following forms::
 
-            A list of modules in the following forms::
+            ['module', ['sub_module1', ... ,'sub_module2']]
 
-                ['module',['sub_module1', ... ,'sub_module2']]
+          or::
 
-            or::
+            ['module',[]]
 
-                ['module',[]]
+          If a list of sub-modules is specified they will be availble in the
+          globals of the function i.e::
 
-            If a list of sub-modules is specified they will be availble in the
-            globals of the function i.e::
+            # re module availble in the namespace
+            @imports([['re', []]])
+            def need_re(some_string):
+                res = re.search('pattern',some_string)
+                return res.group()
 
-                # re module availble in the namespace
-                @imports([['re',[]]])
-                def need_re(some_string):
-                    res = re.search('pattern',some_string)
-                    return res.group()
-
-                # search function availble in the namespace
-                @imports([['re',['search']]])
-                def need_re(some_string):
-                    res = search('pattern',some_string) #!
-                    # but re.search will also work.
-                    return res.group()
+            # search function availble in the namespace
+            @imports([['re', ['search']]])
+            def need_re(some_string):
+                res = search('pattern',some_string) #!
+                # but re.search will also work.
+                return res.group()
           
         * forgive(bool) [default: False]
 
@@ -908,28 +908,29 @@ class Weave(object):
 
 class IMapTask(object):
     """
-    Object returned by the get_task method of IMap instances. It is a wrapper 
-    around an *IMap* instance which returns results only for specified 
-    arguments: task, timeout and block.
-
+    The ``IMapTask`` is an object-wrapper of ``IMap`` instaces. It is an 
+    iterator, which returns results only for a single task. It's next method 
+    does not take any arguments. ``IMap.next`` arguments are defined during
+    initialization. 
+    
     Arguments:
 
-        * iterator(IMap instance)
+        * iterator(``IMap`` instance)
 
-            *IMap* instance to wrap, usually this is called by the get_task 
-            method of the *IMap* instance itself.
+            ``IMap`` instance to wrap, usually initialization is done by the 
+            ``IMap.get_task`` method of the corresponding ``IMap`` instance.
 
         * task(integer)
 
-            Id of the task from the *IMap* instance.
+            Id of the task from the ``IMap`` instance.
 
         * timeout
             
-            see documentation for: *IMap.next*
+            see documentation for: ``IMap.next``.
 
         * block
             
-            see documentation for: *IMap.next*
+            see documentation for: ``IMap.next``.
     """
     def __init__(self, iterator, task, timeout, block):
         self.timeout = timeout
@@ -942,16 +943,17 @@ class IMapTask(object):
 
     def next(self):
         """
-        Returns a result if availble within timeout else raises
-        a TimeoutError. See documentation for *IMap.next*
+        Returns a result if availble within timeout else raises a TimeoutError.
+        See documentation for ``IMap.next``.
         """
         return self.iterator.next(task=self.task, timeout=self.timeout,
-                                                     block=self.block)
+                                                    block=self.block)
+
 
 class PriorityQueue(Queue):
     """
-    A priority queue using a heap on a list.
-    This Queue is thread but not process safe.
+    A priority queue using a heap on a list. This Queue is thread but not 
+    process safe.
     """
     def _init(self, maxsize):
         self.maxsize = maxsize
