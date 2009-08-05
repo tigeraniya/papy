@@ -2,7 +2,8 @@
 :mod:`papy.papy`
 ================
 
-This module provides classes and functions to construct and run a papy pipeline.
+This module provides classes and functions to construct and run a *PaPy* 
+pipeline.
 """
 # self-imports
 from IMap import Weave, imports, inject_func
@@ -20,7 +21,7 @@ from inspect import isbuiltin, getsource
 from logging import getLogger
 from time import time
 
-#
+# Dummy variable, expected by comp_task in globals().
 TASK = None
 
 
@@ -52,66 +53,77 @@ class PlumberError(Exception):
     pass
 
 
-
 class Dagger(Graph):
     """
-    The Dagger is a Directed Acyclic Graph.
+    The *Dagger* is a directed acyclic graph. It defines the topology of a 
+    *Papy* pipeline/workflow. It is a subclass from *Graph* inverting the 
+    direction of edges called within the *Dagger* pipes. Edges can be regarded 
+    as dependencies, while pipes as data-flow between *Pipers* or *Nodes* of the 
+    *Graph*.
 
     Arguments:
     
-        * pipers(sequence) [default: ()]
+        * pipers(sequence) [default: ``()``]
         
-          A sequence of valid add_piper inputs
+            A sequence of valid ``add_piper`` inputs (see the documentation for 
+            the ``add_piper`` method).
         
-        * pipes(sequence) [default: ()]
+        * pipes(sequence) [default: ``()``]
         
-          A sequence of valid add_pipe inputs
+            A sequence of valid ``add_pipe`` inputs  (see the documentation for 
+            the ``add_piper`` method).
     """
 
     def __init__(self, pipers=(), pipes=(), xtras=None):
         self.log = getLogger('papy')
-        self.log.info('Creating %s from %s and %s' % (repr(self), pipers, pipes))
+        self.log.info('Creating %s from %s and %s' % \
+                      (repr(self), pipers, pipes))
         self.add_pipers(pipers, xtras)
         self.add_pipes(pipes)
 
 
     def __repr__(self):
         """
-        Short representation.
+        Short but unique representation.
         """
         return 'Dagger(%s)' % id(self)
 
     def __str__(self):
         """
-        Long representation.
+        Long descriptive representation.
         """
         return repr(self) + "\n" + \
                "\tPipers:\n" + \
                "\n".join(('\t\t' + repr(p) + ' ' for p in self.nodes())) + '\n'\
                "\tPipes:\n" + \
-               "\n".join(('\t\t' + repr(p[1]) + '>>>' + repr(p[0]) for p in self.edges()))
+               "\n".join(('\t\t' + repr(p[1]) + '>>>' + \
+                          repr(p[0]) for p in self.edges()))
 
     @staticmethod
     def _cmp(x, y):
         """
-        Compares pipers by ornament.
+        A compare function like ``cmp``, which compares pipers by ornament. To 
+        be used when sorting upstream *Pipers*.
         """
         return cmp(x.ornament, y.ornament)
 
     def resolve(self, piper, forgive=False):
         """
-        Given a piper or piper id returns the identical piper in the graph.
-    
+        Given a *Piper* or the ``id`` of the *Piper*. Returns this *Piper* if it 
+        can be resolved else raises a *DaggerError* or returns ``False`` 
+        depending on the forgive argument. 
+        
         Arguments:
     
-            * piper(Piper instance, id(Piper instance))
+            * piper(*Piper* instance, id(*Piper* instance))
             
-              Object to find in the graph.
+              *Piper* instance or its id to be found in the *Dagger*. 
             
-            * forgive(bool) [default =False]
+            * forgive(bool) [default =``False``]
             
-              If forgive is False a DaggerError is raised whenever a piper cannot
-              be resolved in the graph. If forgive is True False is returned
+              If forgive is ``False`` a *DaggerError( is raised whenever a piper 
+              cannot be resolved in the graph. If forgive is ``True``: ``False``
+              is returned.
         """
         try:
             if piper in self:
@@ -123,18 +135,22 @@ class Dagger(Graph):
         if resolved:
             self.log.info('%s resolved a piper from %s' % (repr(self), piper))
         else:
-            self.log.info('%s could not resolve a piper from %s' % (repr(self), repr(piper)))
+            self.log.info('%s could not resolve a piper from %s' % \
+                          (repr(self), repr(piper)))
             if not forgive:
-                raise DaggerError('%s could not resolve a Piper from %s' % (repr(self), repr(piper)))
+                raise DaggerError('%s could not resolve a Piper from %s' % \
+                                  (repr(self), repr(piper)))
             resolved = False
         return resolved
 
     def connect(self):
         """
-        Connects pipers in the correct order.
+        Given the pipeline topology connects *Pipers* in the order input -> 
+        output. See ``Piper.connect``.
         """
         postorder = self.postorder()
-        self.log.info('%s trying to connect in the order %s' % (repr(self), repr(postorder)))
+        self.log.info('%s trying to connect in the order %s' % \
+                      (repr(self), repr(postorder)))
         for piper in postorder:
             if not piper.connected and self[piper].keys(): # skip input pipers
                 piper.connect(self[piper].keys())   # what if []?
@@ -142,7 +158,20 @@ class Dagger(Graph):
 
     def connect_inputs(self, datas):
         """
-        Connects input *Pipers* to input-data in the correct order.
+        Connects input *Pipers* to input data in the correct order determined,
+        by the ``Piper.ornament`` attribute and the ``Dagger._cmp`` function.
+        
+        .. note::
+        
+            It is assumed that the input data is in the form of an iterator and
+            that all inputs have the same number of input items. A pipeline will
+            deadlock otherwise. 
+        
+        Arguments:
+        
+            * datas (sequence of iterators)
+            
+                Ordered sequence of inputs for all input *Pipers*.
         """
         start_pipers = self.get_inputs()
         start_pipers.sort(self._cmp)
@@ -151,10 +180,12 @@ class Dagger(Graph):
 
     def disconnect(self):
         """
-        Disconnects pipers in the correct order.
+        Given the pipeline topology disconnects *Pipers* in the order output -> 
+        input. See ``Piper.connect``.
         """
         postorder = self.postorder()
-        self.log.info('%s trying to disconnect in the order %s' % (repr(self), repr(postorder)))
+        self.log.info('%s trying to disconnect in the order %s' % \
+                      (repr(self), repr(postorder)))
         for piper in postorder:
             if piper.connected and self[piper].keys(): # skip input pipers
                 piper.disconnect()
@@ -162,41 +193,55 @@ class Dagger(Graph):
 
     def start(self):
         """
-        Starts all pipers in the correct order.
+        Given the pipeline topology starts *Pipers* in the order input -> 
+        output. See ``Piper.start``. The forced =`True` argument is passed to 
+        the ``Piper.start`` method, allowing *Pipers* to share *IMaps*.
         """
         postorder = self.postorder()
         for piper in postorder:
             piper.start(forced=True)
 
     def get_inputs(self):
-        start_pipers = [p for p in self.postorder() if not self.outgoing_edges(p)]
-        self.log.info('%s got input pipers %s' % (repr(self), start_pipers))
-        return start_pipers
+        """
+        Returns *Pipers* which are inputs to the pipeline i.e. have no 
+        incoming pipes (outgoing dependency edges). 
+        """
+        start_p = [p for p in self.postorder() if not self.outgoing_edges(p)]
+        self.log.info('%s got input pipers %s' % (repr(self), start_p))
+        return start_p
 
     def get_outputs(self):
-        end_pipers = [p for p in self.postorder() if not self.incoming_edges(p)]
-        self.log.info('%s got output pipers %s' % (repr(self), end_pipers))
-        return end_pipers
+        """
+        Returns *Pipers* which are outputs to the pipeline i.e. have no 
+        outgoing pipes (incoming dependency edges). 
+        """
+        end_p = [p for p in self.postorder() if not self.incoming_edges(p)]
+        self.log.info('%s got output pipers %s' % (repr(self), end_p))
+        return end_p
 
     def add_piper(self, piper, create=True, xtra=None):
         """
-        Adds a piper to the graph (only if the piper is not already in the graph).
-        Returns a tuple: (new_piper_created, piper_instance). 
-
+        Adds a *Piper* to the *Dagger*, only if the *Piper* is not already in 
+        a *Node*. Optionally creates a new *Piper* if the piper argument is 
+        valid for the *Piper* constructor. Returns a tuple: (new_piper_created,
+        piper_instance) indicating whether a new *Piper* has been created
+        and the instance of the added *Piper*.
+        
         Arguments:
         
-            * piper(Piper instance, Worker instance or id(Piper instance)
+            * piper(*Piper* instance, *Worker* instance or id(*Piper* instance))
             
-            Piper instance or object which will be converted to a piper instance.
+                *Piper* instance or object which will be converted to a *Piper* 
+                instance.
             
-            * create(bool) [default: True]
+            * create(bool) [default: ``True``]
             
-            Should a new piper be created if necessary?
+                Should a new *Piper* be created if the piper cannot be resolved 
+                in the *Dagger*?
             
-            * xtra(dict) [default: None]
+            * xtra(dict) [default: ``None``]
             
-            Dictionary of Graph Node properteis.
-
+                Dictionary of *Graph* *Node* properties.
         """
         self.log.info('%s trying to add piper %s' % (repr(self), piper))
         piper = (self.resolve(piper, forgive=True) or piper)
@@ -205,11 +250,15 @@ class Dagger(Graph):
                 try:
                     piper = Piper(piper)
                 except PiperError:
-                    self.log.error('%s cannot resolve or create a piper from %s' % (repr(self), repr(piper)))
-                    raise DaggerError('%s cannot resolve or create a piper from %s' % (repr(self), repr(piper)))
+                    self.log.error('%s cannot resolve or create a piper from %s' % \
+                                   (repr(self), repr(piper)))
+                    raise DaggerError('%s cannot resolve or create a piper from %s' % \
+                                      (repr(self), repr(piper)))
             else:
-                self.log.error('%s cannot resolve a piper from %s' % (repr(self), repr(piper)))
-                raise DaggerError('%s cannot resolve a piper from %s' % (repr(self), repr(piper)))
+                self.log.error('%s cannot resolve a piper from %s' % \
+                               (repr(self), repr(piper)))
+                raise DaggerError('%s cannot resolve a piper from %s' % \
+                                  (repr(self), repr(piper)))
         new_piper_created = self.add_node(piper, xtra)
         if new_piper_created:
             self.log.info('%s added piper %s' % (repr(self), piper))
@@ -217,49 +266,58 @@ class Dagger(Graph):
 
     def del_piper(self, piper, forced=False):
         """
-        Removes a piper from the graph.
+        Removes a *Piper* from the *Dagger*.
 
         Arguments:
         
-            * piper(Piper instance, Worker instance or id(Piper instance)
+            * piper(*Piper* instance, *Worker* instance or id(*Piper* instance))
             
-              Piper instance or object which will be converted to a piper instance.
+                  *Piper* instance or object from which a *Piper* instance can 
+                  be constructed.
             
-            * forced(bool) [default: False]
+            * forced(bool) [default: ``False``]
             
-              If forced is False pipers with down-stream connections will not be removed
-              and will raise a DaggerError.
+                  If forced =``False *Pipers* with outgoing pipes (incoming 
+                  edges) will not be removed and will raise a ``DaggerError``.
         """
-        self.log.info('%s trying to delete piper %s' % (repr(self), repr(piper)))
+        self.log.info('%s trying to delete piper %s' % \
+                      (repr(self), repr(piper)))
         try:
             piper = self.resolve(piper, forgive=False)
         except DaggerError:
-            self.log.error('%s cannot resolve piper from %s' % (repr(self), repr(piper)))
-            raise DaggerError('%s cannot resolve piper from %s' % (repr(self), repr(piper)))
+            self.log.error('%s cannot resolve piper from %s' % \
+                           (repr(self), repr(piper)))
+            raise DaggerError('%s cannot resolve piper from %s' % \
+                              (repr(self), repr(piper)))
         if self.incoming_edges(piper) and not forced:
-            self.log.error('%s piper %s has down-stream pipers (use forced =True to override)' % (repr(self), piper))
-            raise DaggerError('%s piper %s has down-stream pipers (use forced =True to override)' % (repr(self), piper))
+            self.log.error('%s piper %s has down-stream pipers (use forced =True to override)' % \
+                           (repr(self), piper))
+            raise DaggerError('%s piper %s has down-stream pipers (use forced =True to override)' % \
+                              (repr(self), piper))
         self.del_node(piper)
         self.log.info('%s deleted piper %s' % (repr(self), piper))
 
 
     def add_pipe(self, pipe):
         """
-        Adds a pipe (A, ..., N) which is an N-tuple tuple of pipers. Adding a pipe
-        means to add all the pipers and connect them in the specified order. If a
+        Adds a pipe (A, ..., N) which is an N-tuple tuple of *Pipers.* Adding a 
+        pipe means to add all the *Pipers* and connect them in the specified 
+        left to right order.
 
         Arguments:
         
             * pipe(sequence)
             
-              N-tuple of Piper instances or objects which can be resolved in the graph
-              (see: resolve). The pipers are added in the specified order
+                  N-tuple of *Piper* instances or objects which are valid 
+                  ``add_piper`` arguments. See: ``Dagger.add_piper`` and 
+                  ``Dagger.resolve``.
         
         .. note::
         
-             The direction of the edges in the graph is reversed compared to the data
-             flow  in a pipe i.e. the target node points to the source node.
+            The direction of the edges in the graph is reversed compared to the
+            left to right data-flow in a pipe.
         """
+        #TODO: Check if consume/spawn/produce is right!
         self.log.info('%s adding pipe: %s' % (repr(self), repr(pipe)))
         for i in xrange(len(pipe) - 1):
             edge = (pipe[i + 1], pipe[i])
@@ -272,35 +330,43 @@ class Dagger(Graph):
                                 (repr(self), edge[0], edge[1]))
             self.add_edge(edge)
             self.clear_nodes() #dfs
-            self.log.info('%s added the %s>>>%s edge' % (repr(self), edge[0], edge[1]))
+            self.log.info('%s added the %s>>>%s edge' % \
+                          (repr(self), edge[0], edge[1]))
 
     def del_pipe(self, pipe, forced=False):
-        """Deletes a pipe (A, ..., N) which is an N-tuple of pipers. Deleting a pipe means
-           to delete all the connections between pipers and to delete all the pipers.
-
-           Arguments:
-
-             * pipe(sequence)
-
-               N-tuple of Piper instances or objects which can be resolved in the graph
-               (see: resolve). The pipers are removed in the reversed order
-
-             * forced(bool) [default: False]
-
-               The forced argument will be given to the del_piper method. If forced is
-               False only pipers with no down-stream connections will be deleted
-
-           .. note::
-
-              The direction of the edges in the graph is reversed compared to the data
-              flow  in a pipe i.e. the target node points to the source node.
         """
-        self.log.info('%s removes pipe%s forced: %s' % (repr(self), repr(pipe), forced))
+        Deletes a pipe (A, ..., N) which is an N-tuple of pipers. Deleting a 
+        pipe means to delete all the connections between pipers and to delete
+        all the *Pipers*. If forced =``False`` only *Pipers* which are not 
+        needed anymore are deleted.
+
+        Arguments:
+
+            * pipe(sequence)
+
+                N-tuple of *Piper* instances or objects which can be resolved in 
+                the *Dagger* (see: ``Dagger.resolve``). The *Pipers* are removed
+                from right to left.
+                
+            * forced(bool) [default: False]
+
+               The forced argument will be forwarded to the ``Dagger.del_piper``
+               method. If forced is ``False`` only *Pipers* with no outgoing 
+               pipes will be deleted.
+
+        .. note::
+
+            The direction of the edges in the graph is reversed compared to the 
+            left to right data-flow in a pipe.
+        """
+        self.log.info('%s removes pipe%s forced: %s' % \
+                      (repr(self), repr(pipe), forced))
         pipe = list(reversed(pipe))
         for i in xrange(len(pipe) - 1):
             edge = (self.resolve(pipe[i]), self.resolve(pipe[i + 1]))
             self.del_edge(edge)
-            self.log.info('%s removed the %s>>>%s edge' % (repr(self), edge[0], edge[1]))
+            self.log.info('%s removed the %s>>>%s edge' % \
+                          (repr(self), edge[0], edge[1]))
             try:
                 self.del_piper(edge[0], forced)
                 self.del_piper(edge[1], forced)
@@ -308,25 +374,66 @@ class Dagger(Graph):
                 pass
 
     def add_pipers(self, pipers, *args, **kwargs):
-        """Adds sequence of pipers in specified oreder.
+        """
+        Adds a sequence of *Pipers* to the *Dagger* in specified order. Takes 
+        optional arguments for ``Dagger.add_piper``.
+        
+        Arguments:
+        
+            * pipers (sequence of valid ``add_piper`` arguments)
+            
+                Sequence of *Pipers* or valid ``Dagger.add_piper`` arguments 
+                to be added to the *Dagger* in the left to right order of the 
+                sequence.
         """
         for piper in pipers:
             self.add_piper(piper, *args, **kwargs)
 
     def del_pipers(self, pipers, *args, **kwargs):
-        """Deletes sequence of pipers in specified order.
         """
+        Deletes a sequence of *Pipers* from the *Dagger* in reverse of the 
+        specified order. Takes optional arguments for ``Dagger.del_piper``.
+        
+        Arguments:
+        
+            * pipes (sequence of valid ``del_pipe`` arguments)
+            
+                Sequence of *Pipers* or valid ``Dagger.del_piper`` arguments 
+                to be removed from the *Dagger* in the right to left order of 
+                the sequence.
+        """
+        pipers.reverse()
         for piper in pipers:
             self.del_piper(piper, *args, **kwargs)
 
     def add_pipes(self, pipes, *args, **kwargs):
-        """Adds sequecne of pipes in specified order.
+        """
+        Adds a sequence of pipes to the *Dagger* in the specified order. 
+        Takes optional arguments for ``Dagger.add_pipe``.
+        
+        Arguments:
+        
+            * pipes (sequence of valid ``add_pipe`` arguments)
+            
+                Sequence of pipes or valid ``Dagger.add_pipe`` arguments to be 
+                added to the *Dagger* in the left to right order of the 
+                sequence.
         """
         for pipe in pipes:
             self.add_pipe(pipe, *args, **kwargs)
 
     def del_pipes(self, pipes, *args, **kwargs):
-        """Deletes sequence of pipes in specified order.
+        """
+        Deletes a sequence of pipes from the *Dagger* in the specified order. 
+        Takes optional arguments for ``Dagger.del_pipe``.
+        
+        Arguments:
+        
+            * pipes (sequence of valid ``del_pipe`` arguments)
+            
+                Sequence of pipes or valid ``Dagger.del_pipe`` arguments to be 
+                removed from the *Dagger* in left to right order of the 
+                sequence.
         """
         for pipe in pipes:
             self.del_pipe(pipe * args, **kwargs)
@@ -361,11 +468,20 @@ P_LAY = \
 
 
 class Plumber(Dagger):
-    """ The Plumber.
+    """
+    The *Plumber* is a subclass of *Dagger* and *Graph* with added run-time 
+    methods and a high-level interface for working with *PaPy* pipelines. 
+    
+    Arguments:
+    
+        * dagger(*Dagger* instance) [default: None]
+        
+            An optional *Dagger* instance.
     """
 
     def _finish(self, isstopped):
-        """ Executes when last output piper raises StopIteration.
+        """
+        (internal) Executes when last output piper raises StopIteration.
         """
         self.stats['run_time'] = time() - self.stats['start_time']
         self.log.info('%s finished, stopped: %s.' % \
@@ -373,7 +489,8 @@ class Plumber(Dagger):
         self._is_finished.set()
 
     def _track(self, frame_finished):
-        """ Executes when last output piper returns something.
+        """
+        (internal) Executes when last output piper returns something.
         """
         # this should be fixed to monitor not only the last!
         if frame_finished:
@@ -383,11 +500,13 @@ class Plumber(Dagger):
 
     @staticmethod
     def _plunge(tasks, is_stopping, track, finish):
-        """ Calls the next method of weaved tasks until they are finished or
-            The Plumber instance is chinkedup.
         """
-        started = False    # If no result received either not started or start & stop
-        while True:        # could have been called before the plunger thread
+        (internal) Calls the next method of weaved tasks until they are finished
+        or The Plumber instance is chinkedup.
+        """
+        # If no result received either not started or start & stop
+        # could have been called before the plunger thread
+        while True:
             if is_stopping():
                 tasks.stop()
             try:
@@ -408,11 +527,16 @@ class Plumber(Dagger):
         self.stats['start_time'] = None
         self.stats['run_time'] = None
 
+        #TODO: setup logging within Plumber.
+
         # init
+        #TODO: check if this works with and the stats attributes are correctly
+        # set for a predefined dagger.
         Dagger.__init__((dagger or self), **kwargs)
 
     def _code(self):
-        """ Generates imports, code and runtime calls.
+        """
+        (internal) Generates imports, code and runtime calls.
         """
         icode, tcode = '', '' # imports, task code
         icall, pcall = '', '' # imap calls, piper calls
@@ -446,69 +570,100 @@ class Plumber(Dagger):
         pipers = [p.name for p in self]
         pipers = '[%s]' % ", ".join(pipers)
         pipes = [L_SIG % (d.name, s.name) for s, d in self.edges()]
-        pipes = '[%s]' % ", ".join(pipes)                             # pipes
+        pipes = '[%s]' % ", ".join(pipes)                           # pipes
         xtras = [str(self[p].xtra) for p in self]
-        xtras = '[%s]' % ",".join(xtras)                              # node xtra
+        xtras = '[%s]' % ",".join(xtras)                            # node xtra
         return (icode, tcode, icall, pcall, pipers, xtras, pipes)
 
     def __repr__(self):
+        """
+        Short but unique representation.
+        """
         return "Plumber(%s)" % super(Plumber, self).__repr__()
 
     def __str__(self):
+        """
+        Long descriptive representation.
+        """
         return super(Plumber, self).__str__()
 
-    def load(self, filename):
-        """ Load pipeline.
-        """
-        execfile(filename)
-        self.__init__(pipeline())
+#TODO: write load method and unit-tests.
+#===============================================================================
+#    def load(self, filename):
+#        """
+#        Load pipeline.
+#        """
+#        execfile(filename)
+#        self.__init__(pipeline())
+#===============================================================================
 
     def save(self, filename):
-        """ Save pipeline.
         """
-        h = open(filename, 'wb')
-        h.write(P_LAY % self._code())
-        h.close()
+        Save pipeline.
+        
+        Arguments:
+        
+            * filename(path)
+            
+                Path to save pipeline source code.
+        """
+        handle = open(filename, 'wb')
+        handle.write(P_LAY % self._code())
+        handle.close()
 
     def plunge(self, data, tasks=None, stride=1):
-        """ Runs the plumber which means that the next methods of each output piper are
-            called in cycles and the results discarded.
-
-            Arguments:
-
-            Warning! If you change those arguments you should better know what you are
-            doing. The order of the tasks in the sequence and the stride size defined
-            here must be compatible with the buffer_size and stride of the IMap
-            instances used by the pipers.
-
-              * tasks(sequence of IMapTask instances) [default: None]
-
-                If no sequence is give all output pipers are plunged in correct order.
-
-              * stride(int) [default: 1]
-
-                By default take only one result from each output piper. As a general rule
-                the stride cannot be bigger then the stride of the IMap instances.
         """
+        Executes the pipeline by connecting the input *Pipers* of the pipeline 
+        to the input data, connecting the pipeline, starting the *IMaps* and 
+        pulling results from output *Pipers*. A stride number of results is 
+        pulled from a *Piper* is requested before the next next output *Piper*.
+        *Pipers* with the ``track`` attribute set ``True`` will have their 
+        results stored within ``Dagger.stats['pipers_tracked']``.
+        
+        Arguments:
+
+            .. note::
+            
+                Warning! If you change the defaults of these arguments you 
+                should better know what you are doing. The order of the tasks
+                in the sequence and the stride specified here should be 
+                compatible with the buffer and stride attributes of the *IMap*
+                instances used by the *Pipers* and the pipelines topology. 
+                Please refer to the manual.
+
+            * tasks(sequence of *Piper* instances) [default: ``None``]
+
+                If no sequence is given all output *Pipers* are plunged in 
+                correct topological order. If a sequence is given the *Pipers*
+                are plunged in the left to right order.
+
+            * stride(int) [default: 1]
+
+                By default take only one result from each output *Piper*. As a 
+                general rule the stride cannot be bigger then the stride of the
+                *IMap* instances. The default will change in future versions.
+        """
+        #TODO: change the default stride for Plumber.plunge
         # connect pipers
         self.connect_inputs(data)
         self.connect()
+
         # collect results for tracked tasks
         self.stats['pipers_tracked'] = {}
-        for p in self.postorder():
-            if hasattr(p.imap, '_tasks_tracked') and p.track:
-                self.stats['pipers_tracked'][p.name] = \
-                [p.imap._tasks_tracked[t.task] for t in p.imap_tasks]
+        for ppr in self.postorder():
+            if hasattr(ppr.imap, '_tasks_tracked') and ppr.track:
+                self.stats['pipers_tracked'][ppr.name] = \
+                [ppr.imap._tasks_tracked[t.task] for t in ppr.imap_tasks]
 
         # start IMaps
         self.stats['start_time'] = time()
-        self.start()
+        self.start()    # forced =True
 
         # remove non-block results for end tasks
         tasks = (tasks or self.get_outputs())
         tasks[0].next()
         tasks[1].next()
-        wtasks = Weave(tasks, repeats=1)
+        wtasks = Weave(tasks, repeats=stride)
         self._plunger = Thread(target=self._plunge, args=(wtasks, \
                         self._is_stopping.isSet, self._track, self._finish))
         self._plunger.deamon = True
@@ -516,81 +671,95 @@ class Plumber(Dagger):
 
 
     def chinkup(self):
-        """ Stop a running pipeline. Blocks until stopped.
+        """
+        Cleanly stops a running pipeline. Blocks until stopped.
         """
         self._is_stopping.set()
         self._plunger.join()
 
 
-
 class Piper(object):
     """
     Creates a new Piper instance.
-
-       arguments:
-
-         * worker(Worker, Piper or sequence)
-
-           Can be a worker or piper instance or a sequence of workers or 
-           functions.
-
-         * parallel(False or IMap instance) [default: 0]
-
-           The type of parallelism:
-             False - linear using built-in imap
-             IMap instance - parallel using a specified IMap instance.
-
-             A custom IMap instance might also be suplied.
-
-         * consume(int) [default: 1]
-
-           The number of input items consumed and sent to the worker as a batch.
-
-         * produce(int) [default: 1]
-
-           The number of results to generate per input. See 
-           produce_from_sequence
-           
-         * produce_from_sequence(bool) [default: False]
     
-           If True and produce > 1 the results are produced from the sequence 
-           returned by the worker. If False the result returned by the worker
-           is repeated. If produce = 1 this option is ignored.
+    .. note::
+    
+        The (produce * spawn) of the upstream *Piper* has to equal the (consume 
+        * spawn) of the downstream *Piper*. for each pair of *pipers* connected
+        by a pipe. This will be in future enforced by the *Dagger*.
+        
+    Arguments:
 
-         * spawn(int) [default: 1]
+        * worker(*Worker* instance, *Piper* instance or sequence of 
+          worker-functions or *Worker* instances)
 
-           The number of repeats of this piper to add to the IMap.
+            A *Piper* can be created from a *Worker* instance another *Piper* 
+            instance or a sequence of worker-functions or *Worker* instances
+            in every case a new instance is created.
 
-         * timeout(int) [default: 1]
+        * parallel(``False`` or *IMap* instance) [default: ``False``]
+        
+            If parallel =``False`` *Piper* will not evaluate the *Worker* in 
+            parallel but use the "manager" process and the ``itertools.imap`` 
+            function. Otherwise the specified *IMap* instance will be used. 
 
-           Time to wait till a result is received otherwise a PiperError
-           is *returned*.
+        * consume(int) [default: 1]
 
-         * cmp(func) [default: None -> cmp_ornament]
+            The number of input items consumed from *all* directly connected 
+            upstream *Pipers* per one *Worker* evaluation. Results will be 
+            passed to the worker-function as a sequence of individual results.
 
-           Compare function to sort the randomly ordered list of upstream
-           pipers. Preferrably using the ornament attribute, which is the
-           default. (see ornament)
 
-         * ornament(object) [default: None -> self]
+        * produce(int) [default: 1]
 
-           Anything which can be used by compare functions of down-stream
-           pipers. By default the ornament is the same as the instance object,
-           i.e. the default beheviour is equivalent to.::
+            The number of results to generate for each *Worker* evaluation 
+            result. Results will be either repetitions of the single *Worker* 
+            return value or will be elements of the returned sequence if 
+            produce_from_sequence =``True``. 
+           
+        * produce_from_sequence(bool) [default: ``False``]
+    
+            If ``True`` and produce > 1 the results are produced from the 
+            sequence returned by the *Worker*. If ``False`` the result returned 
+            by the *Worker* is repeated. If produce =1 this option is ignored.
+        
+        * spawn(int) [default: 1]
+        
+            The number of times this *Piper* is implicitly added to the pipeline
+            to consume the specified number of results.
+            
+        * timeout(int) [default: ``None``]
+
+            Time to wait till a result is available. Otherwise a ``PiperError``
+            is **returned** not raised.
+
+        * cmp(func) [default: Piper._cmp]
+
+            Compare function to sort the randomly ordered list of upstream
+            *Pipers*. By convention using the ornament argument/attribute. By 
+            default the ``Piper._cmp`` method is used for sorting.
+
+        * ornament(object) [default: self]
+
+            Anything which can be used by compare functions of downstream
+            *Pipers*. By default the ornament is the same as the instance 
+            object, i.e. the default behavior is equivalent to.::
           
                cmp(piper_instance1, piper_instance2)
 
-         * debug(bool) [default: False]
+        * debug(bool) [default: False]
 
-           Debug-mode. Raise PiperError on WorkerErrors.
+            Verbose debugging mode. Raises a ``PiperError`` on ``WorkerErrors``.
 
-           .. warning:: 
+            .. warning:: 
              
-             this will most-likely hang the Python interpreter.
+                this will most likely hang the Python interpreter after the 
+                error occurs. Use during development only!
     """
     @staticmethod
     def _cmp(x, y):
-        """ Compares pipers by ornament.
+        """
+        Compares pipers by ornament.
         """
         return cmp(x.ornament, y.ornament)
 
@@ -629,18 +798,27 @@ class Piper(object):
             try:
                 self.worker = Worker(worker)
                 self.log.info('Created a new worker from %s' % worker)
-            except Exception, e:
-                self.log.error('Could not create a new Worker from %s' % worker)
-                raise PiperError('Could not create a new Worker from %s' % worker, e)
+            except Exception, excp:
+                self.log.error('Could not create a new Worker from %s' % \
+                                worker)
+                raise PiperError('Could not create a new Worker from %s' % \
+                                 worker, excp)
         else:
-            self.log.error('Do not know how to create a Piper from %s' % repr(worker))
-            raise PiperError('Do not know how to create a Piper from %s' % repr(worker))
+            self.log.error('Do not know how to create a Piper from %s' % \
+                           repr(worker))
+            raise PiperError('Do not know how to create a Piper from %s' % \
+                             repr(worker))
 
+        # initially return self by __iter__
         self._iter = self
         self.name = name or "=%s(%s)=" % (self.worker, id(self))
         self.log.info('Created Piper %s' % self)
 
     def __iter__(self):
+        """
+        (internal) returns copied ``Piper._iter``, which should be overwritten
+        after each ``itertools.tee``.
+        """
         return self._iter
 
     def __repr__(self):
@@ -650,7 +828,19 @@ class Piper(object):
         return self.worker.__hash__()
 
     def start(self, forced=False):
-        """Start the
+        """
+        Makes the *Piper* ready to return results. This involves starting the 
+        the provided *IMap* instance. If multiple *Pipers* share an *IMap* 
+        instance the order in which the *Pipers* are started is important. The
+        valid order is upstream before downstream. The forced argument has to be
+        ``True`` if this *Piper* shares the *IMap* instance.
+        
+        Arguments:
+        
+            * forced(bool) [default =``False``]
+            
+                Starts the *IMap* instance if it is shared by multiple *Pipers* 
+                instead of raising a ``PiperError``.
         """
         if not hasattr(self.imap, '_started'):
             self.log.info('Piper %s does not need to be started' % self)
@@ -663,18 +853,24 @@ class Piper(object):
             self.log.error('Piper %s cannot start. connected: %s, shared: %s' % \
                            (self, self.connected, len(self.imap._tasks)))
             raise PiperError('Piper %s cannot start. connected: %s, shared: %s' % \
-                           (self, self.connected, len(self.imap._tasks)))
+                             (self, self.connected, len(self.imap._tasks)))
 
     def connect(self, inbox):
-        """Connects the input(s)[inbox] with the output[outbox, next] via the supplied
-           worker instance and IMap instance.
+        """
+        Connects the *Piper* to its upstream *Pipers*. Upstream *Pipers* should
+        be passed as a sequence. This connects the ``Piper.inbox`` with the 
+        ``Piper.outbox`` respecting the consume, spawn and produce arguments. 
         """
         if hasattr(self.imap, '_started') and self.imap._started.isSet():
-            self.log.error('Piper %s is started and cannot connect to %s' % (self, inbox))
-            raise PiperError('Piper %s is started and cannot connect to %s' % (self, inbox))
+            self.log.error('Piper %s is started and cannot connect to %s' % \
+                           (self, inbox))
+            raise PiperError('Piper %s is started and cannot connect to %s' % \
+                             (self, inbox))
         elif self.connected:
-            self.log.error('Piper %s is connected and cannot connect to %s' % (self, inbox))
-            raise PiperError('Piper %s is connected and cannot connect to %s' % (self, inbox))
+            self.log.error('Piper %s is connected and cannot connect to %s' % \
+                           (self, inbox))
+            raise PiperError('Piper %s is connected and cannot connect to %s' % \
+                             (self, inbox))
         else:
             # sort input
             inbox.sort((self.cmp or self._cmp))
@@ -698,46 +894,53 @@ class Piper(object):
             # set how much to 
             for i in xrange(self.spawn):
                 self.imap_tasks.append(\
-                    self.imap(self.worker, self.inbox) if self.imap is imap else\
+                    self.imap(self.worker, self.inbox) \
+                        if self.imap is imap else \
                     self.imap(self.worker, self.inbox, timeout=self.timeout, \
-                    track=self.track))
-
+                              track=self.track))
             # chain the results together.
             outbox = Chain(self.imap_tasks, stride=stride)
             # Make output
-            P = ProduceFromSequence if self.produce_from_sequence else Produce
+            prd = ProduceFromSequence if self.produce_from_sequence else Produce
             self.outbox = outbox if self.produce == 1 else\
-                  P(outbox, n=self.produce, stride=stride)
+                  prd(outbox, n=self.produce, stride=stride)
             self.connected = True
 
         return self # this is for __call__
 
     def stop(self, forced=False):
-        """Stops the piper. A piper is started if it's IMap instance is started and linear
-           pipers need not to be started or stoped. A piper can be safely stoped if it
-           either finished or it does not share the IMap instance.
-
-           Arguments:
-
-             * forced(sequence) [default =False]
-
-               The piper will be forced to stop the IMap instance. A sequence of IMap
-               task ids needs to be given e.g.::
-
-                 end_task_ids = [0, 1]       # A list of IMap task ids
-                 piper_instance.stop([0,1])
-
-               results in::
-
-                 piper_instance.imap.stop(ends =[0,1])
         """
+        Tries to cleanly stop the *Piper*. A *Piper* is "started" if it's 
+        *IMap* instance is "started". Non-parallel *Pipers* need not to be 
+        started or stopped. A *Piper* can be safely stopped if it either 
+        finished or it does not share the *IMap* instance. Else a the 
+        forced =`True` has to be specified. This argument is passed to the 
+        ``IMap.stop`` method. See ``IMap.stop`` from the ``IMap`` module.
+
+        Arguments:
+
+            * forced(sequence) [default =False]
+
+                The *Piper* will be forced to stop the *IMap* instance. A 
+                sequence of *IMap* task ids needs to be given e.g.::
+
+                    end_task_ids = [0, 1]    # A list of IMap task ids
+                    piper_instance.stop(end_task_ids)
+
+                results in::
+
+                    IMap_instance.stop([0,1])
+        """
+
         if not hasattr(self.imap, '_started'):
             self.log.info('Piper %s does not need to be stoped' % self)
         elif not self.imap._started.isSet():
-            self.log.error('Piper %s has not started and cannot be stopped' % self)
+            self.log.error('Piper %s has not started and cannot be stopped' % \
+                           self)
         elif self.finished or (len(self.imap._tasks) == 1 or forced):
             self.imap.stop((forced or [0]))
-            self.log.info('Piper %s stops (finished: %s)' % (self, self.finished))
+            self.log.info('Piper %s stops (finished: %s)' % \
+                          (self, self.finished))
         else:
             m = 'Piper %s has not finished is shared and will ' % self + \
                 'not be stopped (use forced =end_task_ids)'
@@ -745,7 +948,15 @@ class Piper(object):
             raise PiperError(m)
 
     def disconnect(self, forced=False):
-        """ Disconnects the outbox from the inbox.
+        """
+        Disconnects the *Piper* from its upstream *Pipers* or input data. If the
+        *Piper* 
+        
+        Arguments:
+        
+            * forced(bool) [default: ``False``]
+            
+                If forced is ``True``
         """
 
         if not self.connected:
@@ -754,6 +965,7 @@ class Piper(object):
         elif hasattr(self.imap, '_started') and self.imap._started.isSet():
             self.log.error('Piper %s is started and cannot be disconnected (stop first)' % self)
             raise PiperError('Piper %s is started and cannot be disconnected (stop first)' % self)
+        #TODO: what if self.imap._tasks does not exist?
         elif len(self.imap._tasks) == 1 or forced:
             # not started but connected either not shared or forced
             self.log.info('Piper %s disconnects from %s' % (self, self.inbox))
