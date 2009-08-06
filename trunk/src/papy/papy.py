@@ -117,13 +117,13 @@ class Dagger(Graph):
     
             * piper(*Piper* instance, id(*Piper* instance))
             
-              *Piper* instance or its id to be found in the *Dagger*. 
+                *Piper* instance or its id to be found in the *Dagger*. 
             
             * forgive(bool) [default =``False``]
             
-              If forgive is ``False`` a *DaggerError( is raised whenever a piper 
-              cannot be resolved in the graph. If forgive is ``True``: ``False``
-              is returned.
+                If forgive is ``False`` a ``DaggerError`` is raised whenever a 
+                *Piper*  cannot be resolved in the *Dagger*. If forgive is 
+                ``True``: ``False`` is returned.
         """
         try:
             if piper in self:
@@ -956,7 +956,8 @@ class Piper(object):
         
             * forced(bool) [default: ``False``]
             
-                If forced is ``True``
+                If forced is ``True`` tries to forcefully remove all tasks 
+                (including the spawned ones) from the *IMap* instance 
         """
 
         if not self.connected:
@@ -970,62 +971,68 @@ class Piper(object):
             # not started but connected either not shared or forced
             self.log.info('Piper %s disconnects from %s' % (self, self.inbox))
             try:
+                #TODO: figure out if taks removal from imap._tasks should be 
+                #done in reverse.
                 for imap_task in self.imap_tasks:
                     del self.imap._tasks[imap_task.task]
             except AttributeError:
+                # this handle the case when using itertools.imap
                 pass
             self.imap_tasks = []
             self.inbox = None
             self.outbox = None
             self.connected = False
         else:
-            m = 'Piper %s is connected but is shared and will ' % self + \
+            mess = 'Piper %s is connected but is shared and will ' % self + \
                 'not be disconnected (use forced =True)'
-            self.log.error(m)
-            raise PiperError(m)
+            self.log.error(mess)
+            raise PiperError(mess)
 
 
     def __call__(self, *args, **kwargs):
-        """ This is just a convenience mapping to the connect method.
+        """ 
+        This is just a convenience mapping to the ``Worker.connect`` method.
         """
         return self.connect(*args, **kwargs)
 
     def next(self):
-        """ Returns the next result.
+        """
+        Returns the next result. If no result is availble within the specified 
+        (at initialization) timeout then a ``PiperError`` wrapped TimeoutError 
+        is returned.
 
-            If no result is availble within the specified (at initialization) timeout then
-            a PiperError wrapped TimeoutError is returned.
-
-            If the result is a WorkerError it is wrapped in a PiperError and returned or
-            raised if debug mode was specified at initialization
-
-            If the result is a PiperError it is propagated
+        If the result is a ``WorkerError`` it is wrapped in a ``PiperError`` and 
+        returned or raised if debug mode was specified at initialization. If 
+        the result is a ``PiperError`` it is propagated.
         """
         try:
             next = self.outbox.next()
-        except StopIteration, e:
+        except StopIteration, excp:
             self.log.info('Piper %s has processed all jobs (finished)' % self)
             self.finished = True
             # We re-raise StopIteration as part of the iterator protocol.
             # And the outbox should do the same.
-            raise e
-        except (AttributeError, RuntimeError), e:
+            raise excp
+        except (AttributeError, RuntimeError), excp:
             # probably self.outbox.next() is self.None.next()
             self.log.error('Piper %s has not yet been started' % self)
-            raise PiperError('Piper %s has not yet been started' % self, e)
-        except TimeoutError, e:
-            self.log.error('Piper %s timed out waited %ss' % (self, self.timeout))
-            next = PiperError(e) # we do not raise TimeoutErrors they can be skipped.
+            raise PiperError('Piper %s has not yet been started' % self, excp)
+        except TimeoutError, excp:
+            self.log.error('Piper %s timed out waited %ss' % \
+                           (self, self.timeout))
+            next = PiperError(excp)
+            # we do not raise TimeoutErrors so they can be skipped.
         if isinstance(next, WorkerError):
             # return the WorkerError instance returned (not raised) by the
             # worker Process.
             self.log.error('Piper %s generated %s"%s" in func. %s on argument %s' % \
                      (self, type(next[0]), next[0], next[1], next[2]))
             if self.debug:
-                # This makes only sense if you are debugging a piper as it will most
-                # probably crash papy and python IMap worker processes/threads will hang.
-                raise PiperError('Piper %s generated %s"%s" in func. %s on argument %s' % \
-                                (self, type(next[0]), next[0], next[1], next[2]))
+                # This makes only sense if you are debugging a piper as it will 
+                # most probably crash papy and python IMap worker processes 
+                # threads will hang.
+                raise PiperError('Piper %s generated %s"%s" in func %s on argument %s' % \
+                            (self, type(next[0]), next[0], next[1], next[2]))
             next = PiperError(next)
         elif isinstance(next, PiperError):
             # Worker/PiperErrors are wrapped by workers
@@ -1035,53 +1042,58 @@ class Piper(object):
 
 class Worker(object):
     """
-    The Worker is an object which composes sequences of functions. When called
+    The *Worker* is an object which composes sequences of functions. When called
     the functions are evaluated from left to right. The function on the right 
-    will receive the return value from the function on the left.
-    Optionally takes sequences of positional and keyworded arguments for none or
-    all composed functions. Positional arguments should be given in a tuple.
-    Each element of this tuple should be a tuple of positional arguments for the
-    corresponding function. If a function does not take positional arguments its 
-    corresponding element in the arguments tuple should be an empty tuple (). 
-    Keyworded  arguments should be given in a tuple. Each element of this tuple 
-    should be a dictionary of arguments for the corresponding function. If a 
-    function does not take a keyworded arguments its corresponding element in 
-    the keyworded arguments tuple should be an empty dictionary {}.
-    If none of the functions takes arguments of a given type the positional and
-    or keyworded argument tuple can be omitted.
+    will receive the return value from the function on the left. Optionally 
+    takes sequences of positional and keyworded arguments for none or
+    all of the composed functions. Positional arguments should be given in a 
+    tuple. Each element of this tuple should be a tuple of positional arguments
+    for the corresponding function. If a function does not take positional 
+    arguments its corresponding element in the arguments tuple should be an 
+    empty tuple i.e. ``()``. Keyworded  arguments should be given in a tuple. 
+    Each  element of this tuple should be a dictionary of arguments for the 
+    corresponding function. If a function does not take any keyworded arguments
+    its corresponding element in the keyworded arguments tuple should be an 
+    empty dictionary i.e. ``{}``. If none of the functions takes arguments of a 
+    given type the positional and/or keyworded arguments tuple can be omitted.
     
-    All exceptions raised by the functions are caught, wrapped and returned.
+    All exceptions raised by the worker-functions are caught, wrapped and 
+    returned *not* raised. If the *Worker* is called with a sequence which 
+    contains an exception no worker-function is evaluated and the exception is
+    wrapped and returned.
 
-    The Worker can be initialized in a variety of ways:
-        * with a sequence of functions and a optional sequences of positional and
-          keyworded arguments e.g.::
+    The *Worker* can be initialized in a variety of ways:
+    
+    * with a sequence of functions and a optional sequences of positional and
+      keyworded arguments e.g.::
         
-            Worker((func1,         func2,    func3), 
-                  ((arg11, arg21), (arg21,), ()),
-                  ({},             {},       {'arg31':arg31}))
+        Worker((func1,         func2,    func3), 
+              ((arg11, arg21), (arg21,), ()),
+              ({},             {},       {'arg31':arg31}))
         
-        * with another worker instance, which results in their functional equivalence
-          e.g.::
+    * with another *Worker* instance, which results in their functional 
+      equivalence e.g.::
         
-            Worker(worker_instance)
+        Worker(worker_instance)
         
-        * with multiple worker instances, where the functions and arguments of the
-          workers are combined e.g.::
+    * With multiple *Worker* instances, where the functions and arguments of the
+      *Workers* are combined e.g.::
         
-            Worker((worker1, worker2))
+        Worker((worker1, worker2))
         
-          this is equivalent to::
+      this is equivalent to::
         
-            Worker(worker1.task + worker2.task, worker1.args + worker2.args,
-            worker1.kwargs + worker2.kwargs)
+        Worker(worker1.task + worker2.task, \
+               worker1.args + worker2.args, \
+               worker1.kwargs + worker2.kwargs)
         
-        * with a single function and its arguments in a tuple e.g.::
+    * with a single function and its arguments in a tuple e.g.::
         
-            Worker(function,(arg1, arg2, arg3))
+        Worker(function,(arg1, arg2, arg3))
         
-          which is equivalent to::
+      which is equivalent to::
         
-            Worker((function,),((arg1, arg2, arg3),))
+        Worker((function,),((arg1, arg2, arg3),))
     """
     def __init__(self, functions, arguments=None, kwargs=None, name=None):
         is_p, is_w, is_f, is_ip, is_iw, is_if = inspect(functions)
@@ -1114,40 +1126,48 @@ class Worker(object):
             self.args = tuple(chain(*[w.args for w in functions]))
             self.kwargs = tuple(chain(*[w.kwargs for w in functions]))
         else:
-            raise TypeError("The Worker expects an iterable of functions or workers " + \
-            "got: %s' % functions")
+            # e.g. is piper
+            raise TypeError("The Worker expects an iterable of functions or" + \
+                            " workers got: %s" % functions)
         if len(self.task) != len(self.args) or len(self.task) != len(self.args):
-            raise TypeError("The Worker expects the arguents as ((args1) ... (argsN)) " + \
-                            "and keyword arguments as ({kwargs}, ... ,{kwargs.}) " + \
-                            "got: %s" % repr(arguments))
+            raise TypeError("The Worker expects the arguents as ((args1) " + \
+                            "... argsN)) and keyword arguments as " + \
+                            "({kwargs}, ... ,{kwargs.}) got: %s" % \
+                            repr(arguments))
         # for representation
         self.__name__ = ">".join([f.__name__ for f in self.task])
         # for identification
         self.name = "%s_%s" % (self.__name__, id(self))
 
     def __repr__(self):
-        """Functions within a worker e.g. (f, g, h) are evaluated from left to right
-           i.e.: h(g(f(x))) thus their representation f>g>h.
+        """
+        Functions within a worker e.g. (f, g, h) are evaluated from left to 
+        right i.e.: h(g(f(x))) thus their representation f>g>h.
         """
         return self.__name__
 
 
     def __hash__(self):
-        """Two workers have the same hash if they are equal, see __eq__.
         """
-        return hash((self.task, self.args))
+        *Worker* instances are not hashable.
+        """
+        raise TypeError('Worker instances are not hashable')
 
     def __eq__(self, other):
-        """Custom worker comparison. Workers are functionally equal if they do the same
-           functions and have the same arguments. Two different worker instances can be
-           equal if they have been initialized with the same arguments.
+        """
+        Custom *Worker* equality comparison. *Workers* are functionally 
+        equivalent if they evaluate the same worker-functions, in the same order
+        and have the same positional and keyworded arguments. Two different 
+        *Worker* instances (objects with different ids) can be equivalent if 
+        their functions have been initialized with the same arguments.
         """
         return  (self.task == getattr(other, 'task', None) and
                  self.args == getattr(other, 'args', None) and
                  self.kwargs == getattr(other, 'kwargs', None))
 
     def _inject(self, conn):
-        """ Inject/replace all functions into a rpyc connection object.
+        """
+        (internal) Inject/replace all functions into a rpyc connection object.
         """
         # provide PAPY_DEFAULTS remotely
         # provide PAPY_RUNTIME remotely
@@ -1158,13 +1178,13 @@ class Worker(object):
             conn.execute('PAPY_RUNTIME = get_runtime()')
             conn.execute('PAPY_INJECTED = True')
         # inject all functions
-        for f in self.task:
-            inject_func(f, conn)
+        for func in self.task:
+            inject_func(func, conn)
         # create list of functions called TASK
         # and inject a function comp_task which 
         inject_func(comp_task, conn)
         conn.execute('TASK = %s' % \
-                     str(tuple([i.__name__ for i in self.task])).replace("'", ""))
+                   str(tuple([i.__name__ for i in self.task])).replace("'", ""))
                     # ['func1', 'func2'] -> "(func1, func2)"
         # inject compose function, wil
 
@@ -1176,36 +1196,41 @@ class Worker(object):
         return self
 
     def __call__(self, inbox):
-        """ Evaluates the function(s) and argument(s) with which the worker has been
-            initialized on the given the input data (inbox).
+        """
+        Evaluates the worker-function(s) and argument(s) with which the *Worker*
+        has been initialized given the input data i.e. inbox.
 
-            arguments:
+        Arguments:
 
-              * inbox(sequence)
+            * inbox(sequence)
 
                 A sequence of items to be evaluated by the function i.e.::
 
-                  f(sequence) is f((data1, data2, ..., data2))
+                    f(sequence) is f((data1, data2, ..., data2))
 
-            If an exception is raised by the function the worker returns a WorkerError.
-            Typically a raised WorkerError should be wrapped into a PiperError by the
-            piper which contains this worker. If any of the data in the inbox is a
-            PiperError then the function is not called and the worker propagates a
-            PiperError. The originial exception travels along as the first argument of
-            the innermost exception.
+                If an exception is raised by the worker-function the *Worker* 
+                returns a ``WorkerError``. Typically a raised ``WorkerError``
+                should be wrapped into a ``PiperError`` by the *Piper* instance
+                which wraps this *Worker* instance. If any of the data in the 
+                inbox is a *PiperError* then the worker-function is not called
+                at all and the *Worker* instance propagates the exception 
+                (``PiperError``) from the upstream *Piper* to the wrapping 
+                *Piper*. The originial exception travels along as the first 
+                argument of the innermost exception.
         """
         outbox = inbox          # we save the input to raise a better exception.
         exceptions = [e for e in inbox if isinstance(e, PiperError)]
         if not exceptions:
             # upstream did not raise exception, running functions
             try:
-                for f, a, k in zip(self.task, self.args, self.kwargs):
-                    outbox = (f(outbox, *a, **k),)
+                for func, args, kwargs in \
+                zip(self.task, self.args, self.kwargs):
+                    outbox = (func(outbox, *args, **kwargs),)
                 outbox = outbox[0]
-            except Exception, e:
+            except Exception, excp:
                 # an exception occured in one of the f's do not raise it
                 # instead return it.
-                outbox = WorkerError(e, f.__name__, inbox)
+                outbox = WorkerError(excp, func.__name__, inbox)
         else:
             # if any of the inputs is a PiperError just propagate it.
             outbox = PiperError(*exceptions)
@@ -1221,11 +1246,14 @@ def inspect(piper):
     is_piper = isinstance(piper, Piper)
     is_function = isinstance(piper, FunctionType) or isbuiltin(piper)
     is_worker = isinstance(piper, Worker)
-    is_iterable = getattr(piper, '__iter__', False) and not (is_piper or is_function or is_worker)
+    is_iterable = getattr(piper, '__iter__', False) and not \
+                 (is_piper or is_function or is_worker)
     is_iterable_p = is_iterable and isinstance(piper, Piper)
-    is_iterable_f = is_iterable and (isinstance(piper[0], FunctionType) or isbuiltin(piper[0]))
+    is_iterable_f = is_iterable and (isinstance(piper[0], FunctionType) or \
+                                     isbuiltin(piper[0]))
     is_iterable_w = is_iterable and isinstance(piper[0], Worker)
-    return (is_piper, is_worker, is_function, is_iterable_p, is_iterable_w, is_iterable_f)
+    return (is_piper, is_worker, is_function, is_iterable_p, is_iterable_w, \
+            is_iterable_f)
 
 @imports([['itertools', ['izip']]])
 def comp_task(inbox, args, kwargs):
@@ -1235,19 +1263,21 @@ def comp_task(inbox, args, kwargs):
     """
     # Note. this function uses a global variable which must be defined on the 
     # remote host.
-    for f, a, k in izip(TASK, args, kwargs):
-        inbox = (f(inbox, *a, **k),)
+    for func, args, kwargs in izip(TASK, args, kwargs):
+        inbox = (func(inbox, *args, **kwargs),)
     return inbox[0]
 
 
 class Consume(object):
     """
-    This iterator-wrapper consumes n results from the input iterator and zips 
-    the results together. If the result is an exception it is *not* raised.
+    This iterator-wrapper consumes n results from the input iterator and weaves
+    the results together in strides. If the result is an exception it is *not*
+    raised.
     """
     def __init__(self, iterable, n=1, stride=1):
         self.iterable = iterable
         self.stride = stride
+        self._stride_buffer = None
         self.n = n
 
     def __iter__(self):
@@ -1257,21 +1287,24 @@ class Consume(object):
         batch_buffer = defaultdict(list)
         self._stride_buffer = []
         for i in xrange(self.n):                        # number of consumed 
-            for s in xrange(self.stride):               # results
+            for stride in xrange(self.stride):               # results
                 try:
-                    r = self.iterable.next()
+                    res = self.iterable.next()
                 except StopIteration:
                     continue
-                except Exception, r:
+                except Exception, res:
                     pass
-                batch_buffer[s].append(r)
+                batch_buffer[stride].append(res)
 
-        for s in xrange(self.stride):
-            batch = batch_buffer[s]
+        for stride in xrange(self.stride):
+            batch = batch_buffer[stride]
             self._stride_buffer.append(batch)
         self._stride_buffer.reverse()
 
     def next(self):
+        """
+        Returns the next sequence of results, given stride and n.
+        """
         try:
             results = self._stride_buffer.pop()
         except (IndexError, AttributeError):
@@ -1284,17 +1317,18 @@ class Consume(object):
 
 class Chain(object):
     """ 
-    This is a generalization of the zip and chain functions. If stride =1 it
-    behaves like itertools.zip, if stride =len(iterable) it behaves like
-    itertools.chain in any other case it zips iterables in strides e.g::
+    This is a generalization of the ``zip`` and ``chain`` functions. 
+    If stride =1 it behaves like ``itertools.zip``, if stride =len(iterable) it
+    behaves like ``itertools.chain`` in any other case it zips iterables in 
+    strides e.g::
 
         a = Chain([iter([1,2,3]), iter([4,5,6], stride =2)
         list(a)
         >>> [1,2,4,5,3,6]
         
-    it is also resistant to exceptions i.e. if one of the iterables
-    raises an exception the Chain does not end in a StopIteration, but 
-    continues.
+    It is further resistant to exceptions i.e. if one of the iterables
+    raises an exception the ``Chain`` does not end in a ``StopIteration``, but 
+    continues with other iterables.
     """
     def __init__(self, iterables, stride=1):
         self.iterables = iterables
@@ -1307,6 +1341,9 @@ class Chain(object):
         return self
 
     def next(self):
+        """
+        Returns the next result from the chained iterables given strid.
+        """
         if self.s:
             self.s -= 1
         else:
@@ -1317,58 +1354,74 @@ class Chain(object):
 
 class Produce(object):
     """ 
-    This iterator-wrapper yields n-times each result of the input. i.e. if n =2 
-    and input results are (1, Exception, 2) then the Produce instance will 
-    return 2*3 results in the order [1, 1, Exception, Exception, 2, 2] if the 
-    stride = 1. If stride = 2 the output will look like this: [1, Exception, 1,
-    Exception, 2, 2].
-    Note that StopIteration is also an exception!
+    This iterator-wrapper returns n-times each result from the wrapped iterator.
+    i.e. if n =2 and the input iterators results are (1, Exception, 2) then the 
+    ``Produce`` instance will return 6 (i.e. 2*3) results in the order [1, 1, 
+    Exception, Exception, 2, 2] if the stride =1. If stride =2 the output will 
+    look like this: [1, Exception, 1, Exception, 2, 2]. Note that 
+    ``StopIteration`` is also an exception, and the Produce iterator might 
+    return values after a ``StopIteration`` is raised. 
     """
     def __init__(self, iterable, n=1, stride=1):
         self.iterable = iterable
         self.stride = stride
+        self._stride_buffer = None
+        self._repeat_buffer = None
         self.n = n             # times the results in the buffer are repeated
 
     def __iter__(self):
         return self
 
     def _rebuffer(self):
+        """
+        (internal) refill the repeat buffer
+        """
         results = []
         exceptions = []
         for i in xrange(self.stride):
             try:
                 results.append(self.iterable.next())
                 exceptions.append(False)
-            except Exception, e:
-                results.append(e)
+            except Exception, excp:
+                results.append(excp)
                 exceptions.append(True)
         self._repeat_buffer = repeat((results, exceptions), self.n)
 
     def next(self):
+        """
+        Returnes the next result, given stride and n.
+        """
         try:
-            r, e = self._stride_buffer.next()
+            res, excp = self._stride_buffer.next()
         except (StopIteration, AttributeError):
             try:
                 self._stride_buffer = izip(*self._repeat_buffer.next())
             except (StopIteration, AttributeError):
                 self._rebuffer()
                 self._stride_buffer = izip(*self._repeat_buffer.next())
-            r, e = self._stride_buffer.next()
-        if e:
-            raise r
+            res, excp = self._stride_buffer.next()
+        if excp:
+            raise res
         else:
-            return r
+            return res
 
 
 class ProduceFromSequence(Produce):
     """
-    This iterator wrapper yields n-times the results returned by the iterator 
-    as a sequence. i.e. if the input iterator results are ((11, 12), (21, 22), 
-    (31, 32)) then n *should* equal 2. For stride =1 the result will be: [11, 
-    12, 21, 22, 31, 32]. For stride =2 [11, 21, 12, 22, 31, 32].
-    Note that StopIteration is also an exception!
+    This iterator wrapper is an iterator, but it returns elements from the 
+    sequence returned by the wrapped iterator. The number of returned elements
+    is defined by n and should not be smaller then the sequence returned by the 
+    wrapped iterator. 
+    
+    For example if the wrapped iterator results are ((11, 12), (21, 22), 
+    (31, 32)) then n *should* equal 2. For stride =1 the result will be: 
+    [11, 12, 21, 22, 31, 32]. For stride =2 [11, 21, 12, 22, 31, 32]. Note that
+    StopIteration is also an exception!
     """
     def _rebuffer(self):
+        """
+        (internal) refill the repeat buffer
+        """
         # collect a stride worth of results(result lists) or exceptions
         results = []
         exceptions = []
@@ -1376,17 +1429,17 @@ class ProduceFromSequence(Produce):
             try:
                 results.append(self.iterable.next())
                 exceptions.append(False)
-            except Exception, e:
-                results.append(e)
+            except Exception, excp:
+                results.append(excp)
                 exceptions.append(True)
         # un-roll the result lists
         res_exc = []
-        for r in xrange(self.n):
+        for rep in xrange(self.n):
             flat_results = []
             for i in xrange(self.stride):
                 result_list, exception = results[i], exceptions[i]
                 if not exception:
-                    flat_results.append(result_list[r])
+                    flat_results.append(result_list[rep])
                 else:
                     flat_results.append(result_list)
             res_exc.append((flat_results, exceptions))
