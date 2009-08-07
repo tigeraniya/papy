@@ -91,7 +91,9 @@ def clean():
              pth.remove()
     for pyc in path.walkfiles(path('src'), '*.pyc'):
         pyc.remove()
-
+    for pat in ['src', 'test']:
+        for log in path.walkfiles(path(pat), 'PaPy_log*'):
+            log.remove()
 
 
 @task
