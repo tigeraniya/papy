@@ -27,28 +27,28 @@ TASK = None
 
 class WorkerError(Exception):
     """
-    Exceptions raised or related to Worker instances.
+    Exceptions raised or related to *Worker* instances.
     """
     pass
 
 
 class PiperError(Exception):
     """
-    Exceptions raised or related to Piper instances.
+    Exceptions raised or related to *Piper* instances.
     """
     pass
 
 
 class DaggerError(Exception):
     """
-    Exceptions raised or related to Dagger instances.
+    Exceptions raised or related to *Dagger* instances.
     """
     pass
 
 
 class PlumberError(Exception):
     """
-    Exceptions raised or related to Plumber instances.
+    Exceptions raised or related to *Plumber* instances.
     """
     pass
 
@@ -56,7 +56,7 @@ class PlumberError(Exception):
 class Dagger(Graph):
     """
     The *Dagger* is a directed acyclic graph. It defines the topology of a 
-    *Papy* pipeline/workflow. It is a subclass from *Graph* inverting the 
+    *PaPy* pipeline/workflow. It is a subclass from *Graph* inverting the 
     direction of edges called within the *Dagger* pipes. Edges can be regarded 
     as dependencies, while pipes as data-flow between *Pipers* or *Nodes* of the 
     *Graph*.
@@ -102,7 +102,7 @@ class Dagger(Graph):
     @staticmethod
     def _cmp(x, y):
         """
-        A compare function like ``cmp``, which compares pipers by ornament. To 
+        A compare function like ``cmp``, which compares *Pipers* by ornament. To 
         be used when sorting upstream *Pipers*.
         """
         return cmp(x.ornament, y.ornament)
@@ -300,7 +300,7 @@ class Dagger(Graph):
 
     def add_pipe(self, pipe):
         """
-        Adds a pipe (A, ..., N) which is an N-tuple tuple of *Pipers.* Adding a 
+        Adds a pipe (A, ..., N) which is an N-tuple tuple of *Pipers*. Adding a 
         pipe means to add all the *Pipers* and connect them in the specified 
         left to right order.
 
@@ -338,7 +338,7 @@ class Dagger(Graph):
         Deletes a pipe (A, ..., N) which is an N-tuple of pipers. Deleting a 
         pipe means to delete all the connections between pipers and to delete
         all the *Pipers*. If forced =``False`` only *Pipers* which are not 
-        needed anymore are deleted.
+        needed anymore (i.e. have not downstream *Pipers*) are deleted.
 
         Arguments:
 
@@ -348,7 +348,7 @@ class Dagger(Graph):
                 the *Dagger* (see: ``Dagger.resolve``). The *Pipers* are removed
                 from right to left.
                 
-            * forced(bool) [default: False]
+            * forced(bool) [default: ``False``]
 
                The forced argument will be forwarded to the ``Dagger.del_piper``
                method. If forced is ``False`` only *Pipers* with no outgoing 
@@ -356,8 +356,8 @@ class Dagger(Graph):
 
         .. note::
 
-            The direction of the edges in the graph is reversed compared to the 
-            left to right data-flow in a pipe.
+            The direction of the edges in the *Graph* is reversed compared to 
+            the  left to right data-flow in a pipe.
         """
         self.log.info('%s removes pipe%s forced: %s' % \
                       (repr(self), repr(pipe), forced))
@@ -474,14 +474,14 @@ class Plumber(Dagger):
     
     Arguments:
     
-        * dagger(*Dagger* instance) [default: None]
+        * dagger(*Dagger* instance) [default: ``None``]
         
             An optional *Dagger* instance.
     """
 
     def _finish(self, isstopped):
         """
-        (internal) Executes when last output piper raises StopIteration.
+        (internal) Executes when last output piper raises ``StopIteration``.
         """
         self.stats['run_time'] = time() - self.stats['start_time']
         self.log.info('%s finished, stopped: %s.' % \
@@ -490,7 +490,7 @@ class Plumber(Dagger):
 
     def _track(self, frame_finished):
         """
-        (internal) Executes when last output piper returns something.
+        (internal) Executes when last output *Piper* returns something.
         """
         # this should be fixed to monitor not only the last!
         if frame_finished:
@@ -502,7 +502,7 @@ class Plumber(Dagger):
     def _plunge(tasks, is_stopping, track, finish):
         """
         (internal) Calls the next method of weaved tasks until they are finished
-        or The Plumber instance is chinkedup.
+        or The *Plumber* instance is stopped see ``Dagger.chinkup``.
         """
         # If no result received either not started or start & stop
         # could have been called before the plunger thread
@@ -528,6 +528,7 @@ class Plumber(Dagger):
         self.stats['run_time'] = None
 
         #TODO: setup logging within Plumber.
+        self.log = getLogger('papy')
 
         # init
         #TODO: check if this works with and the stats attributes are correctly
@@ -591,6 +592,9 @@ class Plumber(Dagger):
 #===============================================================================
 #    def load(self, filename):
 #        """
+#        
+#        Arguments:
+#
 #        Load pipeline.
 #        """
 #        execfile(filename)
@@ -1255,7 +1259,7 @@ def inspect(piper):
     return (is_piper, is_worker, is_function, is_iterable_p, is_iterable_w, \
             is_iterable_f)
 
-@imports([['itertools', ['izip']]])
+@imports(['itertools'])
 def comp_task(inbox, args, kwargs):
     """
     Composes functions in the global sequence variable TASK and evaluates the
@@ -1263,7 +1267,7 @@ def comp_task(inbox, args, kwargs):
     """
     # Note. this function uses a global variable which must be defined on the 
     # remote host.
-    for func, args, kwargs in izip(TASK, args, kwargs):
+    for func, args, kwargs in itertools.izip(TASK, args, kwargs):
         inbox = (func(inbox, *args, **kwargs),)
     return inbox[0]
 

@@ -50,18 +50,35 @@ def sum2(i):
 def ss2(i):
     return i[0][0] + i[1][0]
 
-@imports([['math', ['sqrt']]])
+@imports(['math'])
 def ss(i):
-    res = sum([sqrt(j[0]) for j in i])
+    res = sum([math.sqrt(j[0]) for j in i])
     return res
 
-@imports([('re', [])])
+@imports(['re'])
 def retre_yes(i):
     return re
 
-@imports([['sys', ['version']]])
+@imports(['sys'])
 def sys_ver(i):
-    return version
+    return sys.version
+
+@imports(['ysy,sys'])
+def ysy_sys(i):
+    return ysy
+
+@imports(['multiprocessing.connection'])
+def mul_con(i):
+    return connection
+
+@imports(['X.Y,multiprocessing.forking'])
+def X_Y(i):
+    return Y
+
+@imports(['xml.dom.domreg'])
+def xml_dom_domreg(i):
+    return domreg
+
 
 def retre_no(i):
     return re
@@ -230,7 +247,7 @@ class test_Worker(GeneratorTest):
         dbl = Worker(double)
         pwr2 = Worker(power)
         self.assertEqual(pwr, pwr2)
-        self.assertEqual(hash(pwr), hash(pwr2))
+        self.assertRaises(TypeError, hash, pwr)
         assert pwr is not pwr2
         self.assertNotEqual(pwr, dbl)
         self.assertNotEqual(pwr, 'abcd')
@@ -239,9 +256,7 @@ class test_Worker(GeneratorTest):
         pwrdbl2 = Worker([power, double])
         dblpwr = Worker([double, power])
         self.assertEqual(pwrdbl, pwrdbl2)
-        self.assertEqual(hash(pwrdbl), hash(pwrdbl2))
         self.assertNotEqual(pwrdbl, dblpwr)
-        self.assertNotEqual(hash(pwrdbl), hash(dblpwr))
         self.assertNotEqual(pwr, pwrdbl)
         assert pwrdbl is not pwrdbl2
         assert pwr is not pwr2
@@ -323,7 +338,7 @@ class test_Worker(GeneratorTest):
         imap = IMap()
 
     def testimports(self):
-        @imports([('re', []), ('sys', [])])
+        @imports(['re', 'sys'])
         def pr(i):
             return (re, sys)
         pr(1)
@@ -337,14 +352,28 @@ class test_Worker(GeneratorTest):
         papy.TASK = (plus, minus)
         assert 0 == comp_task([0], ((), ()), ({}, {}))
 
+    def testysy_sys(self):
+        assert ['ysy,sys'] == ysy_sys.imports
+        assert ysy_sys.func_globals.get('ysy')
+        assert ysy_sys.func_globals.get('ysy') is sys
+
+    def testX_Y(self):
+        import multiprocessing.forking
+        assert multiprocessing.forking is X_Y([1])
+        assert multiprocessing.forking is Y
+
+    def test_xml_dom_domreg(self):
+        assert domreg is xml_dom_domreg([1])
+
+
     def testsys_ver(self):
-        assert [['sys', ['version']]] == sys_ver.imports
-        assert sys_ver.func_globals.get('version')
+        assert ['sys'] == sys_ver.imports
+        assert sys_ver.func_globals.get('sys')
         rr = Worker(sys_ver)
         assert rr([1]) == __import__('sys').version
 
     def testimports_re(self):
-        assert [('re', [])] == retre_yes.imports
+        assert ['re'] == retre_yes.imports
         assert not hasattr(retre_no, 'imports')
         assert retre_yes.func_globals.get('re')
         rr = Worker(retre_yes)

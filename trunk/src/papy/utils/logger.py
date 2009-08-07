@@ -1,7 +1,8 @@
 """ 
 :mod:`papy.utils.logger`
 ========================
-Provides loggin facilities for PaPy.
+
+Provides and setups logging facilities for *PaPy*.
 """
 import logging
 from logging import handlers, Formatter
@@ -17,43 +18,44 @@ def start_logger(log_to_file=True, \
                  log_rotate=True, \
                  log_size=524288, \
                  log_number=3):
-    """ Function to start logging the execution of a PaPy pipeline.
+    """
+    Function to setup logger to monitor the execution of a *PaPy* pipeline.
 
-        Arguments:
+    Arguments:
 
-          * log_to_file(bool) [default: True]
+          * log_to_file(bool) [default: ``True``]
             
-            Should we save logging messeges in a file?
+                Should we save logging messeges in a file?
 
-          * log_to_screen(bool) [default: True]
+          * log_to_screen(bool) [default: ``True``]
 
-            Should we print logging messeges on stdout? 
+                Should we print logging messeges to stdout? 
 
-          * log_to_file_level(in) [default: INFO]
+          * log_to_file_level(int) [default: ``INFO``]
 
-            The minimum logging level of messeges to be saved. 
+                The minimum logging level of messeges to be saved. 
           
-          * log_to_screen_level(int) [default: ERROR]
+          * log_to_screen_level(int) [default: ``ERROR``]
 
-            The minimum logging level of messeges to be printed.
+                The minimum logging level of messeges to be printed.
 
-          * log_filename(str) [default: PaPy_log or PaPy_log_$TIME$]
+          * log_filename(str) [default: ``PaPy_log`` or ``PaPy_log_$TIME$``]
 
-            Name of the log file.
+                Name of the log file.
 
-          * log_rotate(bool) [default: True]
+          * log_rotate(bool) [default: ``True``]
 
-            Should we limit the number of logs?
+                Should we limit the number of logs?
 
           * log_size(int) [default: 524288]
 
-            Maximum number of bytes saved in a single log file. 
-            (only if log_rotate is true)
+                Maximum number of bytes saved in a single log file. 
+                (only if log_rotate is true)
 
           * log_number(int) [default: 3] 
 
-            Maximum number of rotatedlogs.
-            (only if log_rotate is true)
+                Maximum number of rotatedlogs.
+                (only if log_rotate is true)
     """
     if log_rotate:
         log_filename = log_filename or 'PaPy_log'
@@ -62,7 +64,9 @@ def start_logger(log_to_file=True, \
         log_filename = 'PaPy_log_%s' % run_time
 
     root_log = logging.getLogger()
-    formatter = Formatter("%(levelname)s %(asctime)s,%(msecs).3d [%(name)s] - %(message)s", datefmt='%H:%M:%S')
+    formatter = Formatter(
+            "%(levelname)s %(asctime)s,%(msecs).3d [%(name)s] - %(message)s", \
+            datefmt='%H:%M:%S')
     root_log.setLevel(logging.DEBUG)
     if log_to_file:
         if log_rotate:
@@ -78,6 +82,7 @@ def start_logger(log_to_file=True, \
         stream_handler.setLevel(log_to_stream_level)
         stream_handler.setFormatter(formatter)
         root_log.addHandler(stream_handler)
+
 
 
 #EOF

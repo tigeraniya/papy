@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+#TODO: update template
 """ This is a prototype of a pipeline, use it as a start-point to construct your
     own. The construction of a pipeline is split into parts, this has several
     reasons. First it makes your code modular as it detaches the definition of a

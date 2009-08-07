@@ -8,17 +8,17 @@ inputs/outputs (these are the pipeline input/outputs i.e. streams) or to connect
 them to other *Pipers* (via items i.e. transformed elements of the input 
 streams). Based on that distinction two types of functions are provided:
 
-  * stream function - load or save the input stream from or into a single file,
-    therefore they can only be used at the beginnings or ends of a pipeline.
-    Stream loaders are not worker functions, as they are called once (e.g. with 
-    the input file name as the argument) and create the input stream in the
-    form of a generator of input items.
+    * stream function - load or save the input stream from or into a single 
+      file, therefore they can only be used at the beginnings or ends of a 
+      pipeline. Stream loaders are not worker functions, as they are called once
+      (e.g. with the input file name as the argument) and create the input 
+      stream in the form of a generator of input items.
 
-  * item functions - load, save, process or display data items. These are 
-    *Worker* functions and should be used within *Pipers*. 
+    * item functions - load, save, process or display data items. These are 
+      *Worker* functions and should be used within *Pipers*. 
 
-No method of interprocess communication, besides the default inefficient
-two-pass ``multiprocessing.Queue`` and temporary files is supported on all 
+No method of interprocess communication, besides the default inefficient two 
+pass ``multiprocessing.Queue`` and temporary files is supported on all 
 platforms. Even among UNIX implementation details forking and shm implementation
 details can differ.
 """
@@ -31,59 +31,39 @@ from papy.utils.runtime import get_runtime # provided by worker._inject
 PAPY_DEFAULTS = get_defaults() # init by worker._inject
 PAPY_RUNTIME = get_runtime()   # init by worker._inject
 
-
-import cPickle, csv, cStringIO, errno, gc, glob, marshal, mmap, os, signal, \
-       socket, stat, tempfile, threading, time, urllib, warnings, sqlite3, json, \
-       multiprocessing
-
-try:
-    import posix_ipc
-except ImportError:
-    pass
-
-try:
-    import MySQLdb
-except ImportError:
-    pass
-
-
-
 #
 # LOGGING
 # 
 def print_(inbox):
-    """ Prints the first element of the inbox.
+    """
+    Prints the first element of the inbox.
     """
     print inbox[0]
 #
 # INPUT/OUTPUT
 #
 # STREAMS
-@imports([['posix_ipc', []], ['mmap', []], ['os', []]], forgive=True)
+@imports(['posix_ipc', 'mmap', 'os'], forgive=True)
 def open_shm(name):
-    """ Equivalent to the built in open function but opens a file in shared
-        memory. A single file can be opened multiple times. Only the name of the
-        file is necessary and not its absolute location (which is most likely 
-        /dev/shm/). The file is opened by default in read/write mode.
-
-        Arguments:
-
-          * name(string)
-
-            The name of the file to open e.g. 'my_file' not /dev/shm/my_file
     """
-    # TODO: Determine which I/O methods should be implemented.
-    # TODO: Document methods.  
-    # http://www.python.org/dev/peps/pep-3116/
+    Equivalent to the built in open function but opens a file in shared memory. 
+    A single file can be opened multiple times. Only the name of the file is 
+    necessary and not its absolute location (which is most likely 
+    ``/dev/shm/``). The file is opened by default in read/write mode.
+
+    Arguments:
+
+        * name(string)
+
+            The name of the file to open e.g. "my_file" not ``/dev/shm/my_file``
+    """
+    #TODO: Determine which I/O methods should be implemented.
+    #TODO: Document methods.  
+    #http://www.python.org/dev/peps/pep-3116/
     class ShmHandle(posix_ipc.SharedMemory):
-        """ This is wrapper around memory mapped shared memory provided by
-            posix shm.
-
-            Arguments:
-
-              * name(string)
-
-              The name of the file to open e.g. 'my_file' not /dev/shm/my_file
+        """
+        This is wrapper around memory mapped shared memory provided by posix 
+        shm.
         """
 
         def __init__(self, name):
@@ -131,26 +111,29 @@ def open_shm(name):
 
 
 def dump_stream(inbox, handle, delimiter=None):
-    """ Writes the first element of the inbox to the provided stream (file
-        handle) delimiting the input by the optional delimiter string. Returns
-        the name of the file being written.
-
+    """
+    Writes the first element of the inbox to the provided stream (file handle) 
+    delimiting the input by the optional delimiter string. Returns the name of
+    the file being written. 
+    
+    .. warning::
+    
         Note that only a single process can have access to a file handle open
-        for writing. Therefore this worker function should only be used by a
-        linear piper.
+        for writing. Therefore this worker-function should only be used by a
+        non-parallel *Piper*.
 
-        Arguments:
+    Arguments:
 
-          * handle(stream)
+        * handle(stream)
 
             File handle open for writing.
           
-          * delimiter(string) [default: None]
+        * delimiter(string) [default: ``None``]
 
-            A string which will seperate the written items. e.g:
-            "END" becomes "\\nEND\\n" in the output stream. The default is an
-            empty string which means that items will be seperated by a blank
-            line i.e.: '\\n\\n'
+            A string which will seperate the written items. e.g: "END" becomes 
+            "\\nEND\\n" in the output stream. The default is an empty string 
+            which means that items will be seperated by a blank line i.e.:
+            '\\n\\n'
     """
     handle.write(inbox[0])
     delimiter = '\n%s\n' % (delimiter or '')
@@ -158,18 +141,17 @@ def dump_stream(inbox, handle, delimiter=None):
     return handle.name
 
 def load_stream(handle, delimiter=None):
-    """ Creates a string generator from a stream (file handle) containing
-        data delimited by the delimiter strings.
+    """
+    Creates a string generator from a stream (file handle) containing data 
+    delimited by the delimiter strings. This is a stand-alone function and 
+    should be used to feed external data into a pipeline.
 
-        This is a stand-alone function and should be used to feed external data
-        into a pipeline.
+    Arguments:
 
-        Arguments:
+        * delimiter(string) [default: ``None``]
 
-          * delimiter(string) [default: None]
-
-            The default means that items will be separated by 
-            two new-line characters i.e.: '\\n\\n'
+            The default means that items will be separated by two new-line 
+            characters i.e.: '\\n\\n'
     """
     delimiter = (delimiter or '') + '\n'
     while True:
@@ -186,13 +168,15 @@ def load_stream(handle, delimiter=None):
                 temp.append(line)
         yield "".join(temp)
 
-@imports([['cPickle', []]])
+@imports(['cPickle'])
 def load_pickle_stream(handle):
-    """ Creates an object generator from a stream (file handle) containing data
-        in pickles. To be used with the ``dump_pickle_stream``
-        .. warning::
+    """
+    Creates an object generator from a stream (file handle) containing data
+    in pickles. To be used with the ``dump_pickle_stream``
+    
+    .. warning::
 
-            File handles should not be read by different processes.
+        File handles should not be read by different processes.
     """
     while True:
         try:
@@ -201,56 +185,56 @@ def load_pickle_stream(handle):
             raise StopIteration
 
 def dump_pickle_stream(inbox, handle):
-    """ Writes the first element of the inbox to the provided stream (data
-        handle) as a pickle. To be used with the ``load_pickle_stream`` worker.
+    """
+    Writes the first element of the inbox to the provided stream (data handle) 
+    as a pickle. To be used with the ``load_pickle_stream`` worker-function.
     """
     cPickle.dump(inbox[0], handle, -1)
 
 # ITEMS
-@imports([['tempfile', []], ['os', []], ['errno', []], ['mmap', []], \
-          ['signal', []], ['posix_ipc', []], ['socket', []], \
-          ['urllib', []], ['random', []], ['threading', []]], forgive=True)
+@imports(['tempfile', 'os', 'errno', 'mmap', 'signal', 'posix_ipc', 'socket', \
+          'urllib', 'random', 'threading'], forgive=True)
 def dump_item(inbox, type='file', prefix=None, suffix=None, dir=None, \
               timeout=320, buffer=None):
-    """ Writes the first element of the inbox as a file of a specified type.
-        The type can be 'file', 'fifo', 'shm', 'tcp' or 'udp' corresponding to 
-        typical files, named pipes(FIFOs) and posix shared memory. FIFOs and shared
-        memory are volatile, but shared memory can exist longer then the python
-        process.
+    """
+    Writes the first element of the inbox as a file of a specified type. The 
+    type can be 'file', 'fifo', 'shm', 'tcp' or 'udp' corresponding to typical 
+    files, named pipes(FIFOs) and posix shared memory. FIFOs and shared memory
+    are volatile, but shared memory can exist longer then the Python process.
 
-        Returns the semi-random name of the file written. By default creates 
-        files and fifos in the default temporary directory and shared memory
-        in /dev/shm. To use named pipes the operating system has to support
-        both forks and fifos (not Windows). To use shared memory the system has
-        to be proper posix (not MacOSX) and the posix_ipc module has to be
-        installed. Sockets should work on operating systems.
+    Returns the semi-random name of the file written. By default creates files 
+    and fifos in the default temporary directory and shared memory in /dev/shm. 
+    To use named pipes the operating system has to support both forks and fifos
+    (not Windows). To use shared memory the system has to be proper posix 
+    (not MacOSX) and the posix_ipc module has to be installed. Sockets should
+    work on all operating systems.
 
-        This worker is useful to efficently communicate parallel pipers without
-        the overhead of using queues.
+    This worker-function is useful to efficently communicate parallel *Pipers*
+    without the overhead of using queues.
 
-        Arguments:
+    Arguments:
 
-          * type('file', 'fifo', 'shm', 'tcp', 'udp') [default: 'file']
+        * type('file', 'fifo', 'shm', 'tcp', 'udp') [default: 'file']
             
             Type of the created file/socket.
 
-          * prefix(string) [default: tmp_papy_%type%]
+        * prefix(str) [default: tmp_papy_%type%]
 
             Prefix of the file to be created. Should probably identify the
-            worker and piper. 
+            *Worker* and *Piper*. 
 
-          * suffix(string) [default: '']
+        * suffix(str) [default: ``''``]
 
             Suffix of the file to be created. Should probably identify the 
             format of the serialization protocol e.g. 'pickle' or
-            de-serialized data e.g. 'numpy'.
+            deserialized data e.g. 'numpy'.
 
-          * dir(string) [default: tempfile.gettempdir() or /dev/shm]
+        * dir(str) [default: tempfile.gettempdir() or /dev/shm]
             
             Directory to safe the file to. (can be changed only for types
             'file' and 'fifo'
 
-          * timeout(integer) [default: 320]
+        * timeout(int) [default: 320]
 
             Number of seconds to keep the process at the write-end of the
             socket or pipe alive.
@@ -265,7 +249,7 @@ def dump_item(inbox, type='file', prefix=None, suffix=None, dir=None, \
         dir = dir or tempfile.gettempdir()
         while True:
             # create a random file name
-            file = prefix + names.next() + suffix
+            file = prefix + names.next() + suffix#IGNORE:W0622
             if type in ('file', 'fifo'):
                 file = os.path.join(dir, file)
                 try:
@@ -276,24 +260,24 @@ def dump_item(inbox, type='file', prefix=None, suffix=None, dir=None, \
                         os.mkfifo(file)
                     file = os.path.abspath(file)
                     break
-                except OSError, e:
+                except OSError, excp:
                     # first try to close the fd
                     try:
                         os.close(fd)
-                    except OSError, ee:
-                        if ee.errno == errno.EBADF:
+                    except OSError, excp_:
+                        if excp_.errno == errno.EBADF:
                             pass
                         # strange error better raise it
-                        raise ee
-                    if e.errno == errno.EEXIST:
+                        raise excp_
+                    if excp.errno == errno.EEXIST:
                         # file exists try another one
                         continue
                     # all other errors should be raise
-                    raise e
+                    raise excp
             elif type == 'shm':
                 try:
-                    mem = posix_ipc.SharedMemory(file, size=len(inbox[0]), \
-                                                      flags=posix_ipc.O_CREX)
+                    mem = posix_ipc.SharedMemory(\
+                          file, size=len(inbox[0]), flags=posix_ipc.O_CREX)
                     break
                 except posix_ipc.ExistentialError:
                     continue
@@ -402,30 +386,30 @@ def dump_item(inbox, type='file', prefix=None, suffix=None, dir=None, \
                 killed, status = os.waitpid(pid, os.WNOHANG)
                 if killed:
                     del_pid(pid)
-            except OSError, e:
-                if e.errno == os.errno.ECHILD:
+            except OSError, excp:
+                if excp.errno == os.errno.ECHILD:
                     continue
                 raise
     # filename needs still to be unlinked
     return file
 
-@imports([['mmap', []], ['os', []], ['stat', []], \
-          ['posix_ipc', []], ['warnings', []]], forgive=True)
+@imports(['mmap', 'os', 'stat', 'posix_ipc', 'warnings'], forgive=True)
 def load_item(inbox, type='string', remove=True, buffer=None):
-    """ Loads data from a file. Determines the file type automatically ('file',
-        'fifo', 'shm', 'tcp', 'udp') but allows to specify the representation 
-        type 'string' or 'mmap' for memmory mapped access to the file. Returns
-        a the loaded item as a string or mmap object. Internally creates an item
-        from a file object
+    """
+    Loads data from a file. Determines the file type automatically ('file',
+    'fifo', 'shm', 'tcp', 'udp') but allows to specify the representation type
+    'string' or 'mmap' for memmory mapped access to the file. Returns a the 
+    loaded item as a string or mmap object. Internally creates an item from a 
+    file object.
 
-        Arguments:
+    Arguments:
 
-          * type('string' or 'mmap') [default: string]
+        * type('string' or 'mmap') [default: string]
 
             Determines the type of object the worker returns i.e. the file read
             as a string or a memmory map. FIFOs cannot be memory mapped. 
 
-          * remove(boolean) [default: True]
+        * remove(bool) [default: ``True``]
 
             Should the file be removed from the filesystem? This is mandatory
             for FIFOs and sockets and generally a *very* good idea for shared 
@@ -464,7 +448,7 @@ def load_item(inbox, type='string', remove=True, buffer=None):
     # get a fd and start/stop
     start = 0
     if is_shm:
-        memory = posix_ipc.SharedMemory(name[0])
+        memory = posix_ipc.SharedMemory(name[0])#IGNORE:E1101
         stop = memory.size - 1
         fd = memory.fd
 
@@ -498,10 +482,15 @@ def load_item(inbox, type='string', remove=True, buffer=None):
 
     # get the data
     if type == 'mmap':
-        offset = start - (start % mmap.ALLOCATIONGRANULARITY)
+        offset = start - (start % (getattr(mmap, 'ALLOCATIONGRANULARITY', None)\
+                                   or getattr(mmap, 'PAGESIZE')))
         start = start - offset
         stop = stop - offset + 1
-        data = mmap.mmap(fd, stop, access=mmap.ACCESS_READ, offset=offset)
+        try:
+            data = mmap.mmap(fd, stop, access=mmap.ACCESS_READ, offset=offset)
+        except TypeError:
+            # we're on Python 2.5
+            data = mmap.mmap(fd, stop, access=mmap.ACCESS_READ)
         data.seek(start)
 
     elif type == 'string':
@@ -548,34 +537,34 @@ def load_item(inbox, type='string', remove=True, buffer=None):
 
 
 
-@imports([['papy', []], ['tempfile', []], ['multiprocessing', []], \
-          ['threading', []]], forgive=True)
+@imports(['papy', 'tempfile', 'multiprocessing', 'threading'], forgive=True)
 def dump_manager_item(inbox, address=('127.0.0.1', 46779), authkey='papy'):
-    """ Writes the first element of the inbox as a shared object. The object is
-        stored as a value in a shared dictionary served by a *Manager* process.
-        Returns the key for the object value the address and the authentication
-        key.
+    """
+    Writes the first element of the inbox as a shared object. The object is
+    stored as a value in a shared dictionary served by a ``Manager`` process.
+    Returns the key for the object value the address and the authentication
+    key.
 
-        To use this worker a *DictServer* instance has to be running. 
-        (see also: Plumber)
+    To use this worker-function a ``DictServer`` instance has to be running. 
+    Usage of this method for IPC is not recommended for performance reasons.
 
-        Arguments:
+    Arguments:
 
-          * address(2-tuple) [default: ('127.0.0.1', 46779)]
+        * address(2-tuple) [default: ('127.0.0.1', 46779)]
 
             A 2-tuple identifying the server(string) and port(integer).
 
-          * authkey(string) [default: 'papy']
+        * authkey(string) [default: 'papy']
 
             Authentication string to connect to the server.           
     """
-    class DictClient(multiprocessing.managers.BaseManager):
+    class DictClient(multiprocessing.managers.BaseManager):#IGNORE:C0111
         pass
     DictClient.register('dict')
     # get database 
     manager = DictClient(address, authkey)
     manager.connect()
-    kv = manager.dict()
+    k_v = manager.dict()#IGNORE:E1101
     # identify process/thread
     ptid = hash((threading.current_thread(), \
            multiprocessing.current_process()))
@@ -584,50 +573,57 @@ def dump_manager_item(inbox, address=('127.0.0.1', 46779), authkey='papy'):
     while True:
         name = names.next()
         k = "%s_%s" % (name, ptid)
-        if not k in kv:
+        if not k in k_v:
             break
         # else ... loop forever
     # update dict
-    kv[k] = inbox[0]
+    k_v[k] = inbox[0]
     return (k, address, authkey)
 
-@imports([['papy', []], ['multiprocessing', []]], forgive=True)
+@imports(['papy', 'multiprocessing'], forgive=True)
 def load_manager_item(inbox, remove=True):
     """
+    Loads an item from from ``DictServer``.
+    
+    Arguments:
+    
+        * remove(bool) [default: ``True``]
+        
+            Should the data be removed from the ``DictServer`` instance?  
     """
-    class DictClient(multiprocessing.managers.BaseManager):
+    class DictClient(multiprocessing.managers.BaseManager):#IGNORE:C0111
         pass
     DictClient.register('dict')
-    k, address, authkey = inbox[0]
+    key, address, authkey = inbox[0]
     manager = DictClient(address, authkey)
     manager.connect()
-    kv = manager.dict()
+    k_v = manager.dict() #IGNORE:E1101
     if remove:
-        v = kv.pop(k)
+        val = k_v.pop(key)
     else:
-        v = kv[k]
-    return v
+        val = k_v[key]
+    return val
 
 
-@imports([['sqlite3', []], ['MySQLdb', []], ['warnings', []]], forgive=True)
+@imports(['sqlite3,pysqlite2', 'MySQLdb', 'warnings'], forgive=True)
 def dump_db_item(inbox, type='sqlite', table='temp', **kwargs):
-    """ Writes the first element of the inbox as a key/value pair in a database
-        of the provided type. Currently supported: "sqlite" and "mysql".
-        Returns the information necessary for the load_db_item to retrieve the
-        element.
+    """
+    Writes the first element of the inbox as a key/value pair in a database of
+    the provided type. Currently supported: "sqlite" and "mysql". Returns the 
+    information necessary for the load_db_item to retrieve the element.
         
-        According to the sqlite documentation: You should avoid putting SQLite
-        database files on NFS if multiple processes might try to access the file
-        at the same time.
+    According to the sqlite documentation: You should avoid putting SQLite 
+    database files on NFS if multiple processes might try to access the file at
+    the same time.
 
-        Arguments:
+    Arguments:
 
-          * type(str) [default: 'sqlite']
+        * type(str) [default: 'sqlite']
 
             Type of the database to use currently supported 'sqlite' and 'mysql'
             Using MySQL requires a running 
 
-          * db(str) [default: 'papydb']
+        * db(str) [default: 'papydb']
 
             Default name of the database, for sqlite it is the name of the
             database file in the current working directory. Databases can be
@@ -635,14 +631,14 @@ def dump_db_item(inbox, type='sqlite', table='temp', **kwargs):
             concurrency. A new file will be created if none exists. The MySQL 
             database has to exists (it will not be created).
           
-          * table(str) [default: 'temp']  
+        * table(str) [default: 'temp']  
 
             Name of the table to store the key/value pairs into. Tables can be
             shared among pipers.
 
-          * host, user, passwd
+        * host, user, passwd
 
-            Authentication information. Refer to the generic dbapi2
+            Authentication information. Refer to the generic ``dbapi2``
             documentation.
     """
     # connect defaults
@@ -705,31 +701,31 @@ def dump_db_item(inbox, type='sqlite', table='temp', **kwargs):
     # changes will be written to the database.
     return type, id_, table, kwargs
 
-@imports([['sqlite3', []], ])
+@imports(['sqlite3.dbapi2,pysqlite2.dbapi2', 'MySQLdb'], forgive=True)
 def load_db_item(inbox, remove=True):
-    """ Loads an item from a sqlite database. Returns the stored string.
+    """
+    Loads an item from a sqlite database. Returns the stored string.
 
-        Arguments:
+    Arguments:
 
-          * remove(bool) [default: True]
+        * remove(bool) [default: ``True``]
 
             Remove the loaded item from the table (temporary storage).
     """
     type, id_, table, kwargs = inbox[0]
-
-    if type == 'sqlite':
-        dbapi2 = sqlite3.dbapi2
-    elif type == 'mysql':
-        dbapi2 = MySQLdb
+    if type == 'mysql':
+        db = MySQLdb
+    else:
+        db = dbapi2
 
     while True:
         try:
-            con = dbapi2.connect(**kwargs)
+            con = db.connect(**kwargs)
             cur = con.cursor()
             break
-        except dbapi2.OperationalError, e:
-            if not e.args[0] == 'database is locked':
-                raise e
+        except db.OperationalError, excp:
+            if not excp.args[0] == 'database is locked':
+                raise excp
     if type == 'sqlite':
         get_item = 'select value from %s where id = ?' % table
         item = str(cur.execute(get_item, (id_,)).fetchone()[0])
@@ -754,18 +750,19 @@ def load_db_item(inbox, remove=True):
 
 
 # FILES
-@imports([['time', []]])
+@imports(['time'])
 def make_lines(handle, follow=False, wait=0.1):
-    """ Creates a line generator from a stream (file handle) containing data in
-        lines.
+    """ 
+    Creates a line generator from a stream (file handle) containing data in
+    lines.
 
-        Arguments:
+    Arguments:
 
-          * follow(bool) [default: False]
+        * follow(bool) [default: ``False``]
 
             If true follows the file after it finishes like 'tail -f'.
 
-          * wait(float) [default: 0.1]
+        * wait(float) [default: 0.1]
 
             Time to wait between file polls.
     """
@@ -778,33 +775,34 @@ def make_lines(handle, follow=False, wait=0.1):
         else:
             raise StopIteration
 
-@imports([['mmap', []], ['os', []]])
+@imports(['mmap', 'os'])
 def make_items(handle, size):
-    """ Creates a generator of items from a file handle. The size argument is
-        the approximate size of the generated chunks in bytes. The main purpose
-        of this worker function is to allow multiple worker processes/threads to
-        read from the same file handle.
+    """
+    Creates a generator of items from a file handle. The size argument is the 
+    approximate size of the generated chunks in bytes. The main purpose of this 
+    worker function is to allow multiple worker processes/threads to read from 
+    the same file handle.
         
-        A chunk is a 3-tuple (file descriptor, first_byte, last_byte), which 
-        defines the position of chunk within a file. The size of a chunk i.e. 
-        last_byte - first_byte is **approximately** the ``size`` argument. The
-        last byte in a chunk is always a '\\n'. The first byte points 
-        always to the first character in a line. A chunk can also be a whole
-        file i.e. the first byte is 0 and the last byte is 
+    A chunk is a 3-tuple (file descriptor, first_byte, last_byte), which  
+    defines the position of chunk within a file. The size of a chunk i.e. 
+    last_byte - first_byte is **approximately** the ``size`` argument. The last
+    byte in a chunk is always a '\\n'. The first byte points 
+    always to the first character in a line. A chunk can also be a whole file 
+    i.e. the first byte is 0 and the last byte is EOF.
 
-        Arguments:
+    Arguments:
 
-          * size(int) [default: mmap.ALLOCATIONGRANULARITY]
+        * size(int) [default: ``mmap.ALLOCATIONGRANULARITY``]
 
             on windows: 64KBytes
             on linux: 4KBytes
 
             Approximate chunk size in bytes.
     """
-    fd = handle.fileno()
-    file_size = os.fstat(fd).st_size
+    fd_ = handle.fileno()
+    file_size = os.fstat(fd_).st_size
     size = (size or mmap.ALLOCATIONGRANULARITY)
-    mmaped = mmap.mmap(fd, file_size, access=mmap.ACCESS_READ)
+    mmaped = mmap.mmap(fd_, file_size, access=mmap.ACCESS_READ)
     # start at the beginning of file
     start, stop = 0, 0
     while True:
@@ -813,34 +811,35 @@ def make_items(handle, size):
         stop = (stop or start) + size
         # reached end of file
         if stop >= file_size:
-            yield (fd, start, file_size - 1)
+            yield (fd_, start, file_size - 1)
             break
         # try to get a chunk
         last_n = mmaped.rfind('\n', start, stop)
         if last_n != -1:
-            yield (fd, start, last_n)
+            yield (fd_, start, last_n)
             start = last_n + 1
             stop = 0
         # if no chunk the chunk size will be start, start+size+size in next
         # round.
 
-@imports([['glob', []], ['os', []], ['tempfile', []]])
+@imports(['glob', 'os', 'tempfile'])
 def find_items(prefix='tmp', suffix='', dir=None):
-    """ Creates a file name generator from files matching the supplied
-        arguments. Matches the same files as those created by ``dump_chunk``
-        for the same arguments.
+    """
+    Creates a file name generator from files matching the supplied arguments. 
+    Matches the same files as those created by ``dump_chunk`` for the same 
+    arguments.
 
-        Arguments:
+    Arguments:
 
-          * prefix(string) [default: 'tmp']
+        * prefix(string) [default: 'tmp']
 
             Mandatory first chars of the files to find.
 
-          * suffix(string) [default: '']
+        * suffix(string) [default: ``''``]
 
             Mandatory last chars of the files to find.
 
-          * dir(string) [default: current working directory]
+        * dir(string) [default: current working directory]
 
             Directory where the files should be located.
     """
@@ -848,26 +847,29 @@ def find_items(prefix='tmp', suffix='', dir=None):
     pattern = os.path.join(dir, prefix + '*' + suffix)
     chunk_files = glob.iglob(pattern)
     while True:
-        yield chunk_files.next()
+        yield chunk_files.next() #IGNORE:E1101
 
 
 #
 # SERIALIZATION
 #
 # cPickle
-@imports([['cPickle', []], ['gc', []]])
+@imports(['cPickle', 'gc'])
 def pickle_dumps(inbox):
-    """ Serializes the first element of the input using the pickle protocol.
+    """
+    Serializes the first element of the input using the pickle protocol using
+    the fastes binary protocol.
     """
     # http://bugs.python.org/issue4074
     gc.disable()
-    str = cPickle.dumps(inbox[0], cPickle.HIGHEST_PROTOCOL)
+    str_ = cPickle.dumps(inbox[0], cPickle.HIGHEST_PROTOCOL)
     gc.enable()
-    return str
+    return str_
 
-@imports([['cPickle', []], ['gc', []]])
+@imports(['cPickle', 'gc'])
 def pickle_loads(inbox):
-    """ De-serializes the first element of the input using the pickle protocol.
+    """
+    Deserializes the first element of the input using the pickle protocol.
     """
     gc.disable()
     obj = cPickle.loads(inbox[0])
@@ -875,18 +877,25 @@ def pickle_loads(inbox):
     return obj
 
 # MARSHAL
-@imports([['marshal', []], ['gc', []]])
+@imports(['marshal', 'gc'])
 def marshal_dumps(inbox):
-    """ Serializes the first element of the input using the marshal protocol.
+    """
+    Serializes the first element of the input using the marshal protocol.
     """
     gc.disable()
-    str = marshal.dumps(inbox[0], 2)
+    str_ = marshal.dumps(inbox[0], 2)
     gc.enable()
-    return str
+    return str_
 
-@imports([['marshal', []], ['gc', []]])
+@imports(['marshal', 'gc'])
 def marshal_loads(inbox):
-    """ Serializes the first element of the input using the marshal protocol.
+    """
+    Deserializes the first element of the input using the marshal protocol.
+    
+    .. warning::
+    
+        Be carful when communicating different Python version via this protocol
+        as it is version specific.
     """
     gc.disable()
     obj = marshal.loads(inbox[0])
@@ -894,18 +903,22 @@ def marshal_loads(inbox):
     return obj
 
 # JSON
-@imports([['json', []], ['gc', []]], forgive=True)
+@imports(['json,simplejson', 'gc'], forgive=True)
 def json_dumps(inbox):
-    """ Serializes the first element of the input using the JSON protocol.
+    """
+    Serializes the first element of the input using the JSON protocol as 
+    implemented by the ``json`` Python 2.6 library.
     """
     gc.disable()
-    str = json.dumps(inbox[0])
+    str_ = json.dumps(inbox[0])
     gc.enable()
-    return str
+    return str_
 
-@imports([['json', []], ['gc', []]], forgive=True)
+@imports(['json,simplejson', 'gc'], forgive=True)
 def json_loads(inbox):
-    """ De-serializes the first element of the input using the JSON protocol.
+    """
+    Deserializes the first element of the input using the JSON protocol as 
+    implemented by the ``json`` Python 2.6 library.
     """
     gc.disable()
     obj = json.loads(inbox[0])
@@ -913,16 +926,25 @@ def json_loads(inbox):
     return obj
 
 # CSV
-@imports([['csv', []], ['cStringIO', []]])
+@imports(['csv', 'cStringIO'])
 def csv_dumps(inbox, **kwargs):
+    """
+    Dumps first element of inbox as csv (comma seperated value) string. Takes 
+    optional arguments for ``csv.writer``.
+    """
     handle = cStringIO.StringIO()
     csv_writer = csv.writer(handle, **kwargs)
     csv_writer.writerow(inbox[0])
     return handle.getvalue()
 
-@imports([['csv', []]])
+@imports(['csv'])
 def csv_loads(inbox):
+    """
+    Loads firts element of inbox as a csv (comma seperated value) string.
+    """
+    #TODO: write papy.workers.io.csv_loads
     pass
+
 
 
 #EOF
