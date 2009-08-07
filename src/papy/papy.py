@@ -440,20 +440,23 @@ class Dagger(Graph):
 
 
 # imap call signature
-I_SIG = '    %s = IMap(worker_type ="%s", worker_num =%s, stride =%s, buffer =%s,' + \
+I_SIG = '    %s = IMap(worker_type="%s", worker_num=%s, stride=%s, buffer=%s, ' + \
                   'ordered =%s, skip =%s, name ="%s")\n'
+
 # piper call signature
-P_SIG = '    %s = Piper(%s, parallel =%s, consume =%s, produce =%s, timeout =%s, ' + \
-                   'cmp =%s, ornament =%s, debug =%s, name ="%s")\n'
+P_SIG = '    %s = Piper(%s, parallel=%s, consume=%s, produce=%s, spawn=%s, ' + \
+                            'produce_from_sequence=%s, timeout=%s, ' + \
+                            'cmp=%s, ornament=%s, debug=%s, name="%s", ' + \
+                            'track=%s)\n'
 # worker call signature
-W_SIG = 'Worker((%s,), %s)'
+W_SIG = 'Worker((%s,), %s, %s)'
 # list signature
 L_SIG = '(%s, %s)'
 # papy pipeline source-file layout
 P_LAY = \
     'from papy import *' + '\n' + \
     'from IMap import IMap' + '\n\n' + \
-    '%s' + '\n\n' + \
+    '%s' + '\n' + \
     '%s' + '\n\n' + \
     'def pipeline():' + '\n' + \
              '%s' + '\n\n' + \
@@ -517,7 +520,7 @@ class Plumber(Dagger):
                 finish(is_stopping())
                 break
 
-    def __init__(self, dagger=None, **kwargs):
+    def __init__(self, dagger=None, logger_options=(), **kwargs):
         self._is_stopping = Event()
         self._is_finished = Event()
 
@@ -528,12 +531,13 @@ class Plumber(Dagger):
         self.stats['run_time'] = None
 
         #TODO: setup logging within Plumber.
+        logger.start_logger(*logger_options)
         self.log = getLogger('papy')
 
         # init
         #TODO: check if this works with and the stats attributes are correctly
         # set for a predefined dagger.
-        Dagger.__init__((dagger or self), **kwargs)
+        dict.__init__((dagger or self), **kwargs)
 
     def _code(self):
         """
@@ -552,10 +556,11 @@ class Plumber(Dagger):
                 icall += I_SIG % (in_, i.worker_type, i.worker_num, i.stride, \
                                   i.buffer, i.ordered, i.skip, in_)
                 idone.append(in_)
-            ws = W_SIG % (",".join([t.__name__ for t in w.task]), w.args)
+            ws = W_SIG % (",".join([t.__name__ for t in w.task]), w.args, w.kwargs)
             cmp_ = p.cmp__name__ if p.cmp else None
-            pcall += P_SIG % (p.name, ws, in_, p.consume, p.produce, p.timeout, \
-                              cmp_, p.ornament, p.debug, p.name)
+            pcall += P_SIG % (p.name, ws, in_, p.consume, p.produce, p.spawn, \
+                              p.produce_from_sequence, p.timeout, cmp_, \
+                              p.ornament, p.debug, p.name, p.track)
             for t in chain(w.task, [p.cmp]):
                 if (t in tdone) or not t:
                     continue
@@ -588,22 +593,23 @@ class Plumber(Dagger):
         """
         return super(Plumber, self).__str__()
 
-#TODO: write load method and unit-tests.
-#===============================================================================
-#    def load(self, filename):
-#        """
-#        
-#        Arguments:
-#
-#        Load pipeline.
-#        """
-#        execfile(filename)
-#        self.__init__(pipeline())
-#===============================================================================
+    def load(self, filename):
+        """
+        Load pipeline from source file.
+        
+        Arguments:
+        
+            * filename(path)
+            
+                Location of the pipeline source code.
+        """
+        namespace = {}
+        execfile(filename, namespace)
+        self.__init__(dagger=namespace['pipeline']())
 
     def save(self, filename):
         """
-        Save pipeline.
+        Save pipeline as source file.
         
         Arguments:
         
@@ -665,8 +671,6 @@ class Plumber(Dagger):
 
         # remove non-block results for end tasks
         tasks = (tasks or self.get_outputs())
-        tasks[0].next()
-        tasks[1].next()
         wtasks = Weave(tasks, repeats=stride)
         self._plunger = Thread(target=self._plunge, args=(wtasks, \
                         self._is_stopping.isSet, self._track, self._finish))
@@ -815,7 +819,7 @@ class Piper(object):
 
         # initially return self by __iter__
         self._iter = self
-        self.name = name or "=%s(%s)=" % (self.worker, id(self))
+        self.name = name or "piper_%s" % id(self)
         self.log.info('Created Piper %s' % self)
 
     def __iter__(self):
@@ -826,10 +830,7 @@ class Piper(object):
         return self._iter
 
     def __repr__(self):
-        return self.name
-
-    def __hash__(self):
-        return self.worker.__hash__()
+        return "=%s(%s)=" % (self.worker, id(self))
 
     def start(self, forced=False):
         """

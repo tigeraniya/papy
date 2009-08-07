@@ -10,7 +10,7 @@ import time
 
 
 def start_logger(log_to_file=True, \
-                 log_to_stream=True, \
+                 log_to_stream=False, \
                  log_to_file_level=logging.INFO, \
                  log_to_stream_level=logging.INFO, \
                  log_filename=None, \
@@ -25,19 +25,19 @@ def start_logger(log_to_file=True, \
 
           * log_to_file(bool) [default: ``True``]
             
-                Should we save logging messeges in a file?
+                Should we save logging messages in a file?
 
-          * log_to_screen(bool) [default: ``True``]
+          * log_to_screen(bool) [default: ``False``]
 
-                Should we print logging messeges to stdout? 
+                Should we print logging messages to stdout? 
 
           * log_to_file_level(int) [default: ``INFO``]
 
-                The minimum logging level of messeges to be saved. 
+                The minimum logging level of messages to be saved. 
           
           * log_to_screen_level(int) [default: ``ERROR``]
 
-                The minimum logging level of messeges to be printed.
+                The minimum logging level of messages to be printed.
 
           * log_filename(str) [default: ``PaPy_log`` or ``PaPy_log_$TIME$``]
 
