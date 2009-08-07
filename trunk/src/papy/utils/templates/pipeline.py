@@ -1,19 +1,18 @@
 #!/usr/bin/env python
-#TODO: update template
-""" This is a prototype of a pipeline, use it as a start-point to construct your
-    own. The construction of a pipeline is split into parts, this has several
-    reasons. First it makes your code modular as it detaches the definition of a
-    work-flow from the runtime i.e. the real data and computational resources
-    and it allows to group all the elements into a single-file executable
-    script.
+"""
+This is a prototype of a pipeline, use it as a start-point to construct your 
+own. The construction of a pipeline is split into parts, this has several
+reasons. First it makes your code modular as it detaches the definition of a
+workflow from the runtime i.e. the real data and computational resources and it
+allows to group all the elements into a single-file executable script.
 
-    All the steps are as explicit as possible. If you prefer the less flexible
-    but shorter implicit API features please refer to the documentation.
+All the steps are as explicit as possible. If you prefer the less flexible but 
+shorter implicit API features please refer to the documentation.
 """
 # Part 0: import the PaPy infrastructure.
 # interface of the API: 
 from papy import Plumber, Piper, Worker
-# the parallel IMap function and importrs wrapper: 
+# the parallel IMap function and imports wrapper: 
 from IMap import IMap, imports
 # all example workers
 from papy import workers
@@ -23,12 +22,13 @@ logger.start_logger(log_rotate=False)
 
 
 # Part 1: Define user functions
-@imports([['socket', []], ['os', []], ['threading', []]])
+@imports(['socket', 'os', 'threading'])
 def who(inbox):
     """ This function identifies the host/process/thread.
     """
     return "input: %s, host:%s, parent %s, process:%s, thread:%s" % \
-    (inbox[0], socket.gethostname(), os.getppid(), os.getpid(), threading._get_ident())
+    (inbox[0], socket.gethostname(), os.getppid(), \
+     os.getpid(), threading._get_ident())
 
 # Part 2: Define the topology
 def pipeline(resources):

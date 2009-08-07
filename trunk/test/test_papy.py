@@ -1484,7 +1484,7 @@ class test_Plumber(GeneratorTest):
     def test_init(self):
         assert isinstance(self.plum, Dagger)
 
-    def test_code(self):
+    def test_round(self):
         self.plum.add_piper(self.mul, xtra={'color':'red'})
         #print self.plum[self.mul].xtra
         self.plum.add_piper(self.pwr)
@@ -1494,18 +1494,20 @@ class test_Plumber(GeneratorTest):
         self.plum.add_piper(pr)
         self.plum.add_pipe((self.mul, self.pwr))
         self.plum.save('test.py')
+        print self.plum
+        self.plum2 = Plumber()
+        self.plum2.load('test.py')
+        print self.plum2
 
     def test_pluge1(self):
         #imap
         self.plum.add_pipe([self.pwr, self.dbl])
-        self.pwr([[1, 2, 3]])
-        self.plum.plunge()
+        self.plum.plunge([[1, 2, 3]])
         self.plum.chinkup()
         # IMap
         self.plum = Plumber()
         self.plum.add_pipe([self.pwrp, self.dblp])
-        self.pwrp([[1, 2, 3]])
-        self.plum.plunge()
+        self.plum.plunge([[1, 2, 3]])
         self.plum.chinkup()
 
     def test_track(self):
@@ -1526,15 +1528,15 @@ class test_Plumber(GeneratorTest):
 suite_Graph = unittest.makeSuite(test_Graph, 'test')
 suite_Worker = unittest.makeSuite(test_Worker, 'test')
 suite_Piper = unittest.makeSuite(test_Piper, 'test')
-#suite_Dagger = unittest.makeSuite(test_Dagger,'test')
-#suite_Plumber = unittest.makeSuite(test_Plumber,'test')
+suite_Dagger = unittest.makeSuite(test_Dagger, 'test')
+suite_Plumber = unittest.makeSuite(test_Plumber, 'test')
 
 if __name__ == "__main__":
     runner = unittest.TextTestRunner()
     runner.run(suite_Graph)
     runner.run(suite_Worker)
     runner.run(suite_Piper)
-#    runner.run(suite_Dagger)
-#    runner.run(suite_Plumber)
+    runner.run(suite_Dagger)
+    runner.run(suite_Plumber)
 
 #EOF
