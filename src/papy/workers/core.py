@@ -3,83 +3,101 @@
 ========================
 
 A collection of core workers-functions to use in Worker instances.
-
 """
 
 def plugger(inbox):
-    """ Returns nothing.
+    """
+    Returns nothing.
     """
     return None
 
-def ipasser(inbox, i =0):
-    """ Passes the i-th input from inbox. By default passes the first input.
+def ipasser(inbox, i=0):
+    """
+    Passes the i-th input from inbox. By default passes the first input.
 
-        Arguments:
+    Arguments:
 
-          * i(int) [default: 0]
+        * i(int) [default: 0]
     """
     return inbox[i]
 
-def npasser(inbox, n =None):
-    """ Passes n first inputs from inbox. By default passes the whole inbox.
+def npasser(inbox, n=None):
+    """
+    Passes n first inputs from inbox. By default passes the whole inbox.
 
-        Arguments:
+    Arguments:
 
-          * n(int) [default: None]
+        * n(int) [default: ``None``]
     """
     return inbox[:n]
 
-def spasser(inbox, s =None):
-    """ Passes inputs with indecies in s. By default passes the whole inbox.
-
-        Arguments:
-
-          * s(sequence) [default: None -> range(len(inbox))]
+def spasser(inbox, s=None):
     """
-    s = (s or range(len(inbox)))
-    return [input for i, input in enumerate(inbox) if i in s] 
+    Passes inputs with indecies in s. By default passes the whole inbox.
 
-def nzipper(inbox, n =None):
-    """ 
-    """
-    return zip(*inbox[:None])[0]
+    Arguments:
 
-def szipper(inbox, s =None):
+        * s(sequence) [default: None -> range(len(inbox))]
     """
-    """
-    pass
+    seq = (s or range(len(inbox)))
+    return [input_ for i, input_ in enumerate(inbox) if i in seq]
 
-def njoiner(inbox, n =None, join =""):
-    """ Joins and returns the first n inputs.
+def nzipper(inbox, n=None):
+    """
+    Zips the n first inputs from inbox. By default zips thw whole inbox.
+
+    Arguments:
+
+        * n(int) [default: ``None``]    
+    """
+    return zip(*inbox[:n])[0]
+
+def szipper(inbox, s=None):
+    """
+    Zips inputs from inbox with indecies in s. By default zips thw whole inbox.
+
+    Arguments:
+
+        * s(sequence) [default: ``None``]    
+    """
+    #TODO: test szipper
+    return zip(*[input_ for i, input_ in enumerate(inbox) if i in s])
+
+def njoiner(inbox, n=None, join=""):
+    """
+    String joins and returns the first n inputs.
     
-        Arguments:
+    Arguments:
 
-          * n(int) [default: None]
+        * n(int) [default: ``None``]
 
             All elements in the inbox smaller then this number will be joined.
     
-          * join(string) [default: ""]
+        * join(string) [default: ``""``]
 
-            String which will join the elements of the inbox i.e.
-            join.join().
+            String which will join the elements of the inbox i.e. 
+            ``join.join()``.
     """
     return join.join(inbox[:n])
 
-def sjoiner(inbox, s =None, join =""):
-    """ Joins and returns the first input with indices in s.
+def sjoiner(inbox, s=None, join=""):
+    """ 
+    String joins input with indices in s.
 
-        Arguments:
+    Arguments:
 
-          * s(sequence) [default: None]
+        * s(sequence) [default: ``None``]
 
-            Sequence (tuple or list) of indices
+            Sequence (tuple or list) of indices of the elements which will be
+            joined.
 
-          * join(string) [default: ""]
+        * join(string) [default: ``""``]
 
-            String which will join the elements of the inbox i.e.
-            join.join().
+            String which will join the elements of the inbox i.e. 
+            ``join.join()``.
     """
-    return join.join([input for i, input in enumerate(inbox) if i in s])
+    return join.join([input_ for i, input_ in enumerate(inbox) if i in s])
+
 
 
 #EOF

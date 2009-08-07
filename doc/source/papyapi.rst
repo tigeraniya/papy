@@ -1,5 +1,8 @@
 .. automodule:: papy.papy
    :members:
+   
+.. automodule:: papy.graph
+   :members:
 
 .. automodule:: papy.utils
    :members:
@@ -22,3 +25,5 @@
 .. automodule:: IMap.IMap
    :members:
 
+
+# EOF

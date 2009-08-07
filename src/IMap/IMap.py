@@ -789,64 +789,111 @@ def inject_func(func, conn):
 def imports(modules, forgive=False):
     """
     Should be used as a decorator to attach import statments to function
-    definitions. These imports are added to the global i.e. module level 
+    definitions. These imports are added to the global (in Python module level) 
     namespace of the decorated function.
         
-    Two forms of import statements are supported::
+    Two forms of import statements are supported (in the following examples
+    ``foo``, ``bar``, ``oof, and ``rab`` are modules not classes or functions)::
 
-        import module                    # e.q. to ['module', []]
-        from module import sub1, func2   # e.q. to ['module', ['sub1', func2]]
-
-    All required imports should be defined for every function.
+        import foo, bar              # e.q. to @imports(['foo', 'bar'])
+        import foo.oof as oof            
+        import bar.rab as rab        # e.g. to @imports(['foo.oof', 'bar.rab'])
+        
+    Supports alternatives::
+    
+        try:
+            import foo
+        except ImportError:
+            import bar
+            
+    becomes::
+    
+        @imports(['foo,bar'])
+        
+    and::
+    
+        try:
+            import foo.oof as oof
+        except ImportError:
+            import bar.rab as oof
+            
+    becomes::
+    
+        @imports(['foo.oof,bar.rab'])
+        
+    .. note::
+    
+        This import is available in the body of the function as ``oof`` 
+            
+    .. note::
+    
+        imports should be exhaustive for every decorated funcion even if two 
+        function have the same globals.
 
     Arguments:
 
-        * modules(list)
+        * modules(sequence)
           
-          A list of modules in the following forms::
+            A list of modules in the following forms::
 
-            ['module', ['sub_module1', ... ,'sub_module2']]
+                ['foo', 'bar', ..., 'baz']
 
-          or::
+            or::
 
-            ['module',[]]
-
-          If a list of sub-modules is specified they will be availble in the
-          globals of the function i.e::
-
-            # re module availble in the namespace
-            @imports([['re', []]])
-            def need_re(some_string):
-                res = re.search('pattern',some_string)
-                return res.group()
-
-            # search function availble in the namespace
-            @imports([['re', ['search']]])
-            def need_re(some_string):
-                res = search('pattern',some_string) #!
-                # but re.search will also work.
-                return res.group()
+                ['foo.oof', 'bar.rab', ..., 'baz.zab']
           
-        * forgive(bool) [default: False]
+        * forgive(bool) [default: ``False``]
 
-            If True will not raise exception on ImportError.
+            If ``True`` will not raise exception on ``ImportError``.
     """
     def wrap(f):
         if modules:
+            # attach import to function
             setattr(f, 'imports', modules)
-            for mod, sub in modules:
-                try:
-                    module = __import__(mod, fromlist=sub)
-                    f.func_globals[mod] = module
-                    for submod in sub:
-                        f.func_globals[submod] = getattr(module, submod)
-                except ImportError:
-                    if not forgive:
-                        raise
+            for alternatives in modules:
+                # alternatives are comma seperated
+                alternatives = alternatives.split(',')
+                # we import the part of the import X.Y.Z -> Z
+                mod_name = alternatives[0].split('.')[-1]
+                for mod in alternatives:
+                    mod = mod.strip().split('.')
+
+                    try:
+                        if len(mod) == 1:
+                            module = __import__(mod[0])
+                        else:
+                            module = getattr(__import__('.'.join(mod[:-1]), \
+                                            fromlist=[mod[-1]]), mod[-1])
+                        f.func_globals[mod_name] = module
+                        break # import only one
+                    except ImportError:
+                        pass
+                else:
+                    if forgive: # no break -> no import
+                        warnings.warn('Failed to import %s' % alternatives)
                     else:
-                        warnings.warn('module %s cannot be imported' % mod)
+                        raise ImportError('Failed to import %s' % alternatives)
         return f
     return wrap
+
+#    def wrap(f):
+#        if modules:
+#            setattr(f, 'imports', modules)
+#            for mods, sub in modules:
+#                    alternatives = mods.split(',')
+#                    for mod in alternatives:
+#                        try:
+#                            module = __import__(mod, fromlist=sub)
+#                            f.func_globals[mod] = module
+#                            for submod in sub:
+#                               f.func_globals[submod] = getattr(module, submod)
+#                            break
+#                        except ImportError:
+#                            if not forgive:
+#                                raise
+#                    else:
+#                        warnings.warn('module %s cannot be imported' % mod)
+
 
 
 class Weave(object):

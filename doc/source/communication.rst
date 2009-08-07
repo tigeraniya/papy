@@ -1,15 +1,16 @@
-Communication
-=============
+Inter Process Communication
+===========================
 
 This chapter deals with the details of inter-process communication (IPC) in 
 *PaPy*. By it's design *PaPy* is a rather high-level engine for the execution of
 chained tasks and the details of inter-process communication are by default
 hidden from the user. This does not mean that it is not possible to influence
-how processes are communicated. Optimization is done at the cost of generality
-e.g. knowing that two processes will execute on a shared memory system UNIX 
-system allows to communicate them via pipes (FIFOs), which will skip some
-computation and eliminate a possible bottleneck. For details please refer to 
-the ``papy.workers.io`` documentation.
+how processes are communicated i.e. synchronize and exchange data. Optimization 
+is done at the cost of generality e.g. knowing that two processes will execute 
+on a shared memory UNIX system allows to communicate them via pipes (FIFOs), 
+which will skip some computation and eliminate a possible bottleneck. This 
+section should be read together with the API documentation for 
+``papy.workers.io``.
 
 
 The unit of execution
@@ -19,30 +20,30 @@ A *Piper* object is assigned to an *IMap* instance which uses a process/thread
 pool to parallelize the execution. All functions used to create a *Worker* are
 called in a single call and no IPC is necessary. *Pipers* on the other hand
 might be executed in different processes and on different machines running
-different operating systems. By default pipers are connected by a pair of locked
-pipe objects and a "manager" process, which is the process used to execute/start 
-the pipeline.
+different operating systems. By default *Pipers* are connected by a pair of 
+locked pipe objects via a "manager" process, which is the process used to 
+execute/start the pipeline.
 
 
 A simple example
 ----------------
 
-This is inefficient as it involves two passes of pickling/unpickling and creates
-a potential bottleneck as half of all computations is done by the intermediate
-process. The solution is to either a) bypass the double pipe connection and
-connect *Piper* processes directly, b) use a more efficient serialization
-protocol. Both methods involve simply adding dumping (output) and loading
-(input) *Worker* functions i.e.::
+Using a "manager" process to communicate two other process is inefficient as it 
+involves two passes of pickling/unpickling and creates a potential bottleneck as
+half of all computations is done by the intermediate process. The solution is to
+either a) bypass the double pipe connection and connect processes directly, b) 
+use a more efficient serialization protocol. Both methods involve simply adding
+dumping(output) and loading(input) worker-functions to the *Workers* i.e.::
 
-  from papy import workers
-  upstream = Worker((func, workers.io.pickle_dumps, workers.io.dump_item),\
+    from papy import workers
+    upstream = Worker((func, workers.io.pickle_dumps, workers.io.dump_item),\
                    ((),    (),                      ('tcp')))
-  downstram = Worker((workers.io.load_item, workers.io.pickle_loads, func),\
+    downstram = Worker((workers.io.load_item, workers.io.pickle_loads, func),\
                     ((),                    (),                      ()))
-  up_piper = Piper(upstream, parallel =some_IMap_instance)
-  down_piper = Piper(downstram, parallel =some_different_IMap_instance)
-  pipes = Plumber()
-  pipes.add_pipe((up_piper, down_piper))
+    up_piper = Piper(upstream, parallel =some_IMap_instance)
+    down_piper = Piper(downstram, parallel =some_different_IMap_instance)
+    pipes = Plumber()
+    pipes.add_pipe((up_piper, down_piper))
 
 In this example we created two *Worker* instances, which are used to create
 *Piper* instances connected within a *Dagger* instance and executed by

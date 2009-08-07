@@ -25,9 +25,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 __author__ = 'Marcin Cieslik <mpc4p@virginia.edu>'
+__version__ = '1.0.0'
 
-from papy import Worker, Piper, Dagger, Plumber,\
-                 PiperError, WorkerError, DaggerError, PlumberError,\
+from papy import Worker, Piper, Dagger, Plumber, \
+                 PiperError, WorkerError, DaggerError, PlumberError, \
                  imports
 
 from graph import Graph, Node
