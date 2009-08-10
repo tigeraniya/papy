@@ -5,7 +5,7 @@
 This module implements a graph data structure without explicit edges, using 
 nested Python dictionaries.
 """
-from collections import deque
+from collections import deque, defaultdict
 from itertools import repeat, izip
 
 
@@ -164,34 +164,33 @@ class Graph(dict):
         self.clear_nodes()
         return list(nodes)
 
-    def maxdepth(self):
-        #TODO: finish maxdepth of Graph
+    def node_rank(self):
         """
-        Returns the maximum number of edges between two nodes in the *Graph*.
+        Returns the maximum rank for each node in ther graph. The rank of a node
+        is define as the number of edges between the node and a node which has
+        rank 0. A node has rank 0 if it has no incoming edges.
         """
         nodes = self.postorder()
-        node_depth = {}
+        node_rank = {}
         for node in nodes:
-            max_depth = 0
+            max_rank = 0
             for child in self[node].nodes():
-                some_depth = node_depth[child] + 1
-                max_depth = max(max_depth, some_depth)
-            node_depth[node] = max_depth
-        return node_depth
+                some_rank = node_rank[child] + 1
+                max_rank = max(max_rank, some_rank)
+            node_rank[node] = max_rank
+        return node_rank
 
-#TODO: finish maxwidth of Graph
-#===============================================================================
-#    def maxwidth(self):
-#        nodes = self.postorder()
-#        node_width = {}
-#        for node in nodes:
-#            max_width = 1
-#            for child in self[node].nodes():
-#                some_width = node_
-#        max_rank = max(node_rank.values())
-#        for rank in xrange(max_rank):
-#            pass
-#===============================================================================
+    def rank_width(self):
+        """
+        Returns the width of each rank in the graph.
+        """
+        rank_width = defaultdict(int)
+        node_rank = self.node_rank()
+        print node_rank
+        for rank in node_rank.values():
+            rank_width[rank] += 1
+        return dict(rank_width)
+
 
     def add_node(self, node, xtra=None):
         """
