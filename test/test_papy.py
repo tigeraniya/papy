@@ -217,19 +217,26 @@ class test_Graph(unittest.TestCase):
         self.graph.clear_nodes()
         self.graph.preorder(reverse=True)
 
-    def test_maxdepth1(self):
+    def test_node_rank1(self):
         edges = [(1, 2), (3, 4), (5, 6), (1, 5), (1, 6), (2, 5), (4, 6)]
         self.graph.add_edges(edges)
-        assert self.graph.maxdepth() == {1: 3, 2: 2, 3: 2, 4: 1, 5: 1, 6: 0}
+        assert self.graph.node_rank() == {1: 3, 2: 2, 3: 2, 4: 1, 5: 1, 6: 0}
 
-    def test_maxdepth2(self):
+    def test_node_rank2(self):
         edges = [(1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (1, 6)]
         self.graph.add_edges(edges)
-        assert self.graph.maxdepth() == {1: 5, 2: 4, 3: 3, 4: 2, 5: 1, 6: 0}
+        assert self.graph.node_rank() == {1: 5, 2: 4, 3: 3, 4: 2, 5: 1, 6: 0}
 
-    def test_maxwidth(self):
-        # TODO: write maxwidth test-case
-        pass
+    def test_rank_width1(self):
+        edges = [(1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (1, 7), (7, 6)]
+        self.graph.add_edges(edges)
+        assert self.graph.rank_width() == {0: 1, 1: 2, 2: 1, 3: 1, 4: 1, 5: 1}
+
+    def test_rank_width2(self):
+        edges = [(1, 2), (1, 3), (1, 4), (1, 5), (5, 7), \
+                 (7, 6), (2, 6), (3, 6), (4, 6)]
+        self.graph.add_edges(edges)
+        assert self.graph.rank_width() == {0: 1, 1: 4, 2: 1, 3: 1}
 
 
 class test_Worker(GeneratorTest):

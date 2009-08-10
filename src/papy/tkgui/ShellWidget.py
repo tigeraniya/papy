@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+"""
+Tkinter ShellWidget
+"""
 try:
     from KillThread import KThread as Thread
 except ImportError:
@@ -7,7 +10,7 @@ from Queue import Queue, Empty
 from code import InteractiveConsole
 import rlcompleter
 import string
-from Tkconstants import YES, BOTH, INSERT, END 
+from Tkconstants import YES, BOTH, INSERT, END
 from Tkinter import Tk
 import Pmw
 import sys
@@ -34,8 +37,9 @@ class StreamQueue(Queue):
 
 class PythonShell(Pmw.ScrolledText):
 
-    def __init__(self, parent, **kwargs):
+    def __init__(self, parent, namespace=None, **kwargs):
         Pmw.ScrolledText.__init__(self, parent, **kwargs)
+        self.namespace = namespace or globals()
         self.tabnum = -1
         self.offset = 1
         self.words = []
@@ -58,9 +62,9 @@ class PythonShell(Pmw.ScrolledText):
             sys.stdin = self.stdin
             sys.stdout = self.stdout
             sys.stderr = self.stderr
-            ic = InteractiveConsole(globals())
+            ic = InteractiveConsole(self.namespace)
             ic.interact()
-        self.ic = Thread(target =ic)
+        self.ic = Thread(target=ic)
         self.ic.daemon = True
         self.ic.start()
 
@@ -93,7 +97,7 @@ class PythonShell(Pmw.ScrolledText):
             self.tabnum += 1
             if not self.tabnum:
                 # first-tab, last_word
-                self.words = "".join(self.charbuf).split(' ')      
+                self.words = "".join(self.charbuf).split(' ')
             guess = self.completer.complete(self.words[-1], self.tabnum)
             if guess:
                 words = self.words[:-1] + [guess]
@@ -106,7 +110,7 @@ class PythonShell(Pmw.ScrolledText):
             return 'break'
         else:
             self.tabnum = -1
-            self.text['state'] ='normal'
+            self.text['state'] = 'normal'
             if key.keysym == 'Return':
                 self.mark_set(INSERT, END) # move to the END
                 line = "".join(self.charbuf)
@@ -118,7 +122,7 @@ class PythonShell(Pmw.ScrolledText):
                 if len(self.linebuf) > SHELL_HISTORY:
                     del self.linebuf[0]
             elif self.compare('LEFT_END', '>', INSERT):
-                self.text['state'] ='disabled'
+                self.text['state'] = 'disabled'
             elif key.keysym in ('Up', 'Down'):
                 if key.keysym == 'Up':
                     self.linebuf_position -= 1
@@ -131,7 +135,7 @@ class PythonShell(Pmw.ScrolledText):
                     if key.keysym == 'Up':
                         self.linebuf_position = 0
                     elif key.keysym == 'Down':
-                        self.linebuf_position = -1           
+                        self.linebuf_position = -1
                 return 'break'
             elif 'Left' == key.keysym and self.charbuf_position:
                 self.charbuf_position -= 1
@@ -153,6 +157,6 @@ class PythonShell(Pmw.ScrolledText):
 if __name__ == '__main__':
     root = Tk()
     shell = ShellWidget(root)
-    shell.pack(expand =YES, fill =BOTH)  
+    shell.pack(expand=YES, fill=BOTH)
     root.mainloop()
 

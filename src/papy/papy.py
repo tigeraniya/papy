@@ -9,6 +9,7 @@ pipeline.
 from IMap import Weave, imports, inject_func
 from graph import Graph
 from utils import logger
+from utils.codefile import *
 from utils.defaults import get_defaults
 from utils.runtime import get_runtime
 # python imports
@@ -20,9 +21,6 @@ from types import FunctionType
 from inspect import isbuiltin, getsource
 from logging import getLogger
 from time import time
-
-# Dummy variable, expected by comp_task in globals().
-TASK = None
 
 
 class WorkerError(Exception):
@@ -219,7 +217,7 @@ class Dagger(Graph):
         self.log.info('%s got output pipers %s' % (repr(self), end_p))
         return end_p
 
-    def add_piper(self, piper, create=True, xtra=None):
+    def add_piper(self, piper, xtra=None, create=True):
         """
         Adds a *Piper* to the *Dagger*, only if the *Piper* is not already in 
         a *Node*. Optionally creates a new *Piper* if the piper argument is 
@@ -439,37 +437,6 @@ class Dagger(Graph):
             self.del_pipe(pipe * args, **kwargs)
 
 
-# imap call signature
-I_SIG = '    %s = IMap(worker_type="%s", worker_num=%s, stride=%s, buffer=%s, ' + \
-                  'ordered =%s, skip =%s, name ="%s")\n'
-
-# piper call signature
-P_SIG = '    %s = Piper(%s, parallel=%s, consume=%s, produce=%s, spawn=%s, ' + \
-                            'produce_from_sequence=%s, timeout=%s, ' + \
-                            'cmp=%s, ornament=%s, debug=%s, name="%s", ' + \
-                            'track=%s)\n'
-# worker call signature
-W_SIG = 'Worker((%s,), %s, %s)'
-# list signature
-L_SIG = '(%s, %s)'
-# papy pipeline source-file layout
-P_LAY = \
-    'from papy import *' + '\n' + \
-    'from IMap import IMap' + '\n\n' + \
-    '%s' + '\n' + \
-    '%s' + '\n\n' + \
-    'def pipeline():' + '\n' + \
-             '%s' + '\n\n' + \
-             '%s' + '\n\n' + \
-    '    ' + 'pipers = %s' + '\n' + \
-    '    ' + 'xtras = %s' + '\n' + \
-    '    ' + 'pipes  = %s' + '\n' + \
-    '    ' + 'return Dagger(pipers =pipers, pipes =pipes, xtras =xtras)' + '\n\n' + \
-    'if __name__ == "__main__":' + '\n' + \
-    '    ' + 'pipeline()' + '\n' + \
-    '' + '\n'
-
-
 class Plumber(Dagger):
     """
     The *Plumber* is a subclass of *Dagger* and *Graph* with added run-time 
@@ -520,7 +487,7 @@ class Plumber(Dagger):
                 finish(is_stopping())
                 break
 
-    def __init__(self, dagger=None, logger_options=(), **kwargs):
+    def __init__(self, logger_options=(), **kwargs):
         self._is_stopping = Event()
         self._is_finished = Event()
 
@@ -530,14 +497,13 @@ class Plumber(Dagger):
         self.stats['start_time'] = None
         self.stats['run_time'] = None
 
-        #TODO: setup logging within Plumber.
         logger.start_logger(*logger_options)
         self.log = getLogger('papy')
 
         # init
         #TODO: check if this works with and the stats attributes are correctly
         # set for a predefined dagger.
-        dict.__init__((dagger or self), **kwargs)
+        Dagger.__init__(self, **kwargs)
 
     def _code(self):
         """
@@ -605,7 +571,9 @@ class Plumber(Dagger):
         """
         namespace = {}
         execfile(filename, namespace)
-        self.__init__(dagger=namespace['pipeline']())
+        pipers, xtras, pipes = namespace['pipeline']()
+        self.add_pipers(pipers, xtras)
+        self.add_pipes(pipes)
 
     def save(self, filename):
         """
