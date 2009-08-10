@@ -339,6 +339,7 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         # what did we click
         self.lasttags = self.gettags(CURRENT)
 
+
     def _create_piper_graphics(self, Node):
         x = Node.xtra['x']
         y = Node.xtra['y']
@@ -347,7 +348,7 @@ class GraphCanvas(Pmw.ScrolledCanvas):
 
         status = Node.xtra.get('status') or O['node_status']
         color = Node.xtra.get('color') or O['node_color']
-        if Node is self.last_piper_Node[1]:
+        if Node is self.current_piper_Node[1]:
             self.create_oval(x - 16, y - 16, x + 16, y + 16, \
                              fill=O['node_select'], \
                              outline=O['node_select'], \
@@ -368,8 +369,8 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         print tag
         self.delete("%s&&%s&&%s" % (tag[0], tag[1], tag[2]))
 
-        if Node1 is self.last_pipe_Node_pipe[1][0] and \
-           Node2 is self.last_pipe_Node_pipe[1][1]:
+        if Node1 is self.current_pipe_Node_pipe[1][0] and \
+           Node2 is self.current_pipe_Node_pipe[1][1]:
             self.create_line(*xy1 + xy2, fill='red', \
                                          width=3, \
                                          arrow=LAST,
@@ -394,6 +395,26 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         for Node_pipe in Node_pipes:
             self._create_pipe_graphics(*Node_pipe)
 
+    def _reselect(self, current_piper_Node, current_pipe_Node_pipe):
+        self.previous_piper_Node = self.current_piper_Node
+        self.previous_pipe_Node_pipe = self.current_pipe_Node_pipe
+        self.current_piper_Node = current_piper_Node
+        self.current_pipe_Node_pipe = current_pipe_Node_pipe
+        current_Node = self.current_piper_Node[1]
+        current_Node_pipe = self.current_pipe_Node_pipe[1]
+        previous_Node = self.previous_piper_Node[1]
+        previous_Node_pipe = self.previous_pipe_Node_pipe[1]
+        # 1. deemphasize previous Node or Node pipe
+        if previous_Node is not None:
+            self._create_piper_graphics(previous_Node)
+        if previous_Node_pipe != (None, None):
+            self._create_pipe_graphics(*previous_Node_pipe)
+        # 2. emphasize current Node or Node pipe
+        if current_Node is not None:
+            self._create_piper_graphics(current_Node)
+        if current_Node_pipe != (None, None):
+            self._create_pipe_graphics(*current_Node_pipe)
+
     def _update_canvas(self):
         # un-clutter
         self.canvas_menu.unpost()
@@ -417,24 +438,24 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         # position of the last click
         self.lastxy = (0, 0)
         self.lasttags = []
-        self.connecting = False
-        self.dragging = False
-        self.constructed_pipe = None
         # canvas 'objects'
         self.tag_to_piper = {}
         self.tag_to_Node = {}
+        self.tag_to_pipe = {}
         self.tag_to_Node_pipe = {}
-        self.last_piper_Node = (None, None)
-        self.last_pipe_Node_pipe = ((None, None), (None, None))
+        self.current_piper_Node = (None, None)
+        self.current_pipe_Node_pipe = ((None, None), (None, None))
+        self.previous_piper_Node = (None, None)
+        self.previous_pipe_Node_pipe = ((None, None), (None, None))
         # button bindings 
-        self.canvas.bind("<Button-1>", self.mouse1_down)
+        self.canvas.bind("<Button-1>", self.mouse_down)
         self.canvas.bind("<B1-Motion>", self.mouse1_drag)
         self.canvas.bind("<ButtonRelease-1>", self.mouse1_up)
-        self.canvas.bind("<Button-3>", self.mouse3_down)
+        self.canvas.bind("<Button-3>", self.mouse_down)
         self.canvas.bind("<B3-Motion>", self.mouse3_drag)
         self.canvas.bind("<ButtonRelease-3>", self.mouse3_up)
         # MacOSX compability
-        self.canvas.bind("<Control-Button-1>", self.mouse3_down)
+        self.canvas.bind("<Control-Button-1>", self.mouse_down)
         self.canvas.bind("<Control-B1-Motion>", self.mouse3_drag)
         self.canvas.bind("<Control-ButtonRelease-1>", self.mouse3_up)
         # keyboard
@@ -494,6 +515,7 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         # create graphics
         self._create_pipe_graphics(Node1, Node2)
         # update mappings, lasttag
+        self.tag_to_pipe[tag] = (piper1, piper2)
         self.tag_to_Node_pipe[tag] = (Node1, Node2)
         self.lasttags = tag
 
@@ -501,7 +523,7 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         tag = tag or self.lasttags
         if not tag:
             return None
-        piper, Node = self.last_piper_Node
+        piper, Node = self.current_piper_Node
         if not piper:
             return None
         tag = tag[:2]
@@ -512,10 +534,11 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         self.tag_to_Node.pop(tag)
         for tag, Node_pipe in self.tag_to_Node_pipe.items():
             if Node in Node_pipe:
+                self.tag_to_pipe.pop(tag)
                 self.tag_to_Node_pipe.pop(tag)
         # clean lasttag
         self.lasttags = None
-        self.last_piper_Node = (None, None)
+        self.current_piper_Node = (None, None)
 
         return piper
 
@@ -528,6 +551,7 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         self.delete("%s&&%s&&%s" % tag)
         # delete from mapping
         self.tag_to_Node_pipe.pop(tag)
+        self.tag_to_pipe.pop(tag)
         piper1 = self.tag_to_piper[('piper', tag[1])]
         piper2 = self.tag_to_piper[('piper', tag[2])]
         self.lasttags = None
@@ -535,68 +559,38 @@ class GraphCanvas(Pmw.ScrolledCanvas):
 
     # methods for mouse events
 
-    def mouse1_down(self, event):
+    def mouse_down(self, event):
         self._last_click(event)
+
         if self.lasttags and self.lasttags[0] == 'piper':
-            # left click on a piper
-            # 1. get previous and current Node and Node pipe
-            previous_Node = self.last_piper_Node[1]
-            previous_Node_pipe = self.last_pipe_Node_pipe[1]
+            # left click on a piper -> select piper
             current_tag = self.lasttags[:2]
-            current_Node = self.tag_to_Node[current_tag]
-            current_piper = self.tag_to_piper[current_tag]
-            # 2. change last Node and Node pipe
-            self.last_piper_Node = current_piper, current_Node
-            self.last_pipe_Node_pipe = ((None, None), (None, None))
-            # 3. deemphasize previous Node and Node pipe
-            if previous_Node is not None:
-                self._create_piper_graphics(previous_Node)
-            if previous_Node_pipe != (None, None):
-                self._create_pipe_graphics(*previous_Node_pipe)
-            # emphasize current Node
-            self._create_piper_graphics(current_Node) # emphasize
-            self.dragging = True
+            current_piper_Node = self.tag_to_piper[current_tag], \
+                                 self.tag_to_Node[current_tag]
+            self._reselect(current_piper_Node, ((None, None), (None, None)))
 
-        if self.lasttags and self.lasttags[0] == 'pipe':
-            # left click on a pipe
-            # 1. get previous and current Node and Node pipe
-            previous_Node = self.last_piper_Node[1]
-            previous_Node_pipe = self.last_pipe_Node_pipe[1]
+        elif self.lasttags and self.lasttags[0] == 'pipe':
+            # left click on a pipe -> select pipe
             current_tag = self.lasttags[:3]
-            current_pipe = self.tag_to_Node_pipe[current_tag]
+            current_pipe = self.tag_to_piper[('piper', current_tag[1])], \
+                           self.tag_to_piper[('piper', current_tag[2])]
             current_Node_pipe = self.tag_to_Node_pipe[current_tag]
-            # 2. change last Node and Node pipe
-            self.last_piper_Node = (None, None)
-            self.last_pipe_Node_pipe = current_pipe, current_Node_pipe
-            # 3. deemphasize previous Node and Node pipe
-            if previous_Node is not None:
-                self._create_piper_graphics(previous_Node)
-            if previous_Node_pipe != (None, None):
-                self._create_pipe_graphics(*previous_Node_pipe) # deemphasize
-            # 3. emphasize current Node pipe
-            self._create_pipe_graphics(*current_Node_pipe) # emphasize
-
-    def mouse3_down(self, event):
-        self.constructed_pipe = None
-        self._last_click(event)
-        if self.lasttags:
-            # right click on a pipe
-            if self.lasttags[0] == 'pipe':
+            current_pipe_Node_pipe = (current_pipe, current_Node_pipe)
+            self._reselect((None, None), current_pipe_Node_pipe)
+            if event.num == 3:
                 self.pipe_menu.post(event.x_root, event.y_root)
-            # right click on a piper
-            elif self.lasttags[0] == 'piper':
-                self.connecting = True
         else:
-            # right click on the canvas
-            self.canvas_menu.post(event.x_root, event.y_root)
+            # click on the canvas -> deselect pipe or piper
+            self._reselect((None, None), ((None, None), (None, None)))
+            if event.num == 3:
+                self.canvas_menu.post(event.x_root, event.y_root)
 
     def mouse1_up(self, event):
         self.canvas_menu.unpost()
-        self.dragging = False
 
     def mouse3_up(self, event):
-        self.delete("BROKEN_PIPE")
-        if self.connecting:
+        if self.current_piper_Node[0] is not None:
+            self.delete("BROKEN_PIPE")
             # down was on a piper
             x, y = self._canvas_coords(event.x, event.y)
             item = self.find_closest(x, y)
@@ -605,19 +599,22 @@ class GraphCanvas(Pmw.ScrolledCanvas):
                 # up was on a piper
                 if self.lasttags[:2] != currtags[:2]:
                     # have different piper
-                    piper1 = self.tag_to_piper[self.lasttags[:2]]
-                    piper2 = self.tag_to_piper[currtags[:2]]
-                    self.constructed_pipe = (piper1, piper2)
-                    # add to plumber
-                    papyg.add_pipe_canvas() ## this is the call-back
-            self.connecting = False
+                    src_tag = self.lasttags[:2]
+                    dst_tag = currtags[:2]
+                    current_pipe_Node_pipe = ((self.tag_to_piper[src_tag], \
+                                               self.tag_to_piper[dst_tag]), \
+                                              (self.tag_to_Node[src_tag], \
+                                              self.tag_to_Node[dst_tag]))
+                    if papyg.add_pipe_canvas(current_pipe_Node_pipe[0]):
+                        # added succesfully
+                        self._reselect((None, None), current_pipe_Node_pipe)
 
     def mouse1_drag(self, event):
-        if self.dragging:
+        if self.current_piper_Node[0] is not None:
             self.move_piper(self.lasttags, event)
 
     def mouse3_drag(self, event):
-        if self.connecting:
+        if self.current_piper_Node[0] is not None:
             xy1 = self.lastxy
             xy2 = self._canvas_coords(event.x, event.y)
             self._create_broken_pipe_graphics(xy1, xy2)
@@ -1393,16 +1390,21 @@ class PaPyGui(object):
         return piper
 
     def add_pipe_canvas(self, pipe=None):
-        pipe = pipe or self.graph.constructed_pipe
+        if pipe:
+            piper1, piper2 = pipe
+            Node1, Node2 = self.namespace['plumber'][piper1], \
+                           self.namespace['plumber'][piper2],
+        else:
+            pipe, Node_pipe = self.graph.current_pipe_Node_pipe
+            piper1 , piper2 = pipe
+            Node1, Node2 = Node_pipe
+
         try:
             self.namespace['plumber'].add_pipe(pipe)
         except papy.DaggerError, excp:
             self._error_dialog(excp)
             return
-        piper1 = pipe[0]
-        piper2 = pipe[1]
-        Node1 = self.namespace['plumber'][piper1]
-        Node2 = self.namespace['plumber'][piper2]
+
         self.graph.add_pipe(piper1, Node1, piper2, Node2)
         return pipe
 
