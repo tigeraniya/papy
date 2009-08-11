@@ -180,13 +180,22 @@ class Graph(dict):
             node_rank[node] = max_rank
         return node_rank
 
+    def node_width(self):
+        nodes = self.postorder()
+        node_width = {}
+        for node in nodes:
+            sum_width = 0
+            for child in self[node].nodes():
+                sum_width += node_width[child]
+            node_width[node] = (sum_width or 1)
+        return node_width
+
     def rank_width(self):
         """
         Returns the width of each rank in the graph.
         """
         rank_width = defaultdict(int)
         node_rank = self.node_rank()
-        print node_rank
         for rank in node_rank.values():
             rank_width[rank] += 1
         return dict(rank_width)
