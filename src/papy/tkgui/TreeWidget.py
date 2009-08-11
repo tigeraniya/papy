@@ -44,10 +44,10 @@ def listicons(icondir=ICONDIR):
         label = Label(root, image=image, bd=1, relief="raised")
         label.grid(row=row, column=column)
         label = Label(root, text=name)
-        label.grid(row=row+1, column=column)
+        label.grid(row=row + 1, column=column)
         column = column + 1
         if column >= 10:
-            row = row+2
+            row = row + 2
             column = 0
     root.images = images
 
@@ -66,7 +66,7 @@ class TreeNode:
         #
         self.font = Button(canvas).cget("font")
 
-        
+
     def destroy(self):
         for c in self.children[:]:
             self.children.remove(c)
@@ -184,22 +184,22 @@ class TreeNode:
         self.drawicon()
         self.drawtext()
         if self.state != 'expanded':
-            return y+17
+            return y + 17
         # draw children
         if not self.children:
             sublist = self.item._GetSubList()
             if not sublist:
                 # _IsExpandable() was mistaken; that's allowed
-                return y+17
+                return y + 17
             for item in sublist:
                 child = self.__class__(self.canvas, self, item)
                 self.children.append(child)
-        cx = x+20
-        cy = y+17
+        cx = x + 20
+        cy = y + 17
         cylast = 0
         for child in self.children:
             cylast = cy
-            self.canvas.create_line(x+9, cy+7, cx, cy+7, fill="gray50")
+            self.canvas.create_line(x + 9, cy + 7, cx, cy + 7, fill="gray50")
             cy = child.draw(cx, cy)
             if child.item._IsExpandable():
                 if child.state == 'expanded':
@@ -209,11 +209,11 @@ class TreeNode:
                     iconname = "plusnode"
                     callback = child.expand
                 image = self.geticonimage(iconname)
-                id = self.canvas.create_image(x+9, cylast+7, image=image)
+                id = self.canvas.create_image(x + 9, cylast + 7, image=image)
                 # XXX This leaks bindings until canvas is deleted:
                 self.canvas.tag_bind(id, "<1>", callback)
                 self.canvas.tag_bind(id, "<Double-1>", lambda x: None)
-        id = self.canvas.create_line(x+9, y+10, x+9, cylast+7,
+        id = self.canvas.create_line(x + 9, y + 10, x + 9, cylast + 7,
             ##stipple="gray50",     # XXX Seems broken in Tk 8.0.x
             fill="gray50")
         self.canvas.tag_lower(id) # XXX .lower(id) before Python 1.5.2
@@ -234,8 +234,8 @@ class TreeNode:
         self.canvas.tag_bind(id, "<3>", self.context)
 
     def drawtext(self):
-        textx = self.x+20-1
-        texty = self.y-1
+        textx = self.x + 20 - 1
+        texty = self.y - 1
         labeltext = self.item.GetLabelText()
         if labeltext:
             id = self.canvas.create_text(textx, texty, anchor="nw",
@@ -245,7 +245,7 @@ class TreeNode:
             self.canvas.tag_bind(id, "<3>", self.context)
             x0, y0, x1, y1 = self.canvas.bbox(id)
             textx = max(x1, 200) + 10
-        text = self.item.GetText() or "<no text>"
+        text = self.item.GetText()
         try:
             self.entry
         except AttributeError:
@@ -262,16 +262,17 @@ class TreeNode:
             bgs = self.canvas.background_select
         except AttributeError:
             bgs = 'gray'
-        if self.selected:
-            self.label.configure(foreground ='#000000', background =bgs)
+        if self.selected and text:
+            self.label.configure(foreground='#000000', background=bgs)
         else:
-            self.label.configure(foreground ='#000000', background =bg)
+            self.label.configure(foreground='#000000', background=bg)
         id = self.canvas.create_window(textx, texty,
-                                       anchor="nw", window=self.label)
+                                           anchor="nw", window=self.label)
+        self.text_id = id
         self.label.bind("<1>", self.select_or_edit)
         self.label.bind("<Double-1>", self.flip)
         self.label.bind("<3>", self.context)
-        self.text_id = id
+
 
     def select_or_edit(self, event=None):
         if self.selected and self.item.IsEditable():
