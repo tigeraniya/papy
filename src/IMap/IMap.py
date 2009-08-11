@@ -876,25 +876,6 @@ def imports(modules, forgive=False):
         return f
     return wrap
 
-#    def wrap(f):
-#        if modules:
-#            setattr(f, 'imports', modules)
-#            for mods, sub in modules:
-#                    alternatives = mods.split(',')
-#                    for mod in alternatives:
-#                        try:
-#                            module = __import__(mod, fromlist=sub)
-#                            f.func_globals[mod] = module
-#                            for submod in sub:
-#                               f.func_globals[submod] = getattr(module, submod)
-#                            break
-#                        except ImportError:
-#                            if not forgive:
-#                                raise
-#                    else:
-#                        warnings.warn('module %s cannot be imported' % mod)
-
-
 
 class Weave(object):
     """

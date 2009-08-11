@@ -53,6 +53,8 @@ class RootItem(TreeItem):
     def GetIconName(self):
         return self.icon_name
 
+    def OnSelect(self):
+        self.tree.update_selected(None)
 
 class _TreeItem(TreeItem):
 
@@ -138,6 +140,7 @@ class FunctionTreeItem(TreeItem):
 
     def IsExpandable(self):
         return False
+
 
 class FuncArgsTreeItem(TreeItem):
 
@@ -253,13 +256,6 @@ class Tree(object):
         canvas.pack(fill=BOTH, expand=YES)
         self.group.pack(fill=BOTH, expand=YES)
 
-    def add_item(self, item):
-        #TreeNode(self.canvas, self.root, self.item_pyclass(item, root =self.root))
-        self.update()
-
-    def del_item(self, item):
-        self.update()
-
 
 class PipersTree(Tree):
 
@@ -295,7 +291,10 @@ class IMapsTree(Tree):
 
 
     def del_cmd(self):
-        self.dialogs['del_imap'].activate()
+        if self.selected_item:
+            deleted = self.dialogs['del_imap'].activate(self.selected_item.name)
+        else:
+            self.dialogs['error']('No IMap selected.')
 
 
 class ModulesTree(Tree):
@@ -666,7 +665,6 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         # 3. get preorder or reverse postorder?
         # 4. go from input -> output (decreasing rank order)
         # for each node determine the number of center
-
         pass
 
 
@@ -706,28 +704,32 @@ class _DeleteDialog(Pmw.Dialog):
         kwargs['defaultbutton'] = 'Cancel'
         apply(Pmw.Dialog.__init__, (self, parent), kwargs)
         self.withdraw()
+        self.deactivate()
         self.create_widgets()
 
     def create_widgets(self):
-        self.group = Pmw.Group(self.interior(), label_text='aaa')
-        self.group.pack(expand=YES, fill=BOTH)
+        self.message = Tk.Label(self.interior())
+        self.message.pack(expand=YES, fill=BOTH)
         self.wm_resizable(NO, NO)
 
-    def activate(self):
+    def activate(self, item_name):
         # super does not work with classic classes
-        self.update()
+        self.message['text'] = 'Do you want to delete: %s' % item_name
         Pmw.Dialog.activate(self)
 
-    def update(self):
-        #override this in sub-class
-        pass
+    def delete(self):
+        # e.g. papyg.imaps.del_imap
+        method = getattr(papyg, 'del_%s' % self.name)
+        # this method resolves the selected instance
+        method()
+        self.deactivate()
 
     def handler(self, result):
         if result == 'Cancel':
             self.deactivate()
-        if result == 'Delete':
-            pass
-        if result == 'Help':
+        elif result == 'Delete':
+            self.delete()
+        elif result == 'Help':
             #TODO: implement commond help
             pass
 
@@ -888,12 +890,7 @@ class IMapDialog(_CreateDialog):
 
 class DeleteIMapDialog(_DeleteDialog):
 
-    name = 'IMap'
-
-    def update(self):
-        pass
-
-
+    name = 'imap'
 
 
 class PiperDialog(_CreateDialog):
@@ -1190,30 +1187,40 @@ class WorkerDialog(_CreateDialog):
 class PaPyGui(object):
 
     def __init__(self, parent, **kwargs):
-        self.namespace = {}
-        self.dialogs = {}
-        self.make_namespace()
-        self.toplevel = parent
         # globally change fonts
+        self.toplevel = parent
         self.toplevel.option_add("*font", O['default_font'])
         self.toplevel.title(O['app_name'])
+        #        
+        self.plumber = papy.Plumber({'log_to_stream': True})
+        # create object namespace
+        self.namespace = {}
+        self.make_namespace()
+        # create modoal dialogs
+        self.dialogs = {}
         self.make_dialogs()
+        # initialize widgets
         self.make_widgets()
-        self.namespace['plumber'] = papy.Plumber()
         self.update_widgets()
 
     def make_namespace(self):
+        # make the plumber:
         self.namespace['pipeline'] = self
-        for name in ('modules', 'functions', 'workers', \
-                  'pipers', 'imaps', 'objects'):
-            self.namespace[name] = {}
-        self.namespace['papyg'] = self
+        # PaPy modules
         self.namespace['papy'] = papy
         self.namespace['IMap'] = IMap
-        # add builtin workers-functions
+        # empty mappings for objects
+        for name in ('modules', 'functions', 'workers', \
+                     'pipers', 'imaps', 'objects'):
+            self.namespace[name] = {}
+        # built in worker-functions
         for obj in papy.workers.__dict__.values():
             if inspect.ismodule(obj):
                 self.namespace['modules'][obj.__name__] = obj
+        # 
+        self.namespace['imaps']['process_imap'] = IMap.IMap(name='process_imap')
+        self.namespace['imaps']['thread_imap'] = IMap.IMap(worker_type='thread',
+                                                           name='thread_imap')
 
     def update_widgets(self):
         self.pipers.update()
@@ -1231,13 +1238,15 @@ class PaPyGui(object):
         pass
 
     def save(self, filename):
-        self.namespace['plumber'].save(filename)
+        self.plumber.save(filename)
 
     def make_dialogs(self):
         # About is a Pmw, no auto withdraw
         self.dialogs['about'] = Pmw.AboutDialog(self.toplevel, applicationname='My Application')
         self.dialogs['about'].withdraw()
-
+        # this is generated on the fly
+        self.dialogs['error'] = self._error_dialog
+        # and these are one-instance
         self.dialogs['new_imap'] = IMapDialog(self.toplevel)
         self.dialogs['del_imap'] = DeleteIMapDialog(self.toplevel)
         self.dialogs['new_worker'] = WorkerDialog(self.toplevel)
@@ -1246,7 +1255,6 @@ class PaPyGui(object):
         #self.dialogs['del_piper'] = DeletePiperDialog(self.toplevel)
         #self.dialogs['new_module'] = ModuleDialog(self.toplevel)
         #self.dialogs['del_module'] = DeletePiperDialog(self.toplevel)
-
 
     def _error_dialog(self, txt):
         # generic error dialog
@@ -1371,7 +1379,7 @@ class PaPyGui(object):
 
     def del_piper(self, piper):
         # remove from namespace
-        self.namespace['pipers'].remove(piper.name)
+        self.namespace['pipers'].pop(piper.name)
         # remove from tree
         self.pipers.del_item(piper)
         return piper
@@ -1387,7 +1395,7 @@ class PaPyGui(object):
 
     def del_worker(self, worker):
         # remove from namespace
-        self.namespace['workers'].remove(worker.name)
+        self.namespace['workers'].pop(worker.name)
         # remove from tree
         self.pipers.del_item(worker)
         return worker
@@ -1401,10 +1409,14 @@ class PaPyGui(object):
         self.imaps.update()
         return imap
 
-    def del_imap(self, imap):
+    def del_imap(self, imap=None):
         # remove from namespace
-        self.namespace['imaps'].remove(imap.name)
-        # remove from tree
+        imap = imap or self.imaps.selected_item
+        if not imap:
+            self._error_dialog('No IMap selected.')
+            return
+        self.namespace['imaps'].pop(imap.name)
+        self.imaps.update_selected(None)
         self.imaps.update()
         return imap
 
@@ -1437,17 +1449,17 @@ class PaPyGui(object):
         if not piper:
             self._error_dialog('No Piper selected.')
             return
-        elif piper in self.namespace['plumber']:
+        elif piper in self.plumber:
             self._error_dialog('Piper alread added.')
             return
-        self.namespace['plumber'].add_piper(piper, xtra)
-        self.graph.add_piper(piper, self.namespace['plumber'][piper])
+        self.plumber.add_piper(piper, xtra)
+        self.graph.add_piper(piper, self.plumber[piper])
         return piper
 
     def del_piper_canvas(self, piper=None):
         if piper:
             try:
-                Node = self.namespace['plumber'][piper]
+                Node = self.plumber[piper]
             except KeyError:
                 self._error_dialog('Unknown Piper.')
                 return
@@ -1458,20 +1470,20 @@ class PaPyGui(object):
             if piper is None:
                 self._error_dialog('No Piper selected.')
                 return
-        self.namespace['plumber'].del_piper(piper, forced=True)
+        self.plumber.del_piper(piper, forced=True)
         return piper
 
     def add_pipe_canvas(self, pipe=None):
         if pipe:
             piper1, piper2 = pipe
-            Node1, Node2 = self.namespace['plumber'][piper1], \
-                           self.namespace['plumber'][piper2],
+            Node1, Node2 = self.plumber[piper1], \
+                           self.plumber[piper2],
         else:
             pipe, Node_pipe = self.graph.current_pipe_Node_pipe
             piper1 , piper2 = pipe
             Node1, Node2 = Node_pipe
         try:
-            self.namespace['plumber'].add_pipe(pipe)
+            self.plumber.add_pipe(pipe)
         except papy.DaggerError, excp:
             self._error_dialog(excp)
             return
@@ -1481,15 +1493,15 @@ class PaPyGui(object):
     def del_pipe_canvas(self, pipe=None):
         if pipe:
             try:
-                Node1 = self.namespace['plumber'][pipe[0]]
-                Node2 = self.namespace['plumber'][pipe[1]]
+                Node1 = self.plumber[pipe[0]]
+                Node2 = self.plumber[pipe[1]]
             except KeyError:
                 self._error_dialog('Unknown Pipe.')
             tag = ('pipe', Node1.xtra['tag'], Node2.xtra['tag'])
             self.graph.del_pipe(tag)
         else:
             pipe = self.graph.del_pipe()
-        self.namespace['plumber'].del_edge((pipe[1], pipe[0]))
+        self.plumber.del_edge((pipe[1], pipe[0]))
         return pipe
 
 
@@ -1553,8 +1565,6 @@ def main():
     papyg = PaPyGui(root)
 
     def make_junk(papyg):
-        papyg.add_module(papy.workers.io)
-        papyg.add_module(papy.workers.core)
         from papy.workers.io import dump_db_item
 
 
