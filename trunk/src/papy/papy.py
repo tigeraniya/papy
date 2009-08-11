@@ -487,7 +487,7 @@ class Plumber(Dagger):
                 finish(is_stopping())
                 break
 
-    def __init__(self, logger_options=(), **kwargs):
+    def __init__(self, logger_options={}, **kwargs):
         self._is_stopping = Event()
         self._is_finished = Event()
 
@@ -497,7 +497,7 @@ class Plumber(Dagger):
         self.stats['start_time'] = None
         self.stats['run_time'] = None
 
-        logger.start_logger(*logger_options)
+        logger.start_logger(**logger_options)
         self.log = getLogger('papy')
 
         # init
