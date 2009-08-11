@@ -227,6 +227,12 @@ class test_Graph(unittest.TestCase):
         self.graph.add_edges(edges)
         assert self.graph.node_rank() == {1: 5, 2: 4, 3: 3, 4: 2, 5: 1, 6: 0}
 
+    def test_node_width1(self):
+        edges = [(1, 2), (1, 3), (1, 4), (2, 5), (3, 5), (3, 6), \
+                 (2, 7), (4, 7), (5, 7), (6, 7)]
+        self.graph.add_edges(edges)
+        print self.graph.node_width()
+
     def test_rank_width1(self):
         edges = [(1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (1, 7), (7, 6)]
         self.graph.add_edges(edges)
@@ -1501,10 +1507,8 @@ class test_Plumber(GeneratorTest):
         self.plum.add_piper(pr)
         self.plum.add_pipe((self.mul, self.pwr))
         self.plum.save('test.py')
-        print self.plum
         self.plum2 = Plumber()
         self.plum2.load('test.py')
-        print self.plum2
 
     def test_pluge1(self):
         #imap

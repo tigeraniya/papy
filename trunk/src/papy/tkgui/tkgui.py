@@ -1,6 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-""" The PaPy gui written in Tkinter using Pmw.
+#TODO: shell - up/down history
+#TODO: shell - restart thread
+#TODO: status bar - make it useful or drop it
+#TODO: rename data -> objects (this requires a bit of a different approach?)
+#TODO: fix create IMap
+
+
+"""
+The PaPy gui written in Tkinter using Pmw.
 """
 # PaPy/IMap imports
 import papy
@@ -23,17 +31,18 @@ from ShellWidget import PythonShell
 
 class RootItem(TreeItem):
 
-    def __init__(self, items, item_pyclass, tree, icon_name=None):
+    def __init__(self, items, item_pyclass, tree, icon_name=None, top_name=None):
         self.items = items
         self.item_pyclass = item_pyclass
         self.tree = tree
         self.icon_name = icon_name
+        self.top_name = top_name or " "
 
     def GetLabelText(self):
-        return "Name"
+        return self.top_name
 
     def GetText(self):
-        return "Value"
+        return self.top_name
 
     def IsExpandable(self):
         return True
@@ -75,6 +84,7 @@ class _TreeItem(TreeItem):
     def GetSubItems(self):
         return self.subitems
 
+
 class AttributeTreeItem(TreeItem):
 
     def __init__(self, item, attr):
@@ -110,6 +120,24 @@ class AttributeTreeItem(TreeItem):
     def IsEditable(self):
         return False
 
+
+class FunctionTreeItem(TreeItem):
+
+    def __init__(self, item, func):
+        self.item = func
+        self.func = func
+
+    def GetIconName(self):
+        return 'python'
+
+    def GetSelectedIconName(self):
+        return 'python'
+
+    def GetText(self):
+        return self.func.__name__
+
+    def IsExpandable(self):
+        return False
 
 class FuncArgsTreeItem(TreeItem):
 
@@ -149,6 +177,7 @@ class IMapTreeItem(_TreeItem):
              'stride', 'buffer', 'ordered', 'skip')
     subclass = AttributeTreeItem
 
+
 class PiperTreeItem(_TreeItem):
 
     subitems = ('worker', 'IMap', 'consume', 'produce', 'spawn', 'timeout', \
@@ -161,17 +190,21 @@ class WorkerTreeItem(_TreeItem):
     def GetSubList(self):
         return [FuncArgsTreeItem(self, f, a) for f, a in zip(self.item.task, self.item.args)]
 
+
 class ModuleTreeItem(_TreeItem):
 
     def get_functions(self):
-        """ Returns a list of function from a 
         """
-        fs = [v for v in self.item.__dict__.values if inspect.isfunction(v)]
+        Returns a list of function from a 
+        """
+        fs = [v for v in self.item.__dict__.values() if inspect.isfunction(v)]
         return fs
 
+    def GetText(self):
+        return self.item.__name__
 
-#   def GetSubList(self):
-#        return [FunctionTreeItem(self, f) for f in self.get_functions()]
+    def GetSubList(self):
+        return [FunctionTreeItem(self, f) for f in self.get_functions()]
 
 
 class Tree(object):
@@ -203,8 +236,6 @@ class Tree(object):
     def make_widgets(self):
         self.frame = Tk.Frame(self.parent)
 
-
-
         self.buttons = Pmw.ButtonBox(self.frame, padx=0, pady=0)
         self.buttons.add(self.new_text, command=self.new_cmd)
         self.buttons.add(self.del_text, command=self.del_cmd)
@@ -218,14 +249,6 @@ class Tree(object):
         self.buttons.pack(side=BOTTOM, anchor=W)
         self.root = TreeNode(self.canvas, None, \
         self.root_pyclass(self.items, self.item_pyclass, self, O[self.name + '_root_icon']))
-
-        # this patches TreeNode with icons for the specific tree.
-        # icondir = os.path.join(os.path.dirname(__file__), 'icons', self.name + 'Tree')
-        # icons = os.listdir(icondir)
-        # for icon in (i for i in icons if i.endswith('.gif')):
-        #    image = Tk.PhotoImage(master =self.canvas,\
-        #                            file =os.path.join(icondir, icon))
-        #    self.root.iconimages[icon.split('.')[0]] = image
 
         canvas.pack(fill=BOTH, expand=YES)
         self.group.pack(fill=BOTH, expand=YES)
@@ -338,7 +361,6 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         self.lastxy = self._canvas_coords(event.x, event.y)
         # what did we click
         self.lasttags = self.gettags(CURRENT)
-
 
     def _create_piper_graphics(self, Node):
         x = Node.xtra['x']
@@ -476,22 +498,6 @@ class GraphCanvas(Pmw.ScrolledCanvas):
 
     # methods modifying the contents of the canvas
 
-    def move_piper(self, tag, event):
-        # get Node
-        Node = self.tag_to_Node[tag[:2]]
-        # delete all pipes of this piper
-        self.delete("%s&&%s" % ('pipe', tag[1]))
-        # move piper
-        currxy = self._canvas_coords(event.x, event.y)
-        dx, dy = currxy[0] - Node.xtra['x'], \
-                 currxy[1] - Node.xtra['y'],
-        self.move("%s&&%s" % tag[:2], dx, dy)
-        # update Node
-        Node.xtra['x'] += dx
-        Node.xtra['y'] += dy
-        # re-draw affected pipes
-        self._redraw_pipes(Node)
-
     def add_piper(self, piper, Node):
         # create tag
         tag = ("piper", "n%s" % id(piper))
@@ -611,7 +617,21 @@ class GraphCanvas(Pmw.ScrolledCanvas):
 
     def mouse1_drag(self, event):
         if self.current_piper_Node[0] is not None:
-            self.move_piper(self.lasttags, event)
+            tag = self.lasttags[:2]
+            # get Node
+            Node = self.tag_to_Node[tag]
+            # delete all pipes of this piper
+            self.delete("%s&&%s" % ('pipe', tag[1]))
+            # move piper
+            currxy = self._canvas_coords(event.x, event.y)
+            dx, dy = currxy[0] - Node.xtra['x'], \
+                     currxy[1] - Node.xtra['y'],
+            self.move("%s&&%s" % tag, dx, dy)
+            # update Node
+            Node.xtra['x'] += dx
+            Node.xtra['y'] += dy
+            # re-draw affected pipes
+            self._redraw_pipes(Node)
 
     def mouse3_drag(self, event):
         if self.current_piper_Node[0] is not None:
@@ -682,13 +702,14 @@ class _DeleteDialog(Pmw.Dialog):
     def __init__(self, parent, **kwargs):
         kwargs['buttons'] = ('Delete', 'Cancel', 'Help')
         kwargs['title'] = 'Delete PaPy %s' % self.name.capitalize()
-        kwargs['command'] = self.delete
+        kwargs['command'] = self.handler
         kwargs['defaultbutton'] = 'Cancel'
         apply(Pmw.Dialog.__init__, (self, parent), kwargs)
+        self.withdraw()
         self.create_widgets()
 
     def create_widgets(self):
-        self.group = Pmw.Group(self.interior())
+        self.group = Pmw.Group(self.interior(), label_text='aaa')
         self.group.pack(expand=YES, fill=BOTH)
         self.wm_resizable(NO, NO)
 
@@ -698,10 +719,17 @@ class _DeleteDialog(Pmw.Dialog):
         Pmw.Dialog.activate(self)
 
     def update(self):
+        #override this in sub-class
         pass
 
-    def delete(self):
-        pass
+    def handler(self, result):
+        if result == 'Cancel':
+            self.deactivate()
+        if result == 'Delete':
+            pass
+        if result == 'Help':
+            #TODO: implement commond help
+            pass
 
 
 class _CreateDialog(Pmw.Dialog):
@@ -802,6 +830,7 @@ class IMapDialog(_CreateDialog):
         for (i, name), entry in self.named_entries:
             value = entry.getvalue()
             ns = papyg.namespace
+            print repr(value)
             if value and value != self.defaults[(i, name)]:
                 if name == 'name':
                     kwargs['name'] = value
@@ -809,9 +838,12 @@ class IMapDialog(_CreateDialog):
                     kwargs['worker_type'] = value[0]
                 elif name == 'worker_remote':
                     kwargs['worker_remote'] = eval(value)
+                elif name in ('worker_num', 'stride', 'buffer'):
+                    kwargs[name] = int(value)
                 elif name == 'misc':
-                    for arg_true in name:
+                    for arg_true in value:
                         kwargs[arg_true] = True
+        print kwargs
         papyg.add_imap(**kwargs)
 
 
@@ -836,9 +868,13 @@ class IMapDialog(_CreateDialog):
 
         for a in ('worker_num', 'stride', 'buffer'):
             label = a.capitalize() + ':' if a != 'worker_num' else 'Number:'
-            setattr(self, a, Pmw.Counter(self.group.interior(), \
-                                label_text=label, \
-		                        labelpos='w'))
+            setattr(self, a, Pmw.Counter(self.group.interior(),
+                                label_text=label,
+		                        labelpos='w',
+                                entryfield_validate={'validator' : 'integer',
+                                                     'min' : 0,
+                                                     'max' : 99,
+                                                     'minstrict' : 0}))
 
         self.misc = Pmw.RadioSelect(self.group.interior(),
                         buttontype='checkbutton',
@@ -848,6 +884,16 @@ class IMapDialog(_CreateDialog):
                         hull_borderwidth=0)
         self.misc.add('ordered')
         self.misc.add('skip')
+
+
+class DeleteIMapDialog(_DeleteDialog):
+
+    name = 'IMap'
+
+    def update(self):
+        pass
+
+
 
 
 class PiperDialog(_CreateDialog):
@@ -955,12 +1001,15 @@ class WorkerDialog(_CreateDialog):
 
     def _create(self):
         objects = papyg.namespace['objects']
-        functions = papyg.namespace['functions']
+        modules = papyg.namespace['modules']
         funcs = []
         kwargs = []
         func_names = self.funcs.get()
         for index, fn in enumerate(func_names):
-            f = functions[fn]
+            parts = fn.split('.')
+            func_name = parts.pop()
+            module_name = '.'.join(parts)
+            f = getattr(modules[module_name], func_name)
             funcs.append(f)
             fkwargs = {}
             for an in inspect.getargspec(f).args:
@@ -984,7 +1033,7 @@ class WorkerDialog(_CreateDialog):
                     raise ValueError('XXX')
                 fkwargs[an] = value
             kwargs.append(fkwargs)
-        papyg.add_worker(funcs, kwargs=kwargs)
+        papyg.add_worker(functions=funcs, kwargs=kwargs)
 
 
     def add_func(self):
@@ -1024,8 +1073,12 @@ class WorkerDialog(_CreateDialog):
             index = int(self.funcs.curselection()[0]) # current function index
         except IndexError:
             return
-        func_name = self.funcs.getvalue()[0]      # current function name 
-        func = papyg.namespace['functions'][func_name] # the real function
+        #func_name = self.funcs.getvalue()[0]      # current function name 
+        #func = papyg.namespace['functions'][func_name] # the real function
+        parts = self.funcs.getvalue()[0].split('.')
+        func_name = parts.pop()
+        module_name = '.'.join(parts)
+        func = getattr(papyg.namespace['modules'][module_name], func_name)
 
         # get arguments and defaults
         arg_names = list(inspect.getargspec(func).args) # argument names
@@ -1124,7 +1177,14 @@ class WorkerDialog(_CreateDialog):
 
     def update_entries(self):
         # HARD CODED locations
-        self.cfunc.setlist(papyg.namespace['functions'].keys())
+        func_names = []
+        for mod_name, mod in papyg.namespace['modules'].items():
+            for obj_name, obj in mod.__dict__.items():
+                if inspect.isfunction(obj) or inspect.isbuiltin(obj):
+                    # obj is a function
+                    func_name = ".".join([mod_name, obj_name])
+                    func_names.append(func_name)
+        self.cfunc.setlist(func_names)
 
 
 class PaPyGui(object):
@@ -1140,6 +1200,7 @@ class PaPyGui(object):
         self.make_dialogs()
         self.make_widgets()
         self.namespace['plumber'] = papy.Plumber()
+        self.update_widgets()
 
     def make_namespace(self):
         self.namespace['pipeline'] = self
@@ -1149,6 +1210,16 @@ class PaPyGui(object):
         self.namespace['papyg'] = self
         self.namespace['papy'] = papy
         self.namespace['IMap'] = IMap
+        # add builtin workers-functions
+        for obj in papy.workers.__dict__.values():
+            if inspect.ismodule(obj):
+                self.namespace['modules'][obj.__name__] = obj
+
+    def update_widgets(self):
+        self.pipers.update()
+        self.workers.update()
+        self.imaps.update()
+        self.modules.update()
 
     def load(self, filename):
         #1. add filename as module
@@ -1166,9 +1237,16 @@ class PaPyGui(object):
         # About is a Pmw, no auto withdraw
         self.dialogs['about'] = Pmw.AboutDialog(self.toplevel, applicationname='My Application')
         self.dialogs['about'].withdraw()
-        self.dialogs['new_piper'] = PiperDialog(self.toplevel)
+
         self.dialogs['new_imap'] = IMapDialog(self.toplevel)
+        self.dialogs['del_imap'] = DeleteIMapDialog(self.toplevel)
         self.dialogs['new_worker'] = WorkerDialog(self.toplevel)
+        #self.dialogs['del_worker'] = DeleteWorkerDialog(self.toplevel)
+        self.dialogs['new_piper'] = PiperDialog(self.toplevel)
+        #self.dialogs['del_piper'] = DeletePiperDialog(self.toplevel)
+        #self.dialogs['new_module'] = ModuleDialog(self.toplevel)
+        #self.dialogs['del_module'] = DeletePiperDialog(self.toplevel)
+
 
     def _error_dialog(self, txt):
         # generic error dialog
@@ -1197,7 +1275,7 @@ class PaPyGui(object):
         self.lr.add(self.r, stretch='always')
 
         # pipeline & code, shell & logging
-        self.pipeline = NoteBook(self.r, ['Pipeline', 'Functions', 'IMaps', 'Data'])
+        self.pipeline = NoteBook(self.r, ['Pipeline', 'Modules', 'IMaps', 'Data'])
         self.io = NoteBook(self.r, ['Shell', 'Logging'])
 
         # pipers
@@ -1223,16 +1301,17 @@ class PaPyGui(object):
         self.graph.grid(row=0, column=1, sticky=N + E + W + S)
 
         # fucntions
-        functions_ = self.pipeline.page('Functions')
-        self.modules = ModulesTree(functions_, self.namespace['modules'],
+        modules_ = self.pipeline.page('Modules')
+        self.modules = ModulesTree(modules_, self.namespace['modules'],
                                                             self.dialogs)
-        self.function_text = Pmw.ScrolledText(functions_,
+        #self.modules.update()
+        self.function_text = Pmw.ScrolledText(modules_,
                                             labelpos=N + W,
                                             text_padx=O['Code_font'][1] // 2, # half-font
                                             text_pady=O['Code_font'][1] // 2,
-                                            label_text='Module code')
-        functions_.grid_rowconfigure(0, weight=1)
-        functions_.grid_columnconfigure(1, weight=1)
+                                            label_text='Function code')
+        modules_.grid_rowconfigure(0, weight=1)
+        modules_.grid_columnconfigure(1, weight=1)
         self.modules.frame.grid(row=0, column=0, sticky=N + E + W + S)
         self.function_text.grid(row=0, column=1, sticky=N + E + W + S)
 
@@ -1319,45 +1398,38 @@ class PaPyGui(object):
         # add to namespace
         self.namespace['imaps'][imap.name] = imap
         # add to tree
-        self.imaps.add_item(imap)
+        self.imaps.update()
         return imap
 
     def del_imap(self, imap):
         # remove from namespace
         self.namespace['imaps'].remove(imap.name)
         # remove from tree
-        self.imaps.del_item(imap)
+        self.imaps.update()
         return imap
-
-    def add_function(self, function=None, **kwargs):
-        #TODO: write add_function
-        if not function:
-            mod = __import__(kwargs['mod_name'], fromlist=[''])
-            func_name = kwargs['func_name']
-            function = getattr(mod, func_name)
-        else:
-            func_name = function.__name__
-        # add to namespace
-        self.namespace['functions'][func_name] = function
-        # add to tree
-        # self.functions.add_item(function)
-        return function
-
-    def del_function(self, function):
-        #TODO: write del_function
-        # remove from namespace
-        self.namespace['functions'].remove(function.__name__)
 
     def add_object(self, name, object):
         #TODO: write add_object
         self.namespace['objects'][name] = object
-
+        #self.objects.update()
         return object
 
     def del_object(self, name):
         #TODO: write del_object
         object = self.namespace['objects'].pop(name)
+        #self.objects.update()
         return object
+
+    def add_module(self, module):
+        self.namespace['modules'][module.__name__] = module
+        self.modules.update()
+        return module
+
+    def del_module(self, name):
+        #TODO: write del_module
+        module = self.namespace['modules'].pop(name)
+        self.modules.update()
+        return module
 
     def add_piper_canvas(self, piper=None, xtra=None):
         # add to GrapCanvas
@@ -1398,13 +1470,11 @@ class PaPyGui(object):
             pipe, Node_pipe = self.graph.current_pipe_Node_pipe
             piper1 , piper2 = pipe
             Node1, Node2 = Node_pipe
-
         try:
             self.namespace['plumber'].add_pipe(pipe)
         except papy.DaggerError, excp:
             self._error_dialog(excp)
             return
-
         self.graph.add_pipe(piper1, Node1, piper2, Node2)
         return pipe
 
@@ -1483,10 +1553,11 @@ def main():
     papyg = PaPyGui(root)
 
     def make_junk(papyg):
+        papyg.add_module(papy.workers.io)
+        papyg.add_module(papy.workers.core)
         from papy.workers.io import dump_db_item
-        papyg.add_function(dump_db_item)
-        papyg.add_function(mod_name='papy.workers.io', func_name='dump_item')
-        papyg.add_function(mod_name='papy.workers.io', func_name='load_item')
+
+
         imap = IMap.IMap(name='benek')
         papyg.add_imap(imap)
         papyg.add_imap(name='zenek', worker_num=3)
@@ -1494,21 +1565,19 @@ def main():
         papyg.add_object('None', None)
         papyg.add_object('False', False)
         papyg.add_object('True', True)
-        papyg.add_worker(functions=papyg.namespace['functions'].values()[0])
-        papyg.add_worker(functions=papyg.namespace['functions'].values()[1:])
         w = papy.Worker(papy.workers.io.dump_pickle_stream, name='asferoth')
         papyg.add_worker(w)
         p = papy.Piper(w, name='juhas_zmarl')
         xtra = {'x':10, 'y':20}
 
-        papyg.add_piper(p)
-        papyg.add_piper(worker=papyg.namespace['workers'].values()[0], name='a')
-        papyg.add_piper(worker=papyg.namespace['workers'].values()[1])
-        papyg.add_piper_canvas(papyg.namespace['pipers'].values()[0], xtra)
-        papyg.add_piper_canvas(papyg.namespace['pipers'].values()[1])
-        papyg.add_piper_canvas(papyg.namespace['pipers'].values()[2])
+        #papyg.add_piper(p)
+        #papyg.add_piper(worker=papyg.namespace['workers'].values()[0], name='a')
+        #papyg.add_piper(worker=papyg.namespace['workers'].values()[1])
+        #papyg.add_piper_canvas(papyg.namespace['pipers'].values()[0], xtra)
+        #papyg.add_piper_canvas(papyg.namespace['pipers'].values()[1])
+        #papyg.add_piper_canvas(papyg.namespace['pipers'].values()[2])
 
-    make_junk(papyg)
+    #make_junk(papyg)
 
     # show gui
     root.deiconify()
