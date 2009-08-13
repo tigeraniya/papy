@@ -244,7 +244,7 @@ class TreeNode:
             self.canvas.tag_bind(id, "<Double-1>", self.flip)
             self.canvas.tag_bind(id, "<3>", self.context)
             x0, y0, x1, y1 = self.canvas.bbox(id)
-            textx = max(x1, 200) + 10
+            textx = max(x1, 100) + 10
         text = self.item.GetText()
         try:
             self.entry
