@@ -5,6 +5,8 @@
 #TODO: status bar - make it useful or drop it
 #TODO: rename data -> objects (this requires a bit of a different approach?)
 #TODO: fix create IMap
+#TODO: better icons
+#TODO: write add object convenience function
 
 
 """
@@ -16,11 +18,14 @@ import IMap
 
 # Python imports
 import inspect
+import sys
+import os
 
 # Tkinter/Pmw/idlelib imports
 # watch for errors on multiprocessing/Tkinter/linux
 import Pmw
 import Tkinter as Tk
+import tkFileDialog
 #import tkMessageBox as tkm
 from Tkconstants import *
 
@@ -28,7 +33,20 @@ from Tkconstants import *
 from TreeWidget import TreeItem, TreeNode
 from ShellWidget import PythonShell
 
-
+def get_name(object, namespaces):
+    name = None
+    try:
+        name = object.name
+    except AttributeError:
+        try:
+            name = object.__name__
+        except AttributeError:
+            for namespace in namespaces:
+                for some_name, some_object in namespace.iteritems():
+                    if some_object is object:
+                        name = some_name
+                        return name
+    return name
 
 
 class RootItem(TreeItem):
@@ -59,10 +77,7 @@ class _TreeItem(TreeItem):
         self.root = root_
 
     def GetText(self):
-        try:
-            return self.item.name
-        except AttributeError:
-            return repr(self.item)
+        return get_name(self.item, (self.root.items,))
 
     def SetText(self, text):
         self.item.name = text
@@ -100,13 +115,7 @@ class AttributeTreeItem(TreeItem):
 
     def GetText(self):
         attr = getattr(self.item, self.attr.lower())
-        try:
-            return attr.name
-        except AttributeError:
-            try:
-                return attr.__name__
-            except AttributeError:
-                return repr(attr)
+        return get_name(attr, []) or repr(attr)
 
     def SetText(self, text):
         text = text.split(':')[1]
@@ -132,10 +141,7 @@ class FunctionTreeItem(TreeItem):
         return 'python'
 
     def GetText(self):
-        try:
-            return self.func.name
-        except AttributeError:
-            return self.func.__name__
+        return get_name(self.func, [])
 
     def OnSelect(self):
         self.item.root.tree.update_selected(self.func)
@@ -162,10 +168,7 @@ class FuncArgsTreeItem(TreeItem):
         return 'python'
 
     def GetLabelText(self):
-        try:
-            return self.func.name
-        except AttributeError:
-            return self.func.__name__
+        return get_name(self.func, [])
 
     def GetText(self):
         return repr(self.args)
@@ -211,17 +214,38 @@ class ModuleTreeItem(_TreeItem):
         return fs
 
     def OnSelect(self):
-        self.root.tree.update_selected(None)
+        self.root.tree.update_selected(self.item)
         papyg.function_text.clear()
-
-    def GetText(self):
-        return self.item.__name__
 
     def GetSubList(self):
         return [FunctionTreeItem(self, f) for f in self.get_functions()]
 
 
+class ObjectTreeItem(_TreeItem):
+
+    def IsExpandable(self):
+        return False
+
+    def IsEditable(self):
+        return False
+
+    def GetSubList(self):
+        pass
+
+    def GetSubItems(self):
+        pass
+
+    def GetText(self):
+        return "type:%s, object:%s" % (repr(type(self.item)), repr(self.item))
+
+    def GetLabelText(self):
+        return "name:%s" % repr(get_name(self.item, (self.root.items,)))
+
+
 class Tree(object):
+    """
+    Tree.
+    """
 
     def __init__(self, parent, items, dialogs, name, **kwargs):
         self.parent = parent
@@ -272,14 +296,17 @@ class Tree(object):
         self.dialogs['add_%s' % self.name.lower()[:-1]].activate()
 
     def del_tree(self):
-        if self.selected_item:
+        if self.selected_item is not None:
             try:
                 item_name = self.selected_item.name
             except AttributeError:
-                item_name = self.selected_item.__name__
+                try:
+                    item_name = self.selected_item.__name__
+                except AttributeError:
+                    item_name = self.selected_item
             self.dialogs['del_tree'](self.name, item_name)
         else:
-            self.dialogs['error']('No %s selected.' % self.name)
+            self.dialogs['error']('No %s selected.' % self.name[:-1])
 
 
 class MainMenuBar(Pmw.MainMenuBar):
@@ -330,12 +357,19 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         # what did we click
         self.lasttags = self.gettags(CURRENT)
 
+    def _create_object_graphics(self, obj_name, x=None, y=None):
+        tag = ('object', obj_name)
+        self.delete("%s&&%s" % (tag[0], tag[1]))
+        width = 3.0 if obj_name in self.current_obj_name_position else 1.0
+        self.create_rectangle(x - 10, y - 10, x + 10, y + 10, width=width, tags=tag)
+        self.create_text(x - 8, y, text=obj_name, fill='black', tags=tag)
+        self._update_canvas()
+
     def _create_piper_graphics(self, Node):
         x = Node.xtra['x']
         y = Node.xtra['y']
         tag = Node.xtra['tag']
         self.delete("%s&&%s" % (tag[0], tag[1]))
-
         status = Node.xtra.get('status') or O['node_status']
         color = Node.xtra.get('color') or O['node_color']
         if Node is self.current_piper_Node[1]:
@@ -384,21 +418,32 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         for Node_pipe in Node_pipes:
             self._create_pipe_graphics(*Node_pipe)
 
-    def _reselect(self, current_piper_Node, current_pipe_Node_pipe):
+    def _reselect(self, current_obj_name_position, \
+                        current_piper_Node, \
+                        current_pipe_Node_pipe):
+        # old current -> previous
+        self.previous_obj_name_position = self.current_obj_name_position
         self.previous_piper_Node = self.current_piper_Node
         self.previous_pipe_Node_pipe = self.current_pipe_Node_pipe
+        # new current -> current
+        self.current_obj_name_position = current_obj_name_position
         self.current_piper_Node = current_piper_Node
         self.current_pipe_Node_pipe = current_pipe_Node_pipe
+        #
         current_Node = self.current_piper_Node[1]
         current_Node_pipe = self.current_pipe_Node_pipe[1]
         previous_Node = self.previous_piper_Node[1]
         previous_Node_pipe = self.previous_pipe_Node_pipe[1]
-        # 1. deemphasize previous Node or Node pipe
+        # deemphasize previous object, Node or Node pipe
+        if self.previous_obj_name_position != [None, None, None]:
+            self._create_object_graphics(*self.previous_obj_name_position)
         if previous_Node is not None:
             self._create_piper_graphics(previous_Node)
         if previous_Node_pipe != (None, None):
             self._create_pipe_graphics(*previous_Node_pipe)
-        # 2. emphasize current Node or Node pipe
+        # emphasize current object Node or Node pipe
+        if self.current_obj_name_position != [None, None, None]:
+            self._create_object_graphics(*self.current_obj_name_position)
         if current_Node is not None:
             self._create_piper_graphics(current_Node)
         if current_Node_pipe != (None, None):
@@ -428,12 +473,15 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         self.lastxy = (0, 0)
         self.lasttags = []
         # canvas 'objects'
+        self.tag_to_obj_name_position = {}
         self.tag_to_piper = {}
         self.tag_to_Node = {}
         self.tag_to_pipe = {}
         self.tag_to_Node_pipe = {}
+        self.current_obj_name_position = [None, None, None]
         self.current_piper_Node = (None, None)
         self.current_pipe_Node_pipe = ((None, None), (None, None))
+        self.previous_obj_name_position = [None, None, None]
         self.previous_piper_Node = (None, None)
         self.previous_pipe_Node_pipe = ((None, None), (None, None))
         # button bindings 
@@ -461,9 +509,18 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         self.canvas_menu.add_command(label="add piper", command=self.menu_add_piper)
         self.canvas_menu.add_command(label="center graph", command=self._center_canvas)
         self.canvas_menu.add_command(label="align graph", command=self.align_graph)
+        # right click object
+
 
 
     # methods modifying the contents of the canvas
+
+    def add_object(self, obj_name, x=None, y=None):
+        tag = ('object', obj_name)
+        obj_name_position = [obj_name, x or 50, y or 50]
+        self.tag_to_obj_name_position[tag] = obj_name_position
+        self._create_object_graphics(*obj_name_position)
+        self.lasttags = tag
 
     def add_piper(self, piper, Node):
         # create tag
@@ -492,6 +549,23 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         self.tag_to_Node_pipe[tag] = (Node1, Node2)
         self.lasttags = tag
 
+    def del_object(self, tag=None):
+        tag = tag or self.lasttags
+        if not tag:
+            return None
+        obj_name_position = self.current_obj_name_position
+        if obj_name_position == [None, None, None]:
+            return None
+        tag = tag[:2]
+        # delete object from canvas
+        self.delete(tag[1])
+        # clean object mappings
+        self.tag_to_obj_name_position.pop(tag)
+        # clean lasttag
+        self.current_obj_name_position = [None, None, None]
+        self.lasttags = None
+        return obj_name_position[0]
+
     def del_piper(self, tag=None):
         tag = tag or self.lasttags
         if not tag:
@@ -512,7 +586,6 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         # clean lasttag
         self.lasttags = None
         self.current_piper_Node = (None, None)
-
         return piper
 
     def del_pipe(self, tag=None):
@@ -540,7 +613,9 @@ class GraphCanvas(Pmw.ScrolledCanvas):
             current_tag = self.lasttags[:2]
             current_piper_Node = self.tag_to_piper[current_tag], \
                                  self.tag_to_Node[current_tag]
-            self._reselect(current_piper_Node, ((None, None), (None, None)))
+            self._reselect([None, None, None],
+                           current_piper_Node,
+                           ((None, None), (None, None)))
 
         elif self.lasttags and self.lasttags[0] == 'pipe':
             # left click on a pipe -> select pipe
@@ -549,41 +624,71 @@ class GraphCanvas(Pmw.ScrolledCanvas):
                            self.tag_to_piper[('piper', current_tag[2])]
             current_Node_pipe = self.tag_to_Node_pipe[current_tag]
             current_pipe_Node_pipe = (current_pipe, current_Node_pipe)
-            self._reselect((None, None), current_pipe_Node_pipe)
+            self._reselect([None, None, None],
+                           (None, None),
+                           current_pipe_Node_pipe)
             if event.num == 3:
                 pipe = self.pipe_menu.post(event.x_root, event.y_root)
+        elif self.lasttags and self.lasttags[0] == 'object':
+            current_tag = self.lasttags[:2]
+            current_obj_name_position = self.tag_to_obj_name_position[current_tag]
+            for Node in self.tag_to_Node.itervalues():
+                if Node.xtra.get('obj_name') == current_tag[1]:
+                    Node.xtra.pop('obj_name')
+            self._reselect(current_obj_name_position,
+                           (None, None),
+                          ((None, None), (None, None)))
         else:
             # click on the canvas -> deselect pipe or piper
-            self._reselect((None, None), ((None, None), (None, None)))
+            self._reselect([None, None, None],
+                           (None, None),
+                          ((None, None), (None, None)))
             if event.num == 3:
                 self.canvas_menu.post(event.x_root, event.y_root)
 
     def mouse1_up(self, event):
+        # h
         self.canvas_menu.unpost()
 
     def mouse3_up(self, event):
-        if self.current_piper_Node[0] is not None:
-            self.delete("BROKEN_PIPE")
-            # down was on a piper
-            x, y = self._canvas_coords(event.x, event.y)
-            item = self.find_closest(x, y)
-            currtags = self.gettags(item)
-            if currtags and currtags[0] == 'piper':
-                # up was on a piper
-                if self.lasttags[:2] != currtags[:2]:
-                    # have different piper
-                    src_tag = self.lasttags[:2]
-                    dst_tag = currtags[:2]
-                    current_pipe_Node_pipe = ((self.tag_to_piper[src_tag], \
-                                               self.tag_to_piper[dst_tag]), \
-                                              (self.tag_to_Node[src_tag], \
-                                              self.tag_to_Node[dst_tag]))
-                    if papyg.add_pipe_canvas(current_pipe_Node_pipe[0]):
-                        # added succesfully
-                        self._reselect((None, None), current_pipe_Node_pipe)
+        self.delete("BROKEN_PIPE")
+        x, y = self._canvas_coords(event.x, event.y)
+        item = self.find_closest(x, y)
+        currtags = self.gettags(item)
+        if (self.current_piper_Node[0] is not None) and \
+           (currtags and currtags[0] == 'piper'):
+            # down and up was on a piper
+            if self.lasttags[:2] != currtags[:2]:
+                # have different piper - -> make pipe
+                src_tag = self.lasttags[:2]
+                dst_tag = currtags[:2]
+                current_pipe_Node_pipe = ((self.tag_to_piper[src_tag], \
+                                           self.tag_to_piper[dst_tag]), \
+                                          (self.tag_to_Node[src_tag], \
+                                          self.tag_to_Node[dst_tag]))
+                if papyg.add_pipe_canvas(current_pipe_Node_pipe[0]):
+                    # added succesfully
+                    self._reselect([None, None, None],
+                                   (None, None),
+                                   current_pipe_Node_pipe)
+
+        elif (self.current_obj_name_position[0] is not None) and \
+             (currtags and currtags[0] == 'piper'):\
+            # down on object up on a piper
+            src_tag = self.lasttags[:2]
+            dst_tag = currtags[:2]
+            Node = self.tag_to_Node[dst_tag]
+            self.current_obj_name_position[1] = Node.xtra['x'] + 20
+            self.current_obj_name_position[2] = Node.xtra['y'] + 20
+            Node.xtra['obj_name'] = self.current_obj_name_position[0]
+            self._reselect(self.current_obj_name_position, \
+                          (None, None), \
+                          ((None, None), (None, None)))
+
 
     def mouse1_drag(self, event):
         if self.current_piper_Node[0] is not None:
+            # moving piper
             tag = self.lasttags[:2]
             # get Node
             Node = self.tag_to_Node[tag]
@@ -593,15 +698,37 @@ class GraphCanvas(Pmw.ScrolledCanvas):
             currxy = self._canvas_coords(event.x, event.y)
             dx, dy = currxy[0] - Node.xtra['x'], \
                      currxy[1] - Node.xtra['y'],
-            self.move("%s&&%s" % tag, dx, dy)
+            if Node.xtra.get('obj_name'):
+                obj_name = Node.xtra['obj_name']
+                tag = tag + (obj_name,)
+                self.move("(%s&&%s)||%s" % tag , dx, dy)
+                self.tag_to_obj_name_position[('object', obj_name)][1] = currxy[0] + 20
+                self.tag_to_obj_name_position[('object', obj_name)][2] = currxy[1] + 20
+            else:
+                self.move("%s&&%s" % tag , dx, dy)
             # update Node
-            Node.xtra['x'] += dx
-            Node.xtra['y'] += dy
+            Node.xtra['x'] = currxy[0]
+            Node.xtra['y'] = currxy[1]
+
             # re-draw affected pipes
             self._redraw_pipes(Node)
+        elif self.current_obj_name_position[0] is not None:
+            # moving object
+            tag = self.lasttags[:2]
+            currxy = self._canvas_coords(event.x, event.y)
+            dx, dy = currxy[0] - self.current_obj_name_position[1], \
+                     currxy[1] - self.current_obj_name_position[2]
+            self.move("%s&&%s" % tag, dx, dy)
+            self.tag_to_obj_name_position[tag][1] = currxy[0]
+            self.tag_to_obj_name_position[tag][2] = currxy[1]
+            self.current_obj_name_position = self.tag_to_obj_name_position[tag]
+
+
 
     def mouse3_drag(self, event):
-        if self.current_piper_Node[0] is not None:
+        if self.current_piper_Node[0] is not None or \
+           self.current_obj_name_position[0] is not None:
+            # started on a Piper or Object
             xy1 = self.lastxy
             xy2 = self._canvas_coords(event.x, event.y)
             self._create_broken_pipe_graphics(xy1, xy2)
@@ -650,6 +777,7 @@ class NoteBook(Pmw.NoteBook):
 
 
 class ScrolledLog(Pmw.ScrolledText):
+    # this is used as a stream for ShellWidget
 
     def write(self, *args, **kwargs):
         self.appendtext(*args, **kwargs)
@@ -688,6 +816,8 @@ class _DeleteDialog(Pmw.Dialog):
                                 'Do you want to delete %s: %s' % \
                                 (name[:-1], item_name))
         self.message.pack(expand=YES, fill=BOTH)
+        self.geometry("+%d+%d" % (parent.winfo_rootx() + 250,
+                                  parent.winfo_rooty() + 250))
         self.wm_resizable(NO, NO)
 
     def handler(self, result):
@@ -712,6 +842,9 @@ class _CreateDialog(Pmw.Dialog):
         self.withdraw()
         self.parent = parent
         self.create_widgets()
+        self.geometry("+%d+%d" % (parent.winfo_rootx() + 50,
+                                  parent.winfo_rooty() + 50))
+
 
     def create_widgets(self):
         self.group = Pmw.Group(self.interior(), \
@@ -863,7 +996,7 @@ class PiperDialog(_CreateDialog):
 
     name = 'Pipers'
 
-    defaults = {(0, 'name'):None,
+    defaults = {(0, 'pname'):None,
                 (1, 'worker'):None,
                 (2, 'parallel'):None,
                 (3, 'produce'):'1',
@@ -876,7 +1009,7 @@ class PiperDialog(_CreateDialog):
 
     def create_entries(self):
 
-        self.name = Pmw.EntryField(self.group.interior(), \
+        self.pname = Pmw.EntryField(self.group.interior(), \
                                    labelpos='w', \
 		                           label_text='Name:', \
 		                           validate={'validator':'alphabetic'})
@@ -937,7 +1070,7 @@ class PiperDialog(_CreateDialog):
             value = entry.getvalue()
             ns = papyg.namespace
             if value and value != self.defaults[(i, name)]:
-                if name == 'name':
+                if name == 'pname':
                     kwargs['name'] = value
                 elif name == 'worker':
                     kwargs['worker'] = ns['workers'][value[0]]
@@ -952,7 +1085,24 @@ class PiperDialog(_CreateDialog):
                 elif name == 'runtime':
                     for arg_true in value:
                         kwargs[arg_true] = True
-        papyg.add_piper(**kwargs)
+        print kwargs
+        papyg.add_tree(self.name, **kwargs)
+
+
+class ModuleDialog(object):
+
+    name = 'Modules'
+
+    def activate(self):
+        import sys
+        print sys.path
+        abs_path = tkFileDialog.askopenfilename(filetypes=\
+                                                [("Python Files", "*.py")])
+        if abs_path:
+            papyg.add_tree(self.name, path=abs_path)
+
+
+
 
 
 class WorkerDialog(_CreateDialog):
@@ -1187,8 +1337,6 @@ class PaPyGui(object):
         self.namespace['objects']['False'] = False
         self.namespace['objects']['True'] = True
         self.namespace['objects']['None'] = None
-
-
         # built in worker-functions
         for obj in papy.workers.__dict__.values():
             if inspect.ismodule(obj):
@@ -1203,6 +1351,7 @@ class PaPyGui(object):
         self.workers.update()
         self.imaps.update()
         self.modules.update()
+        self.objects.update()
 
     def load(self, filename):
         #1. add filename as module
@@ -1227,7 +1376,7 @@ class PaPyGui(object):
         self.dialogs['add_imap'] = IMapDialog(self.toplevel)
         self.dialogs['add_worker'] = WorkerDialog(self.toplevel)
         self.dialogs['add_piper'] = PiperDialog(self.toplevel)
-        #self.dialogs['add_module'] = ModuleDialog(self.toplevel)
+        self.dialogs['add_module'] = ModuleDialog()
 
     def _delete_dialog(self, name, item_name):
         _DeleteDialog(self.toplevel, name, item_name)
@@ -1237,7 +1386,7 @@ class PaPyGui(object):
         if isinstance(txt, Exception):
             txt = txt[0]
         # used to display an error text
-        error = Pmw.MessageDialog(root, title='PaPy Panic!',
+        error = Pmw.MessageDialog(self.toplevel, title='PaPy Panic!',
                                         defaultbutton=0,
                                         message_text=txt)
         error.iconname('Simple message dialog')
@@ -1259,14 +1408,16 @@ class PaPyGui(object):
         self.lr.add(self.r, stretch='always')
 
         # pipeline & code, shell & logging
-        self.pipeline = NoteBook(self.r, ['Pipeline', 'Modules', 'IMaps', 'Data'])
+        self.pipeline = NoteBook(self.r, ['Pipeline', 'Modules', 'IMaps', \
+                                          'Workers'])
         self.io = NoteBook(self.r, ['Shell', 'Logging'])
 
         # pipers
         self.pipers = Tree(self.l, self.namespace['pipers'], self.dialogs,
                            'Pipers')
-        self.workers = Tree(self.l, self.namespace['workers'], self.dialogs,
-                            'Workers')
+
+        self.objects = Tree(self.l, self.namespace['objects'], self.dialogs,
+                            'Objects')
         # pipeline
         pipeline_ = self.pipeline.page('Pipeline')
         pipeline_.grid_rowconfigure(0, weight=1)
@@ -1276,10 +1427,10 @@ class PaPyGui(object):
         self.pipeline_buttons = Pmw.ButtonBox(pipeline_,
                                                 orient=VERTICAL,
                                                 padx=0, pady=0)
-        self.pipeline_buttons.add('Use\n->', command=self.add_piper_canvas)
-        self.pipeline_buttons.add('Pop\n<-', command=self.del_piper_canvas)
-        self.pipeline_buttons.add('Run\n|>', command=None)
-        self.pipeline_buttons.add('Stop\n[]', command=None)
+        self.pipeline_buttons.add('Add\nPiper\n->', command=self.add_piper_canvas)
+        self.pipeline_buttons.add('Del\nPiper\n<-', command=self.del_piper_canvas)
+        self.pipeline_buttons.add('Add\nObject\n->', command=self.add_object_canvas)
+        self.pipeline_buttons.add('Del\nObject\n<-', command=self.del_object_canvas)
 
         self.pipeline_buttons.grid(row=0, column=0, sticky=N)
         self.graph.grid(row=0, column=1, sticky=N + E + W + S)
@@ -1294,7 +1445,9 @@ class PaPyGui(object):
                                             labelpos=N + W,
                                             text_padx=O['Code_font'][1] // 2, # half-font
                                             text_pady=O['Code_font'][1] // 2,
-                                            label_text='Function code')
+                                            text_background=O['Code_background'],
+                                            label_text='Function code',
+                                            text_wrap=NONE)
         modules_.grid_rowconfigure(0, weight=1)
         modules_.grid_columnconfigure(1, weight=1)
         self.modules.frame.grid(row=0, column=0, sticky=N + E + W + S)
@@ -1306,6 +1459,11 @@ class PaPyGui(object):
                                self.dialogs,
                                'IMaps')
         self.imaps.frame.pack(fill=BOTH, expand=YES)
+        self.workers = Tree(self.pipeline.page('Workers'), \
+                            self.namespace['workers'], \
+                            self.dialogs,
+                            'Workers')
+        self.workers.frame.pack(fill=BOTH, expand=YES)
 
         # logging
         self.log = ScrolledLog(self.io.page('Logging'),
@@ -1329,9 +1487,9 @@ class PaPyGui(object):
 
         # packing
         self.l.add(self.pipers.frame, stretch='always')
-        self.l.add(self.workers.frame, stretch='always')
+        self.l.add(self.objects.frame, stretch='always')
         self.l.paneconfigure(self.pipers.frame, sticky=N + E + W + S)
-        self.l.paneconfigure(self.workers.frame, sticky=N + E + W + S)
+        self.l.paneconfigure(self.objects.frame, sticky=N + E + W + S)
         self.r.add(self.pipeline, stretch='always')
         self.r.add(self.io, stretch='always')
         self.r.paneconfigure(self.pipeline, sticky=N + E + W + S)
@@ -1344,7 +1502,7 @@ class PaPyGui(object):
 		                                 label_text='Status:')
         self.status_bar.pack(fill=BOTH, anchor=W)
 
-    def add_tree(self, obj_type, obj=None, **kwargs):
+    def add_tree(self, obj_type, obj=None, obj_name=None, **kwargs):
         if not obj:
             if obj_type == 'Pipers':
                 obj = papy.Piper(**kwargs)
@@ -1352,30 +1510,61 @@ class PaPyGui(object):
                 obj = papy.Worker(**kwargs)
             elif obj_type == 'IMaps':
                 obj = IMap.IMap(**kwargs)
+            elif obj_type == 'Modules':
+                dir_name = os.path.dirname(kwargs['path'])
+                mod_name = os.path.basename(kwargs['path']).split('.')[0]
+                sys.path.insert(0, dir_name)
+                obj = __import__(mod_name)
+                sys.path.remove(dir_name) # do not pollute the path.
         try:
-            obj_name = obj.name
+            obj_name = obj_name or obj.name
         except AttributeError:
             obj_name = obj.__name__
         self.namespace[obj_type.lower()][obj_name] = obj
         getattr(self, obj_type.lower()).update()
         return obj
 
-    def del_tree(self, obj_type, obj=None):
+    def del_tree(self, obj_type, obj=None, obj_name=None):
         obj_type_lower = obj_type.lower()
         obj_tree = getattr(self, obj_type_lower)
         obj_ns = self.namespace[obj_type_lower]
         obj = obj or obj_tree.selected_item
-        if not obj:
-            self._error_dialog('No % selected.' % obj_type)
+        if obj is None:
+            self._error_dialog('No %s selected.' % obj_type)
             return
         try:
-            obj_name = obj.name
+            obj_name = obj_name or obj.name
         except AttributeError:
-            obj_name = obj.__name__
+            try:
+                obj_name = obj.__name__
+            except AttributeError:
+                for name_, obj_ in self.namespace[obj_type_lower].iteritems():
+                    if obj_ is obj:
+                        obj_name = name_
         obj_ns.pop(obj_name)
         obj_tree.update_selected(None)
         obj_tree.update()
         return obj
+
+    def add_object_canvas(self, obj=None, obj_name=None):
+        obj = obj or self.objects.selected_item
+        if obj is None:
+            self._error_dialog('No Object selected.')
+            return
+        obj_name = get_name(obj, (self.namespace['objects'],))
+        if ('object', obj_name) in self.graph.tag_to_obj_name_position:
+            self._error_dialog('Object alread added.')
+            return
+        self.graph.add_object(obj_name)
+        return obj_name
+
+    def del_object_canvas(self, obj=None, obj_name=None):
+        if obj is not None:
+            obj_name = get_name(obj, (self.namespace['objects'],))
+        obj_name = self.graph.del_object(obj_name)
+        if obj_name is None:
+            self._error_dialog('No Object selected.')
+        return obj_name
 
     def add_piper_canvas(self, piper=None, xtra=None):
         # add to GrapCanvas
@@ -1438,6 +1627,11 @@ class PaPyGui(object):
         self.plumber.del_edge((pipe[1], pipe[0]))
         return pipe
 
+    def plunge_plumber(self):
+        pass
+
+    def chinkup_plumber(self):
+        pass
 
 class Options(dict):
     """ Provide options throughout the PaPy Gui application.
@@ -1454,6 +1648,7 @@ class Options(dict):
                 ('Pipers_background', 'white'),
                 ('Workers_background', 'white'),
                 ('Modules_background', 'white'),
+                ('Objects_background', 'white'),
                 ('Function_doc_background', 'white'),
                 ('Function_doc_foreground', 'gray'),
                 ('Shell_background', 'white'),
@@ -1461,10 +1656,12 @@ class Options(dict):
                 ('Shell_fontcolor', 'black'),
                 ('Shell_font', ("courier new", 9)),
                 ('Code_font', ("courier new", 9)),
+                ('Code_background', 'white'),
                 ('Pipers_root_icon', 'pipe_16'),
                 ('IMaps_root_icon', 'gear_16'),
                 ('Workers_root_icon', 'component_16'),
                 ('Modules_root_icon', 'python'),
+                ('Objects_root_icon', 'python'),
                 ('IMaps_background', 'white')
                 )
 

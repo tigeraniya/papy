@@ -798,7 +798,7 @@ class Piper(object):
         return self._iter
 
     def __repr__(self):
-        return "=%s(%s)=" % (self.worker, id(self))
+        return "%s(%s)" % (self.name, repr(self.worker))
 
     def start(self, forced=False):
         """
@@ -1117,8 +1117,7 @@ class Worker(object):
         Functions within a worker e.g. (f, g, h) are evaluated from left to 
         right i.e.: h(g(f(x))) thus their representation f>g>h.
         """
-        return self.__name__
-
+        return "%s(%s)" % (self.name, self.__name__)
 
     def __hash__(self):
         """
