@@ -199,6 +199,13 @@ class Dagger(Graph):
         for piper in postorder:
             piper.start(forced=True)
 
+    def stop(self):
+        """
+        Given the pipeline topology stops *Pipers*  in the order ...
+        """
+        #TODO: write Dagger stop.
+        pass
+
     def get_inputs(self):
         """
         Returns *Pipers* which are inputs to the pipeline i.e. have no 
@@ -650,8 +657,12 @@ class Plumber(Dagger):
         """
         Cleanly stops a running pipeline. Blocks until stopped.
         """
+        # 1. stop the plumbing thread by raising a stopiteration
+        #    on stride boundary
         self._is_stopping.set()
         self._plunger.join()
+        # 2. now stop the dagger
+        self.stop()
 
 
 class Piper(object):
@@ -906,7 +917,7 @@ class Piper(object):
         """
 
         if not hasattr(self.imap, '_started'):
-            self.log.info('Piper %s does not need to be stoped' % self)
+            self.log.info('Piper %s does not need to be stopped' % self)
         elif not self.imap._started.isSet():
             self.log.error('Piper %s has not started and cannot be stopped' % \
                            self)
