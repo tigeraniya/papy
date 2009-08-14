@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-#TODO: shell - up/down history
 #TODO: shell - restart thread
-#TODO: status bar - make it useful or drop it
-#TODO: rename data -> objects (this requires a bit of a different approach?)
+#TODO: status bar - make it useful or drop it';
 #TODO: fix create IMap
 #TODO: better icons
 #TODO: write add object convenience function
@@ -145,7 +143,9 @@ class FunctionTreeItem(TreeItem):
 
     def OnSelect(self):
         self.item.root.tree.update_selected(self.func)
+        papyg.function_text['text_state'] = NORMAL
         papyg.function_text.settext(inspect.getsource(self.func))
+        papyg.function_text['text_state'] = DISABLED
 
     def IsExpandable(self):
         return False
@@ -215,7 +215,9 @@ class ModuleTreeItem(_TreeItem):
 
     def OnSelect(self):
         self.root.tree.update_selected(self.item)
+        papyg.function_text['text_state'] = NORMAL
         papyg.function_text.clear()
+        papyg.function_text['text_state'] = DISABLED
 
     def GetSubList(self):
         return [FunctionTreeItem(self, f) for f in self.get_functions()]
@@ -347,6 +349,12 @@ class MainMenuBar(Pmw.MainMenuBar):
 
 class GraphCanvas(Pmw.ScrolledCanvas):
 
+    def _enter(self, event):
+        self.canvas['cursor'] = 'hand2'
+
+    def _leave(self, event):
+        self.canvas['cursor'] = 'arrow'
+
     def _canvas_coords(self, x, y):
         return (int(self.canvasx(x)), int(self.canvasy(y)))
 
@@ -360,9 +368,27 @@ class GraphCanvas(Pmw.ScrolledCanvas):
     def _create_object_graphics(self, obj_name, x=None, y=None):
         tag = ('object', obj_name)
         self.delete("%s&&%s" % (tag[0], tag[1]))
-        width = 3.0 if obj_name in self.current_obj_name_position else 1.0
-        self.create_rectangle(x - 10, y - 10, x + 10, y + 10, width=width, tags=tag)
-        self.create_text(x - 8, y, text=obj_name, fill='black', tags=tag)
+
+        width = O['graph_object_width']
+        awidth = O['graph_active_object_width']
+        border = O['graph_object_border']
+        aborder = O['graph_active_object_border']
+        fill = O['graph_object_fill']
+
+        width = awidth if obj_name in self.current_obj_name_position else width
+        border = aborder if obj_name in self.current_obj_name_position else border
+
+        item = self.create_text(x, y, text=obj_name, tags=tag + ('text',), state='disabled')
+        # create box
+        box = self.bbox(item)
+        box = (box[0] - 4, box[1] - 4, box[2] + 4, box[3] + 4)
+        self.create_rectangle(*box,
+                              activewidth=awidth,
+                              width=width,
+                              activeoutline=aborder,
+                              outline=border,
+                              fill=fill,
+                              tags=tag)
         self._update_canvas()
 
     def _create_piper_graphics(self, Node):
@@ -370,39 +396,86 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         y = Node.xtra['y']
         tag = Node.xtra['tag']
         self.delete("%s&&%s" % (tag[0], tag[1]))
-        status = Node.xtra.get('status') or O['node_status']
-        color = Node.xtra.get('color') or O['node_color']
-        if Node is self.current_piper_Node[1]:
-            self.create_oval(x - 16, y - 16, x + 16, y + 16, \
-                             fill=O['node_select'], \
-                             outline=O['node_select'], \
-                             tags=tag)
+        status = Node.xtra.get('status') or O['graph_node_status']
+        connected = O['graph_node_external'] if Node.xtra.get('obj_name') else O['graph_node_internal']
+        fill = Node.xtra.get('fill') or O['graph_node_fill']
+        width = O['graph_node_width']
+        awidth = O['graph_active_object_width']
+        border = O['graph_object_border']
+        aborder = O['graph_active_object_border']
 
-        self.create_oval(x - 12, y - 12, x + 12, y + 12, fill=status, tags=tag, \
-                                            activewidth=3.0, activefill="plum")
-        self.create_oval(x - 8, y - 8, x + 8, y + 8, fill=color, tags=tag, \
-                                            state='disabled', width=0.0)
-        self.create_text(x + 12, y - 17, text=Node.xtra.get('name'), \
-                                         fill='black', anchor=NW, tags=tag)
+
+        width = awidth if Node is self.current_piper_Node[1] else width
+        border = aborder if Node is self.current_piper_Node[1] else border
+
+        #pipe
+        self.create_rectangle(x - 5, y - 25, x + 5, y + 25,
+                        activewidth=awidth,
+                        width=width,
+                        activeoutline=aborder,
+                        outline=border,
+                        fill=fill,
+                        tags=tag)
+        #text
+        nm_ = self.create_text(x + 9, y - 25,
+                         text='Name: %s' % Node.xtra.get('name'),
+                         fill='black',
+                         font=O['default_font'],
+                         anchor=NW, tags=tag + ('text',))
+        nm_box = self.bbox(nm_)
+        st_ = self.create_text(x + 9, nm_box[3] + 2,
+                         text='Status:',
+                         fill='black',
+                         font=O['default_font'],
+                         anchor=NW, tags=tag + ('text',))
+        st_box = self.bbox(st_)
+        cn_ = self.create_text(x + 9, st_box[3] + 2,
+                         text='External input:',
+                         fill='black',
+                         font=O['default_font'],
+                         anchor=NW, tags=tag + ('text',))
+        cn_box = self.bbox(cn_)
+
+        x1 = st_box[2] + 2 + 2
+        y2 = st_box[3] - 2
+        y1 = st_box[1] + 2
+        x2 = y2 - y1 + x1
+        self.create_oval(x1, y1, x2, y2,
+                         fill=status,
+                         tags=tag)
+        x1 = cn_box[2] + 2 + 2
+        y2 = cn_box[3] - 2
+        y1 = cn_box[1] + 2
+        x2 = y2 - y1 + x1
+        self.create_oval(x1, y1, x2, y2,
+                         fill=connected,
+                         tags=tag)
         self._update_canvas()
 
     def _create_pipe_graphics(self, Node1, Node2):
-        xy1 = Node1.xtra['x'], Node1.xtra['y']
-        xy2 = Node2.xtra['x'], Node2.xtra['y']
+        xy1 = Node1.xtra['x'], Node1.xtra['y'] + 25
+        xy2 = Node2.xtra['x'], Node2.xtra['y'] - 25
         tag = ('pipe', Node1.xtra['tag'][1], Node2.xtra['tag'][1])
         self.delete("%s&&%s&&%s" % (tag[0], tag[1], tag[2]))
 
+
+        width = O['graph_pipe_width']
+        awidth = O['graph_active_pipe_width']
+        fill = O['graph_pipe_fill']
+        afill = O['graph_active_pipe_fill']
+
         if Node1 is self.current_pipe_Node_pipe[1][0] and \
            Node2 is self.current_pipe_Node_pipe[1][1]:
-            self.create_line(*xy1 + xy2, fill='red', \
-                                         width=3, \
-                                         arrow=LAST,
-                                         tags=tag)
-        else:
-            self.create_line(*xy1 + xy2, \
-                                    width=3, \
-                                    arrow=LAST, \
-                                    tags=tag)
+            width = awidth
+            fill = afill
+
+        self.create_line(*xy1 + xy2, \
+                         activefill=afill, \
+                         fill=fill, \
+                         activewidth=awidth, \
+                         width=width, \
+                         arrow=LAST, \
+                         tags=tag)
         self._update_canvas()
 
     def _create_broken_pipe_graphics(self, xy1, xy2):
@@ -417,6 +490,7 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         # redraw affected pipes
         for Node_pipe in Node_pipes:
             self._create_pipe_graphics(*Node_pipe)
+        self._update_canvas()
 
     def _reselect(self, current_obj_name_position, \
                         current_piper_Node, \
@@ -456,6 +530,7 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         self.resizescrollregion()
         self.canvas.focus_set()
         self.tag_raise('pipe')
+        self.tag_raise('text')
 
     def _center_canvas(self):
         pass
@@ -495,8 +570,8 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         self.canvas.bind("<Control-Button-1>", self.mouse_down)
         self.canvas.bind("<Control-B1-Motion>", self.mouse3_drag)
         self.canvas.bind("<Control-ButtonRelease-1>", self.mouse3_up)
-        # keyboard
-        self.canvas.bind("<d>", lambda event: self.pop())
+        self.canvas.tag_bind('piper', '<Enter>', self._enter)
+        self.canvas.tag_bind('piper', '<Leave>', self._leave)
         self.canvas.focus_set()
 
     def make_widgets(self):
@@ -510,8 +585,6 @@ class GraphCanvas(Pmw.ScrolledCanvas):
         self.canvas_menu.add_command(label="center graph", command=self._center_canvas)
         self.canvas_menu.add_command(label="align graph", command=self.align_graph)
         # right click object
-
-
 
     # methods modifying the contents of the canvas
 
@@ -616,7 +689,8 @@ class GraphCanvas(Pmw.ScrolledCanvas):
             self._reselect([None, None, None],
                            current_piper_Node,
                            ((None, None), (None, None)))
-
+            if event.num == 3:
+                pass
         elif self.lasttags and self.lasttags[0] == 'pipe':
             # left click on a pipe -> select pipe
             current_tag = self.lasttags[:3]
@@ -635,19 +709,26 @@ class GraphCanvas(Pmw.ScrolledCanvas):
             for Node in self.tag_to_Node.itervalues():
                 if Node.xtra.get('obj_name') == current_tag[1]:
                     Node.xtra.pop('obj_name')
+                    self._create_piper_graphics(Node)
             self._reselect(current_obj_name_position,
                            (None, None),
                           ((None, None), (None, None)))
         else:
             # click on the canvas -> deselect pipe or piper
+            self.canvas['cursor'] = 'hand2'
             self._reselect([None, None, None],
                            (None, None),
                           ((None, None), (None, None)))
             if event.num == 3:
                 self.canvas_menu.post(event.x_root, event.y_root)
+            self.canvas.scan_mark(event.x, event.y)
 
     def mouse1_up(self, event):
-        # h
+        if self.current_obj_name_position == [None, None, None] and \
+           self.current_pipe_Node_pipe == ((None, None), (None, None)) and \
+           self.current_piper_Node == (None, None):
+            # reset cursor only if up was after a down on the canvas
+            self.canvas['cursor'] = 'arrow'
         self.canvas_menu.unpost()
 
     def mouse3_up(self, event):
@@ -677,12 +758,14 @@ class GraphCanvas(Pmw.ScrolledCanvas):
             # down on object up on a piper
             src_tag = self.lasttags[:2]
             dst_tag = currtags[:2]
-            Node = self.tag_to_Node[dst_tag]
-            self.current_obj_name_position[1] = Node.xtra['x'] + 20
-            self.current_obj_name_position[2] = Node.xtra['y'] + 20
-            Node.xtra['obj_name'] = self.current_obj_name_position[0]
-            self._reselect(self.current_obj_name_position, \
-                          (None, None), \
+            new_Node = self.tag_to_Node[dst_tag]
+            self.current_obj_name_position[1] = new_Node.xtra['x']
+            self.current_obj_name_position[2] = new_Node.xtra['y'] - 40
+            new_Node.xtra['obj_name'] = self.current_obj_name_position[0]
+            self.current_piper_Node = self.tag_to_piper[dst_tag], \
+                                      self.tag_to_Node[dst_tag]
+            self._reselect([None, None, None], \
+                           self.current_piper_Node, \
                           ((None, None), (None, None)))
 
 
@@ -702,8 +785,8 @@ class GraphCanvas(Pmw.ScrolledCanvas):
                 obj_name = Node.xtra['obj_name']
                 tag = tag + (obj_name,)
                 self.move("(%s&&%s)||%s" % tag , dx, dy)
-                self.tag_to_obj_name_position[('object', obj_name)][1] = currxy[0] + 20
-                self.tag_to_obj_name_position[('object', obj_name)][2] = currxy[1] + 20
+                self.tag_to_obj_name_position[('object', obj_name)][1] = currxy[0]
+                self.tag_to_obj_name_position[('object', obj_name)][2] = currxy[1] - 45
             else:
                 self.move("%s&&%s" % tag , dx, dy)
             # update Node
@@ -712,6 +795,8 @@ class GraphCanvas(Pmw.ScrolledCanvas):
 
             # re-draw affected pipes
             self._redraw_pipes(Node)
+            self._update_canvas()
+
         elif self.current_obj_name_position[0] is not None:
             # moving object
             tag = self.lasttags[:2]
@@ -722,8 +807,10 @@ class GraphCanvas(Pmw.ScrolledCanvas):
             self.tag_to_obj_name_position[tag][1] = currxy[0]
             self.tag_to_obj_name_position[tag][2] = currxy[1]
             self.current_obj_name_position = self.tag_to_obj_name_position[tag]
+            self._update_canvas()
 
-
+        else:
+            self.canvas.scan_dragto(event.x, event.y, gain=1)
 
     def mouse3_drag(self, event):
         if self.current_piper_Node[0] is not None or \
@@ -1085,7 +1172,6 @@ class PiperDialog(_CreateDialog):
                 elif name == 'runtime':
                     for arg_true in value:
                         kwargs[arg_true] = True
-        print kwargs
         papyg.add_tree(self.name, **kwargs)
 
 
@@ -1095,7 +1181,6 @@ class ModuleDialog(object):
 
     def activate(self):
         import sys
-        print sys.path
         abs_path = tkFileDialog.askopenfilename(filetypes=\
                                                 [("Python Files", "*.py")])
         if abs_path:
@@ -1229,9 +1314,11 @@ class WorkerDialog(_CreateDialog):
             doc_string = func.__doc__
             if doc_string:
                 #TODO: why does an empty string raise an exception?
+                self.doc['text_state'] = NORMAL
                 self.doc.insert(END, doc_string)
         except AttributeError:
             pass
+        self.doc['text_state'] = DISABLED
 
     def create_entries(self):
         # name
@@ -1288,7 +1375,7 @@ class WorkerDialog(_CreateDialog):
                                         text_background=O['Function_doc_background'],
                                         text_foreground=O['Function_doc_foreground'],
                                         text_wrap=WORD,
-                                        #text_state =DISABLED
+                                        text_state=DISABLED
                                         )
 
     def update_entries(self):
@@ -1296,7 +1383,8 @@ class WorkerDialog(_CreateDialog):
         func_names = []
         for mod_name, mod in papyg.namespace['modules'].items():
             for obj_name, obj in mod.__dict__.items():
-                if inspect.isfunction(obj) or inspect.isbuiltin(obj):
+                if (inspect.isfunction(obj) or inspect.isbuiltin(obj)) and \
+                    inspect.getmodule(obj) is mod:
                     # obj is a function
                     func_name = ".".join([mod_name, obj_name])
                     func_names.append(func_name)
@@ -1427,27 +1515,29 @@ class PaPyGui(object):
         self.pipeline_buttons = Pmw.ButtonBox(pipeline_,
                                                 orient=VERTICAL,
                                                 padx=0, pady=0)
-        self.pipeline_buttons.add('Add\nPiper\n->', command=self.add_piper_canvas)
-        self.pipeline_buttons.add('Del\nPiper\n<-', command=self.del_piper_canvas)
-        self.pipeline_buttons.add('Add\nObject\n->', command=self.add_object_canvas)
-        self.pipeline_buttons.add('Del\nObject\n<-', command=self.del_object_canvas)
-
+        self.pipeline_buttons.add('Run\nPipeline', command=self.plunge_plumber)
+        self.pipeline_buttons.add('Stop\nPipeline', command=self.plunge_plumber)
+        self.pipeline_buttons.add('Add\nPiper', command=self.add_piper_canvas)
+        self.pipeline_buttons.add('Delete\nPiper', command=self.del_piper_canvas)
+        self.pipeline_buttons.add('Add\nObject', command=self.add_object_canvas)
+        self.pipeline_buttons.add('Delete\nObject', command=self.del_object_canvas)
         self.pipeline_buttons.grid(row=0, column=0, sticky=N)
         self.graph.grid(row=0, column=1, sticky=N + E + W + S)
 
         # fucntions
         modules_ = self.pipeline.page('Modules')
         self.modules = Tree(modules_,
-                                   self.namespace['modules'],
-                                   self.dialogs,
-                                   'Modules')
+                            self.namespace['modules'],
+                            self.dialogs,
+                            'Modules')
         self.function_text = Pmw.ScrolledText(modules_,
-                                            labelpos=N + W,
-                                            text_padx=O['Code_font'][1] // 2, # half-font
-                                            text_pady=O['Code_font'][1] // 2,
-                                            text_background=O['Code_background'],
-                                            label_text='Function code',
-                                            text_wrap=NONE)
+                              labelpos=N + W,
+                              text_padx=O['Code_font'][1] // 2, # half-font
+                              text_pady=O['Code_font'][1] // 2,
+                              text_background=O['Code_background'],
+                              label_text='Function code',
+                              text_wrap=NONE,
+                              text_state=DISABLED)
         modules_.grid_rowconfigure(0, weight=1)
         modules_.grid_columnconfigure(1, weight=1)
         self.modules.frame.grid(row=0, column=0, sticky=N + E + W + S)
@@ -1516,6 +1606,8 @@ class PaPyGui(object):
                 sys.path.insert(0, dir_name)
                 obj = __import__(mod_name)
                 sys.path.remove(dir_name) # do not pollute the path.
+            elif obj_type == 'Objects':
+                pass
         try:
             obj_name = obj_name or obj.name
         except AttributeError:
@@ -1628,7 +1720,15 @@ class PaPyGui(object):
         return pipe
 
     def plunge_plumber(self):
-        pass
+        inputs = []
+        for piper in self.plumber.get_inputs():
+            Node = self.plumber[piper]
+            input_name = Node.xtra.get('obj_name')
+            if not input_name:
+                self._error_dialog('Not all inputs are connected.')
+                return
+            inputs.append(self.namespace['objects'][input_name])
+        self.plumber.plunge(inputs)
 
     def chinkup_plumber(self):
         pass
@@ -1640,11 +1740,27 @@ class Options(dict):
     defaults = (('app_name', 'PaPy'),
                 ('log_filename', None),
                 ('default_font', ("tahoma", 8)),
-                ('node_color', 'blue'),
-                ('node_status', 'green'),
-                ('node_select', 'red'),
                 ('graph_background', 'white'),
                 ('graph_background_select', 'gray'),
+                ('graph_node_fill', 'blue'),
+                ('graph_node_status', 'green'),
+                ('graph_node_external', 'green'),
+                ('graph_node_internal', 'white'),
+                ('graph_node_width', 2.0),
+                ('graph_active_object_fill', 'red'),
+                ('graph_active_node_width', 4.0),
+                ('graph_node_border', 'black'),
+                ('graph_active_node_border', 'red'),
+                ('graph_object_fill', 'white'),
+                ('graph_object_width', 2.0),
+                ('graph_active_object_fill', 'red'),
+                ('graph_active_object_width', 4.0),
+                ('graph_object_border', 'black'),
+                ('graph_active_object_border', 'red'),
+                ('graph_pipe_width', 2.0),
+                ('graph_active_pipe_width', 4.0),
+                ('graph_pipe_fill', 'black'),
+                ('graph_active_pipe_fill', 'red'),
                 ('Pipers_background', 'white'),
                 ('Workers_background', 'white'),
                 ('Modules_background', 'white'),
