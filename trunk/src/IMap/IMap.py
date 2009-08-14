@@ -462,6 +462,17 @@ class IMap(object):
             __worker.start()
         log.debug('%s started the pool' % self)
 
+    def _stop_managers(self):
+        """
+        (internal) Stop the input/output pool queue managers.
+        """
+        self._tasks = []
+        self._tasks_tracked = {}
+        self._pool_putter.join()
+        self._pool_getter.join()
+        self._stopping.clear()
+        self._started.clear()
+
     def add_task(self, func, iterable, args=None, kwargs=None, timeout=None, \
                 block=True, track=False):
         """ 
@@ -519,6 +530,32 @@ class IMap(object):
             log.error('%s cannot add tasks (is started).' % self)
             raise RuntimeError('%s cannot add tasks (is started).' % self)
 
+
+    def pop_task(self, number):
+        """
+        Removes a previously added task from the *IMap* instance.
+        
+        Arguments
+        
+            * number(int or True)
+            
+                A positive integer specifying the number of tasks to pop. If 
+                number is set ``True`` all tasks will be popped.
+        """
+        if not self._started.isSet():
+            if number is True:
+                self._tasks = []
+                self._tasks_tracked = {}
+            elif number > 0:
+                last_task_id = len(self._tasks) - 1
+                for i in xrange(number):
+                    self._tasks.pop()
+                    self._tasks_tracked.pop(last_task_id - i, None)
+        else:
+            log.error('%s cannot delete tasks (is started).' % self)
+            raise RuntimeError('%s cannot delete tasks (is started).' % self)
+
+
     def __call__(self, *args, **kwargs):
         return self.add_task(*args, **kwargs)
 
@@ -537,54 +574,73 @@ class IMap(object):
             log.error('%s is already started.' % self)
             raise RuntimeError('%s is already started.' % self)
 
-    def stop(self, ends=None):
+    def stop(self, ends=None, forced=False):
         """
-        Stops the worker pool threads/processes and the threads which manage the
-        input and output queues of the pool respectively. It stops IMap 
-        instances which did not consume the input and/or calculate the results. 
-        Blocks the calling thread until all threads and/or processes returned.
+        Stops an *IMap* instance. If the list of end taks is specified via the 
+        ends argument it blocks the calling thread, retrieves (and discards)
+        a maximum of 2 * stride of results, stops the worker pool threads or 
+        processes and stops the threads which manage the input and output queues
+        of the pool respectively. If the ends argument is not specified, but
+        the forced argument is the method does not block and the 
+        ``IMap._stop_managers`` has to be called after all pending results have 
+        been retrieved. Either ends or forced has to be specified.
+        
+        Arguments:
 
             * ends(list) [default: None]
             
                 A list of task ids which are not consumed within the IMap 
-                instance. All buffered results will be lost and up to 2*stride 
+                instance. All buffered results will be lost and up to 2 * stride 
                 of inputs consumed. If no list is given the end tasks will need 
-                to be manually consumed if this is not done threads/processes 
-                might not terminate and the Python interpreter will not exit 
-                cleanly.
+                to be manually consumed or the threads/processes might not 
+                terminate and the Python interpreter will not exit cleanly.
+                
+            * forced(bool) [default: False]
+            
+                If ends is not ``None`` this argument is ignored. If ends is 
+                ``None`` and forced is ``True`` the *IMap* instance will trigger
+                stopping mode.
         """
         if self._started.isSet():
-            self._stopping.set()
-            # if _stopping is set the pool putter will notify the weave 
-            # generator that no more new results are needed. The weave generator
-            # will stop _before_ getting the first result from task 0 in the 
-            # next round.
-            log.debug('%s begins stopping routine' % self)
-            to_do = ends[:] if ends else ends
-            # We continue this loop until all end tasks
-            # have raised StopIteration
-            while to_do:
-                for task in to_do:
-                    try:
-                        #for i in xrange(self.stride):
-                        self.next(task=task)
-                    except StopIteration:
-                        to_do.remove(task)
-                        log.debug('%s stopped task %s' % (self, task))
-                        continue
-                    except Exception, excp:
-                        log.debug('%s task %s raised exception %s' % \
-                                  (self, task, excp))
-            # for now no pause/resume
-            self._tasks = []
-            self._pool_putter.join()
-            self._pool_getter.join()
-            self._stopping.clear()
-            self._started.clear()
-            log.debug('%s finished stopping routine' % self)
+            if ends:
+                self._stopping.set()
+                # if _stopping is set the pool putter will notify the weave 
+                # generator that no more new results are needed. The weave 
+                # generator will stop _before_ getting the first result from 
+                # task 0 in the next stride.
+                log.debug('%s begins stopping routine' % self)
+                to_do = ends[:] # if ends else ends
+                # We continue this loop until all end tasks
+                # have raised StopIteration this stops the pool
+                while to_do:
+                    for task in to_do:
+                        try:
+                            #for i in xrange(self.stride):
+                            self.next(task=task)
+                        except StopIteration:
+                            to_do.remove(task)
+                            log.debug('%s stopped task %s' % (self, task))
+                            continue
+                        except Exception, excp:
+                            log.debug('%s task %s raised exception %s' % \
+                                      (self, task, excp))
+                # stop pool manager threads
+                self._stop_managers()
+                log.debug('%s finished stopping routine' % self)
+            elif forced:
+                self._stopping.set()
+                log.debug('%s begins triggers stopping' % self)
+                # someone has to retrieve results and call the _stop_managers
+            else:
+                # this is the default
+                msg = '%s is started, but neither ends nor forced was set.' % \
+                        self
+                log.error(msg)
+                raise RuntimeError(msg)
         else:
-            log.error('%s has not yet been started.' % self)
-            raise RuntimeError('%s has not yet been started.' % self)
+            msg = '%s has not yet been started.' % self
+            log.error(msg)
+            raise RuntimeError(msg)
 
     def __str__(self):
         return "IMap(%s)" % id(self)

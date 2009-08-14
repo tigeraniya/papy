@@ -641,7 +641,7 @@ class test_Piper(GeneratorTest):
             self.assertRaises(StopIteration, ppr_busy.next) # it. protocol
             self.assertRaises(StopIteration, ppr_busy.next) # it. protocol
             assert ppr_busy.imap._started.isSet()
-            ppr_busy.stop()
+            ppr_busy.stop(ends=[0])
             assert not ppr_busy.imap._started.isSet()
             self.assertRaises(PiperError, ppr_busy.next)
 
@@ -666,7 +666,7 @@ class test_Piper(GeneratorTest):
         ppr_busy.connect([[1, 2, 3]])
         ppr_busy.start()
         assert ppr_busy.next() == 1
-        ppr_busy.stop()
+        ppr_busy.stop(ends=[0], forced=True) # not finished
         self.assertRaises(RuntimeError, ppr_busy.imap.next)
 
     def testtrack(self):
@@ -688,27 +688,24 @@ class test_Piper(GeneratorTest):
         assert (ppr_1busy, ppr_2busy) == (ppr_1, ppr_2)
         self.assertRaises(PiperError, ppr_1busy, [[7, 2, 3]]) # second connect
         self.assertRaises(PiperError, ppr_1busy, [[7, 2, 3]]) # second connect
-
         self.assertRaises(PiperError, ppr_1busy.next)     # not started
         self.assertRaises(PiperError, ppr_2busy.next)     # not started
-        self.assertRaises(PiperError, ppr_1busy.disconnect)
-        self.assertRaises(PiperError, ppr_2busy.disconnect)
+        self.assertRaises(PiperError, ppr_1busy.disconnect) # not last
 
+        ppr_2busy.disconnect()
+        ppr_1busy.disconnect()
         self.assertRaises(PiperError, ppr_1busy.start)
         self.assertRaises(PiperError, ppr_2busy.start)
-
-        ppr_2busy.disconnect(forced=True)
-        ppr_1busy.disconnect()
-
-        assert not pool._tasks
+        assert pool._tasks == []
 
         ppr_2busy.connect([[7, 2, 3]])
         ppr_1busy.connect([[1, 1, 1]])
 
         ppr_1busy.start(forced=True)
+
         assert ppr_1busy.next() == 1
         assert ppr_2busy.next() == 14
-        ppr_2busy.stop(forced=[0, 1])
+        ppr_2busy.stop(ends=[0, 1], forced=True)
         self.assertRaises(RuntimeError, ppr_1busy.imap.next)
         self.assertRaises(RuntimeError, ppr_2busy.imap.next)
 
@@ -809,8 +806,10 @@ class test_Piper(GeneratorTest):
                     p_dumper.start(forced=True)
                     p_loader.start(forced=True)
                     assert list(data) == list(p_unpickler)
-                    p_loader.stop()
-                    p_dumper.stop()
+                    if hasattr(i2, '_tasks'):
+                        p_loader.stop(ends=[len(i2._tasks) - 1])
+                    if hasattr(i1, '_tasks'):
+                        p_dumper.stop(ends=[len(i1._tasks) - 1])
 
     def testdump_itmes_thread(self):
         for typ in ('tcp', 'udp'):
@@ -838,8 +837,11 @@ class test_Piper(GeneratorTest):
                     p_dumper.start(forced=True)
                     p_loader.start(forced=True)
                     assert list(data) == list(p_unpickler)
-                    p_loader.stop()
-                    p_dumper.stop()
+                    if hasattr(i2, '_tasks'):
+                        p_loader.stop(ends=[len(i2._tasks) - 1])
+                    if hasattr(i1, '_tasks'):
+                        p_dumper.stop(ends=[len(i1._tasks) - 1])
+
 
     def testsort(self):
         p2 = Piper(workers.core.ipasser, ornament=2)
@@ -914,7 +916,7 @@ class test_Piper(GeneratorTest):
         self.assertEqual(dbl.next(), 18)
         self.assertRaises(StopIteration, dbl.next)
         self.assertRaises(StopIteration, pwr.next)
-        dbl.stop()
+        dbl.stop(ends=[1])
         self.assertRaises(PiperError, pwr.next)
 
 
@@ -927,7 +929,7 @@ class test_Piper(GeneratorTest):
             ppr.start()
             for i, j in izip(ppr, xrange(1, 15)):
                 self.assertEqual(i, j * j)
-            ppr.stop()
+            ppr.stop(ends=[0])
             ppr = Piper(power, parallel=par)
             ppr = ppr([gen10])
             ppr.start()
@@ -944,20 +946,20 @@ class test_Piper(GeneratorTest):
             ppr.start()
             for i, j in izip(ppr, xrange(1, 20)):
                 self.assertEqual(i, j * j)
-            ppr.stop()
+            ppr.stop(ends=[0])
             ppr = Piper([power], parallel=par)
             ppr = ppr([gen15])
             ppr.start()
             for i, j in izip(ppr, xrange(1, 15)):
                 self.assertEqual(i, j * j)
-            ppr.stop()
+            ppr.stop(ends=[0])
             pwr = Worker(power)
             ppr = Piper(pwr, parallel=par)
             ppr = ppr([gen20])
             ppr.start()
             for i, j in izip(ppr, xrange(1, 20)):
                 self.assertEqual(i, j * j)
-            ppr.stop()
+            ppr.stop(ends=[0])
 
     def testdouble(self):
         for par in (False, IMap()):
@@ -969,21 +971,21 @@ class test_Piper(GeneratorTest):
             ppr.start()
             for i, j in izip(ppr, xrange(1, 20)):
                 self.assertEqual(i, 2 * j * j)
-            ppr.stop()
+            ppr.stop(ends=[0])
             pwrdbl = Worker([power, double])
             ppr = Piper(pwrdbl, parallel=par)
             ppr = ppr([gen15])
             ppr.start()
             for i, j in izip(ppr, xrange(1, 15)):
                 self.assertEqual(i, 2 * j * j)
-            ppr.stop()
+            ppr.stop(ends=[0])
             dblpwr = Worker([double, power])
             ppr = Piper(dblpwr, parallel=par)
             ppr = ppr([gen10])
             ppr.start()
             for i, j in izip(ppr, xrange(1, 10)):
                 self.assertEqual(i, (2 * j) * (2 * j))
-            ppr.stop()
+            ppr.stop(ends=[0])
 
     def testlinked(self):
         for par in (False, IMap()):
@@ -995,7 +997,7 @@ class test_Piper(GeneratorTest):
             ppr.start(forced=True)
             for i, j in izip(ppr, (i for i in xrange(10))):
                 self.assertEqual(i, (2 * j) * (2 * j))
-            ppr.stop()
+            ppr.stop(ends=[1])
 
     def testlinked2(self):
         for par in (False, IMap()):
@@ -1006,7 +1008,7 @@ class test_Piper(GeneratorTest):
             ppr.start(forced=True)
             for i, j in izip(ppr, (i for i in xrange(10))):
                 self.assertEqual(i, (2 * j) * (2 * j))
-            ppr.stop()
+            ppr.stop(ends=[1])
 
     def testexceptions(self):
         self.assertRaises(PiperError, Piper, 1)
@@ -1021,7 +1023,7 @@ class test_Piper(GeneratorTest):
             for i, j in izip(piper, xrange(1, 20)):
                 self.assertEqual(i, j * j)
             self.assertRaises(StopIteration, piper.next)
-            piper.stop()
+            piper.stop(ends=[0])
 
     def testProduce(self):
         product = Produce(iter([0, 1, 2, 3, 4, 5, 6]), n=2, stride=3)
@@ -1211,7 +1213,8 @@ class test_Piper(GeneratorTest):
                 p_ss.start(forced=True)
                 for j in [1, 2, 3, 4, 5]:
                     self.assertAlmostEqual(p_ss.next(), 200 * j)
-                p_ss.stop([1])
+                self.assertRaises(StopIteration, p_ss.next)
+                p_ss.stop(ends=[1])
 
     def testtimeout(self):
         par = IMap(worker_num=1)
@@ -1225,7 +1228,7 @@ class test_Piper(GeneratorTest):
         self.assertTrue(isinstance(a[0], TimeoutError))
         assert piper.next()[0] == 1.0
         assert piper.next()[0] == 0.5
-        piper.stop()
+        piper.stop(ends=[0], forced=True) # really did not finish
 
     def test_tee(self):
         inp = iter([1, 2, 3, 4, 5, 6])
@@ -1452,7 +1455,7 @@ class test_Dagger(unittest.TestCase):
             self.dag.connect()
             pwr.start(forced=True)
             self.assertEqual(list(dbl), [2, 8, 18, 32])
-            pwr.stop(forced=[1])
+            pwr.stop(ends=[1])
 
     def test_inputoutput(self):
         for par in (False, IMap()):
@@ -1544,10 +1547,10 @@ suite_Plumber = unittest.makeSuite(test_Plumber, 'test')
 
 if __name__ == "__main__":
     runner = unittest.TextTestRunner()
-    runner.run(suite_Graph)
-    runner.run(suite_Worker)
+    #runner.run(suite_Graph)
+    #runner.run(suite_Worker)
     runner.run(suite_Piper)
-    runner.run(suite_Dagger)
-    runner.run(suite_Plumber)
+    #runner.run(suite_Dagger)
+    #runner.run(suite_Plumber)
 
 #EOF
