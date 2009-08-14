@@ -189,6 +189,17 @@ class Dagger(Graph):
                 piper.disconnect()
         self.log.info('%s succesfuly disconnected' % repr(self))
 
+    def disconnect_inputs(self):
+        """
+        Given the pipeline topology disconnects input *Pipers*. See 
+        ``Piper.connect_inputs``.
+        """
+        start_pipers = self.get_inputs()
+        self.log.info('%s trying to disconnected inputs' % repr(self))
+        for piper in start_pipers:
+            piper.disconnect()
+        self.log.info('%s succesfuly disconnected inputs' % repr(self))
+
     def start(self):
         """
         Given the pipeline topology starts *Pipers* in the order input -> 
@@ -201,10 +212,29 @@ class Dagger(Graph):
 
     def stop(self):
         """
-        Given the pipeline topology stops *Pipers*  in the order ...
+        Given the pipeline topology stops the *Pipers*.
         """
-        #TODO: write Dagger stop.
-        pass
+        self.log.info('%s begins stopping routine' % repr(self))
+        postorder = self.postorder()
+        for piper in postorder:
+            piper.stop(forced=True) # this just triggers stopping in IMaps
+        outputs = self.get_outputs()
+        while outputs:
+            for piper in outputs:
+                try:
+                    # for i in xrange(stride)?
+                    piper.next()
+                except StopIteration:
+                    outputs.remove(piper)
+                    self.log.debug("%s stopped %s" % (repr(self), repr(piper)))
+                    continue
+                except Exception, excp:
+                    self.log.debug("%s %s raised an exception: %s" % \
+                                   (repr(self), piper, excp))
+        self.log.debug("%s tries to stop IMap's manager threads" % repr(self))
+        for piper in postorder:
+            piper._stop_managers() #
+        self.log.info('%s finishes stopping routine' % repr(self))
 
     def get_inputs(self):
         """
@@ -497,6 +527,7 @@ class Plumber(Dagger):
     def __init__(self, logger_options={}, **kwargs):
         self._is_stopping = Event()
         self._is_finished = Event()
+        self._plunger = None
 
         # Plumber statistics
         self.stats = {}
@@ -653,16 +684,31 @@ class Plumber(Dagger):
         self._plunger.start()
 
 
-    def chinkup(self):
+    def chinkup(self, stop=False):
         """
-        Cleanly stops a running pipeline. Blocks until stopped.
+        Cleanly pauses or stops a running pipeline. Python will not terminate 
+        cleanly if a pipeline is running or paused.
+        
+        Arguments:
+        
+            * stop(book) [default: False]
+            
+                If ``False`` *Plumber* will pause and can be re-plunged. 
+                If ``True`` *Plumber* will stop the *Dagger*, *Pipers* and 
+                *IMaps*. 
+            
         """
-        # 1. stop the plumbing thread by raising a stopiteration
-        #    on stride boundary
+        # 1. stop the plumbing thread by raising a StopIteration on a stride 
+        #    boundary
         self._is_stopping.set()
         self._plunger.join()
-        # 2. now stop the dagger
-        self.stop()
+        self._plunger = None
+        if stop:
+            # 2. now stop the dagger
+            self.stop()
+            # 3. disconnect pipers
+            self.disconnect()
+            self.disconnect_inputs()
 
 
 class Piper(object):
@@ -892,44 +938,53 @@ class Piper(object):
 
         return self # this is for __call__
 
-    def stop(self, forced=False):
+    def stop(self, forced=False, **kwargs):
         """
         Tries to cleanly stop the *Piper*. A *Piper* is "started" if it's 
         *IMap* instance is "started". Non-parallel *Pipers* need not to be 
-        started or stopped. A *Piper* can be safely stopped if it either 
-        finished or it does not share the *IMap* instance. Else a the 
-        forced =`True` has to be specified. This argument is passed to the 
-        ``IMap.stop`` method. See ``IMap.stop`` from the ``IMap`` module.
-
+        started or stopped. An *IMap* instance can be stopped by triggering
+        its stopping procedure and retrieving results from the *IMaps* end
+        tasks. Because neither the *Piper* nor the *IMap* "knows" which 
+        tasks(*Pipers*) are the ends they have to be specified::
+        
+            end_task_ids = [0, 1]    # A list of IMap task ids
+            piper_instance.stop(ends =end_task_ids)        
+        
+        results in::
+        
+            IMap_instance.stop(ends =[0,1])
+            
+        If the *Piper* did not finish the forced argument has to be specified::
+        
+            piper_instance.stop(forced =True, ends =end_task_ids)
+            
+        If the *Piper* (and consequently *IMap*) is part of a *Dagger* the 
+        ``Dagger.stop`` method should be called instead. See ``IMap.stop`` and
+        ``Dagger.stop``.
+        
         Arguments:
-
-            * forced(sequence) [default =False]
-
-                The *Piper* will be forced to stop the *IMap* instance. A 
-                sequence of *IMap* task ids needs to be given e.g.::
-
-                    end_task_ids = [0, 1]    # A list of IMap task ids
-                    piper_instance.stop(end_task_ids)
-
-                results in::
-
-                    IMap_instance.stop([0,1])
+        
+            * forced(bool) [default =False]
+            
+                The *Piper* will be forced to stop the *IMap* instance. If set
+                ``True`` but the ends *IMap* argument is not specified. The 
+                *IMap* instance will not try to retrieve any results and will
+                not call the ``IMap._stop_managers`` method.
         """
-
+        # ends valid only if forced specified.
         if not hasattr(self.imap, '_started'):
             self.log.info('Piper %s does not need to be stopped' % self)
         elif not self.imap._started.isSet():
             self.log.error('Piper %s has not started and cannot be stopped' % \
                            self)
-        elif self.finished or (len(self.imap._tasks) == 1 or forced):
-            self.imap.stop((forced or [0]))
+        elif self.finished or forced:
+            self.imap.stop(forced=forced, **kwargs)
             self.log.info('Piper %s stops (finished: %s)' % \
                           (self, self.finished))
         else:
-            m = 'Piper %s has not finished is shared and will ' % self + \
-                'not be stopped (use forced =end_task_ids)'
-            self.log.error(m)
-            raise PiperError(m)
+            msg = 'Piper %s has not finished. Use forced =True' % self
+            self.log.error(msg)
+            raise PiperError(msg)
 
     def disconnect(self, forced=False):
         """
@@ -943,38 +998,54 @@ class Piper(object):
                 If forced is ``True`` tries to forcefully remove all tasks 
                 (including the spawned ones) from the *IMap* instance 
         """
-
         if not self.connected:
             self.log.error('Piper %s is not connected and cannot be disconnected' % self)
             raise PiperError('Piper %s is not connected and cannot be disconnected' % self)
         elif hasattr(self.imap, '_started') and self.imap._started.isSet():
             self.log.error('Piper %s is started and cannot be disconnected (stop first)' % self)
             raise PiperError('Piper %s is started and cannot be disconnected (stop first)' % self)
-        #TODO: what if self.imap._tasks does not exist?
-        elif len(self.imap._tasks) == 1 or forced:
-            # not started but connected either not shared or forced
-            self.log.info('Piper %s disconnects from %s' % (self, self.inbox))
-            try:
-                #TODO: figure out if taks removal from imap._tasks should be 
-                #done in reverse.
-                for imap_task in self.imap_tasks:
-                    del self.imap._tasks[imap_task.task]
-            except AttributeError:
-                # this handle the case when using itertools.imap
-                pass
+        else:
+            # connected and not started
+            if hasattr(self.imap, '_started'):
+                # using an IMap
+                if self.imap_tasks[-1].task == len(self.imap._tasks) - 1:
+                    # the last task of this piper is the last task in the IMap
+                    self.imap.pop_task(number=self.spawn)
+                elif forced:
+                    # removes all tasks from the *IMap* can be called multiple 
+                    # times.
+                    self.imap.pop_task(number=True)
+                else:
+                    msg = 'Piper %s is not the last Piper added to the IMap' % \
+                            self
+                    self.log.error(msg)
+                    raise PiperError(msg)
+            self.log.info('Piper %s disconnected from %s' % (self, self.inbox))
             self.imap_tasks = []
             self.inbox = None
             self.outbox = None
             self.connected = False
-        else:
-            mess = 'Piper %s is connected but is shared and will ' % self + \
-                'not be disconnected (use forced =True)'
-            self.log.error(mess)
-            raise PiperError(mess)
 
+#        #TODO: what if self.imap._tasks does not exist?
+#        elif len(self.imap._tasks) == 1 or forced:
+#            # not started but connected either not shared or forced
+#
+#            try:
+#                #TODO: figure out if taks removal from imap._tasks should be 
+#                #done in reverse.
+#                for imap_task in self.imap_tasks:
+#                    del self.imap._tasks[imap_task.task]
+#            except AttributeError:
+#                # this handle the case when using itertools.imap
+#                pass
+#        else:
+#            mess = 'Piper %s is connected but is shared and will ' % self + \
+#                'not be disconnected (use forced =True)'
+#            self.log.error(mess)
+#            raise PiperError(mess)
 
     def __call__(self, *args, **kwargs):
-        """ 
+        """
         This is just a convenience mapping to the ``Worker.connect`` method.
         """
         return self.connect(*args, **kwargs)

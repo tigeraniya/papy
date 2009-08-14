@@ -65,8 +65,29 @@ class test_IMap(unittest.TestCase):
                 for i in imap:
                     pass
                 self.assertRaises(StopIteration, imap.next)
-                imap.stop([0])
+                imap.stop(ends=[0])
                 self.assertRaises(RuntimeError, imap.next)
+
+    def test_add_pop(self):
+        imap = self.IMap()
+        imap.add_task(passer, [1, 2, 3])
+        imap.pop_task(1)
+        assert imap._tasks == []
+        imap.add_task(passer, [1, 2, 3])
+        imap.add_task(passer, [1, 2, 3])
+        imap.pop_task(2)
+        assert imap._tasks == []
+        imap.add_task(passer, [1, 2, 3])
+        imap.add_task(passer, [1, 2, 3])
+        imap.add_task(passer, [1, 2, 3])
+        imap.add_task(passer, [1, 2, 3])
+        imap.pop_task(True)
+        assert imap._tasks == []
+        imap.add_task(passer, [1, 2, 3])
+        imap.start()
+        self.assertRaises(RuntimeError, imap.pop_task, 1)
+        list(imap)
+        imap.stop(ends=[0])
 
     def test_iterinit_stop(self):
         for i in range(self.repeats):
@@ -75,7 +96,7 @@ class test_IMap(unittest.TestCase):
                 imap = self.IMap(passer, ilong, worker_type=wt, stride=17)
                 for i in [1, 2, 3]:
                     imap.next(task=0)
-                imap.stop([0])
+                imap.stop(ends=[0])
                 self.assertRaises(RuntimeError, imap.next)
 
     def test_multistop(self):
@@ -89,7 +110,7 @@ class test_IMap(unittest.TestCase):
                     self.assertRaises(StopIteration, imap.next)
                     self.assertRaises(StopIteration, imap.next)
                     self.assertRaises(StopIteration, imap.next)
-                    imap.stop([0])
+                    imap.stop(ends=[0])
                     self.assertRaises(RuntimeError, imap.next)
 
 #    def xtest_start_init_stop_start_init(self):
@@ -119,14 +140,14 @@ class test_IMap(unittest.TestCase):
                     self.assertEqual(imap.next(), 2)
                     self.assertRaises(TypeError, imap.next)
                     self.assertEqual(imap.next(), 4)
-                    imap.stop([0])
+                    imap.stop(ends=[0])
                     self.assertRaises(RuntimeError, imap.next)
                     inp = [1.0, 0.0, 3.0]
                     imap = self.IMap(diver, inp, worker_type=wt)
                     self.assertEqual(imap.next(), 1.0)
                     self.assertRaises(ZeroDivisionError, imap.next)
                     self.assertEqual(imap.next(), 1.0 / 3.0)
-                    imap.stop([0])
+                    imap.stop(ends=[0])
                     self.assertRaises(RuntimeError, imap.next)
 
     def test_unsorted_sorted(self):
@@ -176,7 +197,7 @@ class test_IMap(unittest.TestCase):
                 for i in imap:
                     pass
                 self.assertRaises(StopIteration, imap.next)
-                imap.stop()
+                imap.stop(ends=[0])
                 self.assertRaises(RuntimeError, imap.next)
 
     def test_init_add_eat(self):
@@ -190,7 +211,7 @@ class test_IMap(unittest.TestCase):
                     for i in imap:
                         pass
                     self.assertRaises(StopIteration, imap.next)
-                    imap.stop()
+                    imap.stop(ends=[0])
                     self.assertRaises(RuntimeError, imap.next)
 
     def test_start_stop(self):
@@ -200,7 +221,34 @@ class test_IMap(unittest.TestCase):
                     imap = self.IMap(stride=bs)
                     imap.add_task(passer, inp)
                     imap.start()
-                    imap.stop([0])
+                    imap.stop(ends=[0])
+                    self.assertRaises(RuntimeError, imap.next)
+
+    def test_start_stop_forced(self):
+        for rep in xrange(self.heavy_repeats):
+            for bs in (1, 2, 3, 5, 7, 9, 22):
+                for inp in [self.long]:
+                    imap = self.IMap(stride=bs)
+                    imap.add_task(passer, inp)
+                    imap.start()
+                    imap.stop(forced=True)
+                    for i in imap:
+                        pass
+                    imap._stop_managers()
+                    self.assertRaises(RuntimeError, imap.next)
+
+    def test_start_next_stop_forced(self):
+        for rep in xrange(self.heavy_repeats):
+            for bs in (1, 2, 3, 5, 7, 9, 22):
+                for inp in [self.long]:
+                    imap = self.IMap(stride=bs)
+                    imap.add_task(passer, inp)
+                    imap.start()
+                    imap.next()
+                    imap.stop(forced=True)
+                    for i in imap:
+                        pass
+                    imap._stop_managers()
                     self.assertRaises(RuntimeError, imap.next)
 
     def test_start_next_stop(self):
@@ -212,7 +260,7 @@ class test_IMap(unittest.TestCase):
                         imap.add_task(passer, inp)
                         imap.start()
                         imap.next()
-                        imap.stop([0])
+                        imap.stop(ends=[0])
                         self.assertRaises(RuntimeError, imap.next)
 
     def test_2_seperate_start_stop(self):
@@ -225,7 +273,7 @@ class test_IMap(unittest.TestCase):
                     imap.add_task(adder, inp1)
                     imap.add_task(miner, inp2)
                     imap.start()
-                    imap.stop([0, 1])
+                    imap.stop(ends=[0, 1])
                     self.assertRaises(RuntimeError, imap.next, task=0)
                     self.assertRaises(RuntimeError, imap.next, task=1)
 
@@ -241,7 +289,7 @@ class test_IMap(unittest.TestCase):
                     imap.start()
                     imap.next(task=0)
                     imap.next(task=1)
-                    imap.stop([0, 1])
+                    imap.stop(ends=[0, 1])
                     self.assertRaises(RuntimeError, imap.next, task=0)
                     self.assertRaises(RuntimeError, imap.next, task=1)
 
@@ -261,7 +309,7 @@ class test_IMap(unittest.TestCase):
 
                         self.assertRaises(StopIteration, imap.next, task=1)
                         self.assertRaises(StopIteration, imap.next, task=0)
-                        imap.stop([1])
+                        imap.stop(ends=[1])
                         self.assertRaises(RuntimeError, imap.next)
                         self.assertRaises(RuntimeError, imap.next, task=2)
 
@@ -285,7 +333,7 @@ class test_IMap(unittest.TestCase):
                         self.assertRaises(StopIteration, imap.next, task=2)
                         self.assertRaises(StopIteration, imap.next, task=1)
                         self.assertRaises(StopIteration, imap.next, task=0)
-                        imap.stop([3, 4])
+                        imap.stop(ends=[3, 4])
                         self.assertRaises(RuntimeError, imap.next)
 
     def test_4_chained(self):
@@ -304,7 +352,7 @@ class test_IMap(unittest.TestCase):
                 self.assertRaises(StopIteration, imap.next, task=1)
                 self.assertRaises(StopIteration, imap.next, task=2)
                 self.assertRaises(StopIteration, imap.next, task=3)
-                imap.stop([3])
+                imap.stop(ends=[3])
                 self.assertRaises(RuntimeError, imap.next)
 
     def test_3_zip_1(self):
@@ -341,7 +389,7 @@ class test_IMap(unittest.TestCase):
                     for i, j, iii, jjj in func(iter1, iter2, ii, jj):
                         self.assertEqual(iii + 1, i)
                         self.assertEqual(jjj - 1, j)
-                    imap.stop([0, 1])
+                    imap.stop(ends=[0, 1])
                     self.assertRaises(RuntimeError, imap.next, task=0)
                     self.assertRaises(RuntimeError, imap.next, task=1)
 
@@ -383,7 +431,7 @@ class test_IMap(unittest.TestCase):
                     imap.start()
                     for r, i, k in izip(izip(*end_tasks), pipe_inp, xrange(randint(0, len(pipe_inp)))):
                         self.assertEqual(list(r), [l + i for l in end_tasks_len])
-                    imap.stop(ends)
+                    imap.stop(ends=ends)
 
     def test_timeout_1(self):
         ##1 ordered True, skip False
@@ -400,7 +448,7 @@ class test_IMap(unittest.TestCase):
             self.assertRaises(TimeoutError, imap.next, task=0, timeout=0.100)
             self.assertEqual(imap.next(), 0.500)
             self.assertEqual(imap.next(), 0.001)
-            imap.stop([0])
+            imap.stop(ends=[0])
 
     def test_timeout_2(self):
         ##1 ordered True, skip False
@@ -416,7 +464,7 @@ class test_IMap(unittest.TestCase):
             self.assertRaises(TimeoutError, imap.next, task=0, timeout=0.100)
             self.assertEqual(imap.next(), 0.500)
             self.assertEqual(imap.next(), 0.001)
-            imap.stop()
+            imap.stop(ends=[0])
 
     def test_timeout_2_chain(self):
         ###1 ordered True, skip False, chained
@@ -429,7 +477,7 @@ class test_IMap(unittest.TestCase):
             self.assertRaises(TimeoutError, imap.next, task=1, timeout=0.750)
             self.assertRaises(TimeoutError, imap.next, task=1, timeout=0.100)
             self.assertEqual(imap.next(task=1), 0.500)
-            imap.stop([1])
+            imap.stop(ends=[1])
 
     def test_timeout_2_chain_skip(self):
         ##1 ordered True, skip False, chained
@@ -442,7 +490,7 @@ class test_IMap(unittest.TestCase):
             self.assertRaises(TimeoutError, imap.next, task=1, timeout=0.750)
             self.assertRaises(TimeoutError, imap.next, task=1, timeout=0.100)
             self.assertEqual(imap.next(task=1), 0.400)
-            imap.stop([1])
+            imap.stop(ends=[1])
 
     def test_timeout_1_skip_2(self):
         ##1 ordered True, skip true
@@ -454,7 +502,7 @@ class test_IMap(unittest.TestCase):
             self.assertRaises(TimeoutError, imap.next, task=0, timeout=0.100) # skip 0
             self.assertRaises(TimeoutError, imap.next, task=0, timeout=0.100) # skip 1
             self.assertEqual(imap.next(), 0.400)
-            imap.stop([0])
+            imap.stop(ends=[0])
 
     def test_timeout_2_skip_1(self):
         ##2 ordered True, skip False
@@ -477,7 +525,7 @@ class test_IMap(unittest.TestCase):
             self.assertRaises(TimeoutError, imap.next, task=1, timeout=0.100)
             self.assertEqual(imap.next(task=0), 0.500)
             self.assertEqual(imap.next(task=1), 0.500)
-            imap.stop([0, 1])
+            imap.stop(ends=[0, 1])
 
     def test_timeout_1_skip_23(self):
         ## ordered True, skip True
@@ -492,7 +540,7 @@ class test_IMap(unittest.TestCase):
             self.assertRaises(TimeoutError, imap.next, task=0, timeout=0.100) # skip 3
             self.assertEqual(imap.next(), 0.100) # get 4
             self.assertRaises(StopIteration, imap.next)
-            imap.stop([0])
+            imap.stop(ends=[0])
 
     def test_timeout_2_seperate_skip_11(self):
         ##2 ordered True, skip True
@@ -513,7 +561,7 @@ class test_IMap(unittest.TestCase):
             self.assertRaises(TimeoutError, imap.next, task=1, timeout=0.001)
             self.assertEqual(imap.next(task=0), 0.100)
             self.assertEqual(imap.next(task=1), 0.100)
-            imap.stop([0, 1])
+            imap.stop(ends=[0, 1])
 
     def test_timeout_1_seperate_input_ordered(self):
         for wt in self.wt:
@@ -559,7 +607,7 @@ class test_IMap(unittest.TestCase):
             self.assertEqual(imap.next(task=1), 0.5)
             stop = time.time()
             self.assertTrue(2.9 < stop - start < 3.1)
-            imap.stop([1])
+            imap.stop(ends=[1])
             self.assertRaises(RuntimeError, imap.next, task=1)
 
 
