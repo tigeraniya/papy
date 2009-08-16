@@ -388,6 +388,17 @@ class IMap(object):
             self._getout = self._outqueue.get
             self._getin = self._inqueue.get
             self._putout = self._outqueue.put
+
+
+         # combine tasks into a weaved queue
+        self._next_available = {}   # per-task boolean queue 
+                                    # releases next to get a result
+        self._next_skipped = {}     # per-task int, number of results
+                                    # to skip (locked)
+        self._task_next_lock = {}   # per-task lock around _next_skipped
+        self._task_finished = {}    # a per-task is finished variable
+        self._task_results = {}     # a per-task queue for results
+
         log.debug('%s finished initializing' % self)
 
         if bool(func) ^ bool(iterable):
@@ -399,31 +410,34 @@ class IMap(object):
             self.add_task(func, iterable, args, kwargs)
             self.start()
 
+    def _start_queues(self):
+        pass
+#        # combine tasks into a weaved queue
+#        self._next_available = {}   # per-task boolean queue 
+#                                    # releases next to get a result
+#        self._next_skipped = {}     # per-task int, number of results
+#                                    # to skip (locked)
+#        self._task_next_lock = {}   # per-task lock around _next_skipped
+#        self._task_finished = {}    # a per-task is finished variable
+#        self._task_results = {}     # a per-task queue for results
+
+#        #for id_ in range(len(self._tasks)):
+#            self._next_available[id_] = Queue()
+#            self._next_skipped[id_] = 0
+#            self._task_finished[id_] = Event()
+#            self._task_next_lock[id_] = tLock()
+#            # this locks threads not processes
+#            self._task_results[id_] = PriorityQueue() if self.ordered \
+#                                                      else Queue()
     def _start_managers(self):
         """
         (internal) Starts input and output pool queue managers.
         """
-        # combine tasks into a weaved queue
-        self._next_available = {}   # per-task boolean queue 
-                                    # releases next to get a result
-        self._next_skipped = {}     # per-task int, number of results
-                                    # to skip (locked)
-        self._task_next_lock = {}   # per-task lock around _next_skipped
-        self._task_finished = {}    # a per-task is finished variable
-        self._task_results = {}     # a per-task queue for results
+        #self._start_queues()
         self._task_queue = Weave(self._tasks, self.stride)
         # here we determine the size of the maximum memory consumption
         self._semaphore_value = (self.buffer or (len(self._tasks) * self.stride))
         self._pool_semaphore = Semaphore(self._semaphore_value)
-
-        for id_ in range(len(self._tasks)):
-            self._next_available[id_] = Queue()
-            self._next_skipped[id_] = 0
-            self._task_finished[id_] = Event()
-            self._task_next_lock[id_] = tLock()
-            # this locks threads not processes
-            self._task_results[id_] = PriorityQueue() if self.ordered \
-                                                      else Queue()
 
         # start the pool putter thread
         self._pool_putter = Thread(target=self._pool_put, args=\
@@ -525,6 +539,13 @@ class IMap(object):
             self._tasks.append(task)
             if track:
                 self._tasks_tracked[task_id] = {} # result:index
+            self._next_available[task_id] = Queue()
+            self._next_skipped[task_id] = 0
+            self._task_finished[task_id] = Event()
+            self._task_next_lock[task_id] = tLock()
+            # this locks threads not processes
+            self._task_results[task_id] = PriorityQueue() if self.ordered \
+                                                          else Queue()
             return self.get_task(task=task_id, timeout=timeout, block=block)
         else:
             log.error('%s cannot add tasks (is started).' % self)
@@ -567,9 +588,10 @@ class IMap(object):
         the stop method is called.
         """
         if not self._started.isSet():
-            self._started.set()
             self._start_workers()
+            self._started.set()
             self._start_managers()
+
         else:
             log.error('%s is already started.' % self)
             raise RuntimeError('%s is already started.' % self)
