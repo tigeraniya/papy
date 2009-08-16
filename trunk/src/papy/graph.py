@@ -140,29 +140,12 @@ class Graph(dict):
         nodes = []
         for node in self.nodes():
             self.dfs(node, nodes)
-            if reverse:
-                nodes.reverse()
+            #if reverse:
+            #    nodes.reverse()
         if reverse:
             nodes.reverse()
         self.clear_nodes()
         return nodes
-
-    def preorder(self, reverse=False):
-        """
-        Returns the preorder of node objects if the *Graph* if it is a directed
-        acyclic graph.
-        
-        
-        """
-        nodes = deque([])
-        for node in self.nodes():
-            self.dfs(node, nodes, order='appendleft')
-            if not reverse:
-                nodes.rotate()
-        if not reverse:
-            nodes.rotate()
-        self.clear_nodes()
-        return list(nodes)
 
     def node_rank(self):
         """
