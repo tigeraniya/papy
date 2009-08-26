@@ -1574,7 +1574,10 @@ class TeePiper(object):
     released and subsequent calls to the next method of this *TeePiper* will not
     involve acquiring a lock and calling the ``next`` method of the wrapped 
     tee object. This guarantees that the ``next`` method of a *Piper* will yield
-    a ``StopIteration`` only once.
+    a ``StopIteration`` only once. This guarantee is required because the *IMap*
+    will finish a task after the first StopIteration and will not call 
+    ``Piper.next`` any more and will automatically raise ``StopIterations`` for
+    subsequent calls to ``IMap.next``.    
     
     Arguments:
     
