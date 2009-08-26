@@ -875,43 +875,58 @@ class Piper(object):
     def __repr__(self):
         return "%s(%s)" % (self.name, repr(self.worker))
 
-    def start(self, forced=False, forgive=False):
+    def start(self, stages=(0,)):
         """
         Makes the *Piper* ready to return results. This involves starting the 
         the provided *IMap* instance. If multiple *Pipers* share an *IMap* 
         instance the order in which the *Pipers* are started is important. The
         valid order is upstream before downstream. The *IMap* instance has to 
-        be started only once. If this *Piper* shares an *IMap* with other 
-        *Pipers* the forced argument has to be ``True`` for exactly one of the 
-        *Pipers*.
+        be started only once, but the process can be done in 2 stages. 
+        This methods stages argument is a tuple which can contain any 
+        combination of the numbers 0, 1 or 2 specifying which stage of the start
+        routine should be carried out.
         
+            stage 0 - creates the needed ``itertools.tee`` objects.
+            
+            stage 1 - activates *IMap* pool. A call to next will block..
+            
+            stage 2 - activates *IMap* pool managers.
+        
+        
+        If this *Piper* shares an *IMap* with other *Pipers* the proper way to
+        start them is to start them in a valid postorder with 
+        stages (0, 1) and (2,) separately. 
+           
         Arguments:
         
-            * forced(bool) [default =``False``]
+            * stages(tuple) [default =(0,)]
             
-                Starts the *IMap* instance if it is shared by multiple *Pipers* 
-                instead of raising a ``PiperError`` if the *IMap* is not 
-                started.
+                Performs the specified stages of the start of a *Piper* 
+                instance. Stage 0  is necessary and sufficient to start a 
+                *Piper* utilizing an ``itertools.imap``. Stages 1 and 2 are 
+                required to start a parallel *Piper*.
         """
-        if self.started:
-            self.log.error('Piper %s has already been started.' % self)
-            raise PiperError('Piper %s has already been started.' % self)
-        elif not self.connected:
+        if not self.connected:
             self.log.error('Piper %s is not connected.' % self)
             raise PiperError('Piper %s is not connected.' % self)
+
+        if not self.started:
+            if 0 in stages:
+                self.tees.extend(tee(self, self.tee_num))
+
+        if hasattr(self.imap, 'start'):
+            # parallel piper
+            self.imap.start(stages)
+            if 2 in stages:
+                self.log.info('Piper %s has been started using %s' % \
+                              (self, self.imap))
+                self.started = True
         else:
-            # connected, but not started
-            self.tees.extend(tee(self, self.tee_num)) # no connect after start
-            if hasattr(self.imap, 'start'):
-                # if imap is not started try to start ele pass
-                if not self.imap._started.isSet():
-                    if forced:
-                        self.imap.start()
-                    elif not forgive:
-                        self.log.error('Piper %s could not be started.' % self)
-                        raise PiperError('Piper %s could not be started.' % self)
+            # linear piper
+            self.log.info('Piper %s has been started using %s' % \
+                          (self, self.imap))
             self.started = True
-            self.log.info('Piper %s has been started' % self)
+
 
     def connect(self, inbox):
         """
