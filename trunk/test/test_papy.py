@@ -503,8 +503,6 @@ class test_Worker(GeneratorTest):
             ii = workers.io.load_item([file])
             assert ii == i
 
-
-
     def testdump_load_sqlite_item(self):
         import os
         a = ['aaa\n', 'b_b_b', 'abc\n', 'ddd']
@@ -637,24 +635,28 @@ class test_Piper(GeneratorTest):
     def test_simple_exceptions(self):
         for par in (None, IMap()):
             piper = Piper(power, parallel=par)
-
             self.assertRaises(PiperError, piper.start)
             self.assertRaises(PiperError, piper.stop)
             piper.connect([[1, 2, 3]])
             self.assertRaises(PiperError, piper.connect, [[1, 2, 3, 4]])
             self.assertRaises(PiperError, piper.stop)
+            piper.start() # stage 0 start
             if par is not None:
-                self.assertRaises(PiperError, piper.start)
-            piper.start(forced=True)
-            assert piper.finished is False
-            assert list(piper) == [1, 4, 9]
-            piper.stop(ends=[0])
-            assert piper.started is False
-            if par is not None:
-                assert not piper.imap._started.isSet()
-            assert piper.connected is True
-            assert piper.finished is True
+                self.assertRaises(PiperError, piper.next)
+                self.assertRaises(PiperError, piper.stop)
+                assert piper.started is False
+                piper.start((1,))
+                self.assertRaises(PiperError, piper.stop)
+                assert piper.imap._started.isSet() is True
+                assert piper.started is False
+                piper.start((2,))
+                assert piper.started is True
+                assert piper.finished is False
+                assert list(piper) == [1, 4, 9]
 
+            else:
+                assert piper.finished is False
+                assert list(piper) == [1, 4, 9]
 
     def testlogger(self):
         from logging import Logger
@@ -692,8 +694,9 @@ class test_Piper(GeneratorTest):
             ppr_busy = ppr_instance([[1, 2, 3, 4]])
             assert ppr_instance is ppr_busy
             self.assertRaises(PiperError, ppr_busy.next)
-            self.assertRaises(PiperError, ppr_busy.start)
-            ppr_busy.start(forced=True)
+            ppr_busy.start()
+            self.assertRaises(PiperError, ppr_busy.next)
+            ppr_busy.start(stages=(1, 2))
             assert ppr_busy.started is True
             assert ppr_busy.imap._started.isSet()
             for i in izip(ppr_busy, [1, 2, 3, 4]):
@@ -743,7 +746,7 @@ class test_Piper(GeneratorTest):
         self.assertRaises(PiperError, ppr_busy.start)
         assert not ppr_busy.imap._tasks
         ppr_busy.connect([[1, 2, 3]])
-        ppr_busy.start(forced=True)
+        ppr_busy.start(stages=(0, 1, 2))
         assert ppr_busy.next() == 1
         ppr_busy.stop(ends=[0], forced=True) # not finished
         self.assertRaises(RuntimeError, ppr_busy.imap.next)
@@ -753,7 +756,7 @@ class test_Piper(GeneratorTest):
         pool = IMap()
         ppr_instance = Piper(power, parallel=pool, track=True)
         ppr_instance([inpt])
-        ppr_instance.start(forced=True)
+        ppr_instance.start(stages=(0, 1, 2))
         list(ppr_instance)
         assert ppr_instance.imap._tasks_tracked[0].values() == [i * i for i in
         ppr_instance.imap._tasks_tracked[0].keys()]
@@ -780,8 +783,11 @@ class test_Piper(GeneratorTest):
         ppr_2busy.connect([[7, 2, 3]])
         ppr_1busy.connect([[1, 1, 1]])
 
-        ppr_1busy.start(forced=True)
-        ppr_2busy.start()
+        ppr_1busy.start(stages=(0, 1))
+        ppr_2busy.start(stages=(0, 1))
+
+        ppr_1busy.start(stages=(2,))
+        ppr_2busy.start(stages=(2,))
 
         assert ppr_1busy.next() == 1
         assert ppr_2busy.next() == 14
@@ -793,7 +799,7 @@ class test_Piper(GeneratorTest):
         for i, j in ((None, None), (IMap(), IMap())):
             passer = Piper(workers.core.ipasser, parallel=i)
             passer([[1]])
-            passer.start(forced=True)
+            passer.start(stages=(0, 1, 2))
             passer.next()
             self.assertRaises(StopIteration, passer.next)
             self.assertRaises(StopIteration, passer.next)
@@ -806,7 +812,7 @@ class test_Piper(GeneratorTest):
             passer([[]])
             assert passer.connected is True
             assert passer.started is False
-            passer.start(forced=True)
+            passer.start(stages=(0, 1, 2))
             assert passer.started is True
             assert passer.connected is True
 
@@ -830,8 +836,10 @@ class test_Piper(GeneratorTest):
                 passer2 = Piper(workers.core.ipasser, parallel=j)
                 passer1(inp)
                 passer2([passer1])
-                passer1.start(forced=True)
-                passer2.start(forced=True)
+                passer1.start(stages=(0, 1))
+                passer2.start(stages=(0, 1))
+                passer1.start(stages=(2,))
+                passer2.start(stages=(2,))
                 passer2.next()
                 self.assertRaises(StopIteration, passer2.next)
                 passer2.stop(ends=[0])
@@ -847,7 +855,7 @@ class test_Piper(GeneratorTest):
         dump_piper = Piper(dumper)
         pickle_piper([data])
         dump_piper([pickle_piper])
-        pickle_piper.start(forced=True)
+        pickle_piper.start()
         dump_piper.start()
         list(dump_piper)
         handle.seek(0)
@@ -921,13 +929,15 @@ class test_Piper(GeneratorTest):
             piper2 = Piper(passer, parallel=pool2)
             piper1.connect([data])
             piper2.connect([piper1])
-            piper1.start(forced=True)
-            piper2.start(forced=True)
+            piper1.start(stages=(0, 1))
+            piper2.start(stages=(0, 1))
+            piper1.start(stages=(2,))
+            piper2.start(stages=(2,))
             assert list(piper2) == [1, 2, 3]
 
-    def test_fork_join(self):
+    def xtest_fork_join(self):
         for stride in (1, 2, 3, 4, 5):
-            for r in range(24):
+            for r in range(13):
                 after1 = IMap(stride=stride)
                 after2 = IMap(stride=stride)
                 after3 = IMap(stride=stride)
@@ -940,11 +950,12 @@ class test_Piper(GeneratorTest):
                                 (None, IMap(stride=stride), IMap(stride=stride), IMap(stride=stride)),
                                 (None, after1, after1, after1),
                                 (None, after2, after2, IMap(stride=stride)),
-                                (IMap(), after3, after3, after3),
+                                (IMap(stride=stride), after3, after3, after3),
                                 (before1, before1, before1, before1),
                                 (before2, before2, IMap(stride=stride), before2)
                                 ]
                 for pool1, pool2, pool3, pool4 in combinations:
+                    print '|',
                     data = range(r)
 
                     piper1 = Piper(passer, parallel=pool1)
@@ -958,27 +969,24 @@ class test_Piper(GeneratorTest):
                     piper4.connect([piper2, piper3])
 
                     for piper in (piper1, piper2, piper3, piper4):
-                        piper.start(forgive=True)
-                        # start workers only once
-                        try:
-                            if not piper.imap._started.isSet():
-                                piper.imap._start_workers()
-                                piper.imap._started.set()
-                        except AttributeError:
-                            pass
-                    started_imaps = []
+                        piper.start(stages=(0, 1))
+                    #print 'started 1,',
                     for piper in (piper1, piper2, piper3, piper4):
-                        # start managers only once
-                        # requires _started to be set
+                        piper.start(stages=(2,))
+                    #print '2',
+                    res = list(piper4)
+                    #print 'finished',
+                    assert res == [list(i) for i in zip(range(r), range(r))]
+
+
+                    for p in (pool1, pool2, pool3, pool4):
                         try:
-                            if piper.imap not in started_imaps:
-                                piper.imap._start_managers()
-                                started_imaps.append(piper.imap)
+                            p._pool_getter.join()
+                            p._pool_putter.join()
+                            for pp in p.pool:
+                                pp.join()
                         except AttributeError:
                             pass
-
-                    assert list(piper4) == [list(i) for i in zip(range(r), range(r))]
-
 
     def test_3_fork(self):
         for stride in (1, 2, 3, 4, 5):
@@ -1026,9 +1034,25 @@ class test_Piper(GeneratorTest):
                     assert piper1.finished
                     assert piper2.finished
                     assert piper3.finished
-                    for p in (pool1, pool2, pool3):
-                        if hasattr(p, '_pool_getter'):
-                            p._pool_getter.join()
+
+                    for p in (pool1, pool2, pool3, pool4):
+                         try:
+                             p._pool_getter.join()
+                         except AttributeError:
+                             pass
+
+                    for p in (pool1, pool2, pool3, pool4):
+                         try:
+                             p._pool_putter.join()
+                         except AttributeError:
+                             pass
+
+                    for p in (pool1, pool2, pool3, pool4):
+                        try:
+                            for pp in p.pool:
+                                pp.join()
+                        except AttributeError:
+                            pass
 
     def test_2_stopping(self):
         p = IMap()
@@ -1956,16 +1980,16 @@ class test_Plumber(GeneratorTest):
 
 suite_Graph = unittest.makeSuite(test_Graph, 'test')
 suite_Worker = unittest.makeSuite(test_Worker, 'test')
-suite_Piper = unittest.makeSuite(test_Piper, 'test')
+suite_Piper = unittest.makeSuite(test_Piper, 'xtest')
 suite_Dagger = unittest.makeSuite(test_Dagger, 'test')
 suite_Plumber = unittest.makeSuite(test_Plumber, 'test')
 
 if __name__ == "__main__":
     runner = unittest.TextTestRunner()
-    runner.run(suite_Graph)
+    #runner.run(suite_Graph)
     #runner.run(suite_Worker)
-    #runner.run(suite_Piper)
-    runner.run(suite_Dagger)
+    runner.run(suite_Piper)
+    #runner.run(suite_Dagger)
     #runner.run(suite_Plumber)
     #runner.run(suite_Plumber)
 

@@ -361,7 +361,7 @@ class IMap(object):
         self._started = Event()         # (if not raise TimeoutError on next)
         self._stopping = Event()        # (starting stopping procedure see stop)
         # pool options
-        self.worker_num = cpu_count() if worker_num is None else worker_num
+        self.worker_num = (worker_num or stride or cpu_count())
         self.worker_remote = (worker_remote or [])    # [('host', #workers)]
         self.stride = stride or \
                       self.worker_num + sum([i[1] for i in self.worker_remote])
@@ -419,12 +419,6 @@ class IMap(object):
         self._semaphore_value = (self.buffer or (len(self._tasks) * self.stride))
         self._pool_semaphore = Semaphore(self._semaphore_value)
 
-        # start the pool putter thread
-        self._pool_putter = Thread(target=self._pool_put, args=\
-                (self._pool_semaphore, self._task_queue, self._putin, \
-                len(self.pool), id(self), self._stopping.isSet))
-        self._pool_putter.deamon = True
-        self._pool_putter.start()
 
         # start the pool getter thread
         self._pool_getter = Thread(target=self._pool_get, args=(self._getout, \
@@ -433,6 +427,15 @@ class IMap(object):
                 len(self.pool), id(self)))
         self._pool_getter.deamon = True
         self._pool_getter.start()
+
+        # start the pool putter thread
+        self._pool_putter = Thread(target=self._pool_put, args=\
+                (self._pool_semaphore, self._task_queue, self._putin, \
+                len(self.pool), id(self), self._stopping.isSet))
+        self._pool_putter.deamon = True
+        self._pool_putter.start()
+
+
 
     def _start_workers(self):
         """
@@ -558,21 +561,30 @@ class IMap(object):
     def __call__(self, *args, **kwargs):
         return self.add_task(*args, **kwargs)
 
-    def start(self):
+    def start(self, stages=(1, 2)):
         """
-        Starts the processes or threads in the pool, the threads which manage
-        the pools input and output queues respectively. These processes/threads 
-        are killed either when all the results are calculated and retrieved or 
-        the stop method is called.
+        Starts the processes or threads in the pool (stage 1) and the threads 
+        which manage the pools input and output queues respectively (stage 2). 
+        
+        Arguments:
+        
+            * stages(tuple) [default: (1,2)]
+            
+                Specifies which stages of the start process to execute.
+                After the first stage the pool worker processes/threads are
+                started and the ``IMap._started`` event is set ``True``. A call
+                to the next method of the *IMap* instance will block. After the
+                second stage the ``IMap._pool_putter`` and ``IMap._pool_getter``
+                threads will be started.
         """
-        if not self._started.isSet():
-            self._start_workers()
-            self._started.set()
-            self._start_managers()
+        if 1 in stages:
+            if not self._started.isSet():
+                self._start_workers()
+                self._started.set()
+        if 2 in stages:
+            if not hasattr(self, '_pool_getter'):
+                self._start_managers()
 
-        else:
-            log.error('%s is already started.' % self)
-            raise RuntimeError('%s is already started.' % self)
 
     def stop(self, ends=None, forced=False):
         """
