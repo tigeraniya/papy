@@ -17,7 +17,7 @@ from multiprocessing import TimeoutError
 import threading
 from itertools import izip, imap, chain, repeat, tee
 from threading import Thread, Event
-from collections import defaultdict, deque
+from collections import defaultdict
 from types import FunctionType
 from inspect import isbuiltin, getsource
 from logging import getLogger
@@ -767,15 +767,8 @@ class Piper(object):
         * produce(int) [default: 1]
 
             The number of results to generate for each *Worker* evaluation 
-            result. Results will be either repetitions of the single *Worker* 
-            return value or will be elements of the returned sequence if 
-            produce_from_sequence =``True``. 
-           
-        * produce_from_sequence(bool) [default: ``False``]
-    
-            If ``True`` and produce > 1 the results are produced from the 
-            sequence returned by the *Worker*. If ``False`` the result returned 
-            by the *Worker* is repeated. If produce =1 this option is ignored.
+            result. Results will be elements of the sequence returned by the
+            worker.
         
         * spawn(int) [default: 1]
         
@@ -818,8 +811,8 @@ class Piper(object):
         return cmp(x.ornament, y.ornament)
 
     def __init__(self, worker, parallel=False, consume=1, produce=1, \
-                 spawn=1, timeout=None, cmp=None,
-                 ornament=None, debug=False, name=None, track=False):
+                 spawn=1, timeout=None, cmp=None, ornament=None, debug=False, \
+                 name=None, track=False):
         self.inbox = None
         self.outbox = None
         self.connected = False
@@ -830,7 +823,6 @@ class Piper(object):
         self.consume = consume
         self.spawn = spawn
         self.produce = produce
-        #self.produce_from_sequence = produce_from_sequence
         self.timeout = timeout
         self.debug = debug
         self.track = track
@@ -947,11 +939,18 @@ class Piper(object):
             # sort input
             inbox.sort((self.cmp or self._cmp))
             self.log.info('Piper %s connects to %s' % (self, inbox))
-
-            # Make input
+            # determine the stride with which result will be consumed from the
+            # input.
             stride = self.imap.stride if hasattr(self.imap, 'stride') else 1
 
-            # copy input iterators
+            # Tee input iterators. The idea is to create a promise object for a
+            # tee. The actual teed iterator will be created on start. Each tee
+            # is protected with a seperate lock the reasons for this are:
+            # - tee objects are as a collection not thread safe
+            # - tee objects might be next'ed from different threads, a single
+            #   lock will not guarantee that a thread might be allowed to finish
+            #   it's stride. (How it works that a thread releases the next 
+            #   thread only if it finished a stride
             teed = []
             for piper in inbox:
                 if hasattr(piper, '_iter'):
@@ -962,7 +961,7 @@ class Piper(object):
                     piper = TeePiper(piper, piper.tee_num - 1, stride)
                 teed.append(piper)
 
-            # set how much to consume from input iterators 
+            # set how much to consume from input iterators.
             self.inbox = Zip(*teed) if self.consume == 1 else\
                  Consume(Zip(*teed), n=self.consume, stride=stride)
 
@@ -1078,24 +1077,6 @@ class Piper(object):
             self.inbox = None
             self.outbox = None
             self.connected = False
-
-#        #TODO: what if self.imap._tasks does not exist?
-#        elif len(self.imap._tasks) == 1 or forced:
-#            # not started but connected either not shared or forced
-#
-#            try:
-#                #TODO: figure out if taks removal from imap._tasks should be 
-#                #done in reverse.
-#                for imap_task in self.imap_tasks:
-#                    del self.imap._tasks[imap_task.task]
-#            except AttributeError:
-#                # this handle the case when using itertools.imap
-#                pass
-#        else:
-#            mess = 'Piper %s is connected but is shared and will ' % self + \
-#                'not be disconnected (use forced =True)'
-#            self.log.error(mess)
-#            raise PiperError(mess)
 
     def __call__(self, *args, **kwargs):
         """
@@ -1428,7 +1409,6 @@ class Consume(object):
         return results
 
 
-
 class Zip(object):
 
     def __init__(self, *iterables):
@@ -1586,6 +1566,30 @@ class Produce(_Produce):
 
 class TeePiper(object):
     """
+    This is wrapper around a *Piper*, created whenever another *Piper*
+    connects. The actual call to ``itertools.tee`` happens on a call to
+    ``Piper.start``. A *TeePiper* protects the ``tee`` object with a threading
+    lock. This lock is held for a stride after this the next *TeePiper* is 
+    released. If a ``StopIteration`` exception occurs the next *TeePiper* is 
+    released and subsequent calls to the next method of this *TeePiper* will not
+    involve acquiring a lock and calling the ``next`` method of the wrapped 
+    tee object. This guarantees that the ``next`` method of a *Piper* will yield
+    a ``StopIteration`` only once.
+    
+    Arguments:
+    
+        * piper(*Piper* instance)
+        
+            The *Piper* object to be tee'd
+            
+        * i(int)
+        
+            The index of the ``itertools.tee`` object within ``Piper.tees``.
+            
+        * stride(int)
+        
+            The stride of the *Piper* downstream of the wrapped *Piper*. In 
+            a pipeline they should be the same or compatible (see manual).
     """
     def __init__(self, piper, i, stride):
         self.finished = False
@@ -1598,6 +1602,10 @@ class TeePiper(object):
         return self
 
     def next(self):
+        """
+        Returns or raises the next result from the ``itertools.tee`` object
+        for the wrapped *Piper*.
+        """
         # do not acquire lock if IMap is not finished.
         if self.finished:
             raise StopIteration
