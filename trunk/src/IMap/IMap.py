@@ -410,31 +410,10 @@ class IMap(object):
             self.add_task(func, iterable, args, kwargs)
             self.start()
 
-    def _start_queues(self):
-        pass
-#        # combine tasks into a weaved queue
-#        self._next_available = {}   # per-task boolean queue 
-#                                    # releases next to get a result
-#        self._next_skipped = {}     # per-task int, number of results
-#                                    # to skip (locked)
-#        self._task_next_lock = {}   # per-task lock around _next_skipped
-#        self._task_finished = {}    # a per-task is finished variable
-#        self._task_results = {}     # a per-task queue for results
-
-#        #for id_ in range(len(self._tasks)):
-#            self._next_available[id_] = Queue()
-#            self._next_skipped[id_] = 0
-#            self._task_finished[id_] = Event()
-#            self._task_next_lock[id_] = tLock()
-#            # this locks threads not processes
-#            self._task_results[id_] = PriorityQueue() if self.ordered \
-#                                                      else Queue()
-
     def _start_managers(self):
         """
         (internal) Starts input and output pool queue managers.
         """
-        #self._start_queues()
         self._task_queue = Weave(self._tasks, self.stride)
         # here we determine the size of the maximum memory consumption
         self._semaphore_value = (self.buffer or (len(self._tasks) * self.stride))
