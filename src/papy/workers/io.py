@@ -538,7 +538,7 @@ def load_item(inbox, type='string', remove=True, buffer=None):
 
 
 @imports(['papy', 'tempfile', 'multiprocessing', 'threading'], forgive=True)
-def dump_manager_item(inbox, address=('127.0.0.1', 46779), authkey='papy'):
+def dump_manager_item(inbox, address=('localhost', 46779), authkey='papy'):
     """
     Writes the first element of the inbox as a shared object. The object is
     stored as a value in a shared dictionary served by a ``Manager`` process.
@@ -550,7 +550,7 @@ def dump_manager_item(inbox, address=('127.0.0.1', 46779), authkey='papy'):
 
     Arguments:
 
-        * address(2-tuple) [default: ('127.0.0.1', 46779)]
+        * address(2-tuple) [default: ('localhost', 46779)]
 
             A 2-tuple identifying the server(string) and port(integer).
 

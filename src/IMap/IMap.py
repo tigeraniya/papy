@@ -390,7 +390,7 @@ class IMap(object):
             self._putout = self._outqueue.put
 
 
-         # combine tasks into a weaved queue
+        # combine tasks into a weaved queue
         self._next_available = {}   # per-task boolean queue 
                                     # releases next to get a result
         self._next_skipped = {}     # per-task int, number of results
@@ -429,6 +429,7 @@ class IMap(object):
 #            # this locks threads not processes
 #            self._task_results[id_] = PriorityQueue() if self.ordered \
 #                                                      else Queue()
+
     def _start_managers(self):
         """
         (internal) Starts input and output pool queue managers.
@@ -551,7 +552,6 @@ class IMap(object):
             log.error('%s cannot add tasks (is started).' % self)
             raise RuntimeError('%s cannot add tasks (is started).' % self)
 
-
     def pop_task(self, number):
         """
         Removes a previously added task from the *IMap* instance.
@@ -575,7 +575,6 @@ class IMap(object):
         else:
             log.error('%s cannot delete tasks (is started).' % self)
             raise RuntimeError('%s cannot delete tasks (is started).' % self)
-
 
     def __call__(self, *args, **kwargs):
         return self.add_task(*args, **kwargs)
