@@ -14,9 +14,10 @@ from utils.defaults import get_defaults
 from utils.runtime import get_runtime
 # python imports
 from multiprocessing import TimeoutError
-from itertools import izip, tee, imap, chain, repeat
+import threading
+from itertools import izip, imap, chain, repeat, tee
 from threading import Thread, Event
-from collections import defaultdict
+from collections import defaultdict, deque
 from types import FunctionType
 from inspect import isbuiltin, getsource
 from logging import getLogger
@@ -141,17 +142,22 @@ class Dagger(Graph):
             resolved = False
         return resolved
 
-    def connect(self):
+    def connect(self, datas=None):
         """
         Given the pipeline topology connects *Pipers* in the order input -> 
         output. See ``Piper.connect``.
         """
+        # if data connect inputs
+        if datas:
+            self.connect_inputs(datas)
+        # connect the remaining pipers
         postorder = self.postorder()
         self.log.info('%s trying to connect in the order %s' % \
                       (repr(self), repr(postorder)))
         for piper in postorder:
-            if not piper.connected and self[piper].keys(): # skip input pipers
-                piper.connect(self[piper].keys())   # what if []?
+            if not piper.connected and self[piper].keys():
+                # we don't want to disconnect input piers
+                piper.connect(self[piper].keys())
         self.log.info('%s succesfuly connected' % repr(self))
 
     def connect_inputs(self, datas):
@@ -173,32 +179,32 @@ class Dagger(Graph):
         """
         start_pipers = self.get_inputs()
         start_pipers.sort(self._cmp)
+        self.log.info('%s trying to connect inputs in the order %s' % \
+                      (repr(self), repr(start_pipers)))
         for piper, data in izip(start_pipers, datas):
             piper.connect([data])
+        self.log.info('%s succesfuly connected inputs' % repr(self))
 
-    def disconnect(self):
+    def disconnect(self, forced=False):
         """
         Given the pipeline topology disconnects *Pipers* in the order output -> 
-        input. See ``Piper.connect``.
+        input. This also disconnects inputs. See ``Dagger.connect``,
+        ``Piper.connect`` and ``Piper.disconnect``.
+        
+        Arguments:
+        
+            * forced(bool) [default: False]
+            
+                If set ``True`` all tasks from all IMaps will be removed.
         """
-        postorder = self.postorder()
+        reversed_postorder = self.postorder(reverse=True)
         self.log.info('%s trying to disconnect in the order %s' % \
-                      (repr(self), repr(postorder)))
-        for piper in postorder:
-            if piper.connected and self[piper].keys(): # skip input pipers
-                piper.disconnect()
+                      (repr(self), repr(reversed_postorder)))
+        for piper in reversed_postorder:
+            if piper.connected:
+                # we don't want to trigger an exception
+                piper.disconnect(forced)
         self.log.info('%s succesfuly disconnected' % repr(self))
-
-    def disconnect_inputs(self):
-        """
-        Given the pipeline topology disconnects input *Pipers*. See 
-        ``Piper.connect_inputs``.
-        """
-        start_pipers = self.get_inputs()
-        self.log.info('%s trying to disconnected inputs' % repr(self))
-        for piper in start_pipers:
-            piper.disconnect()
-        self.log.info('%s succesfuly disconnected inputs' % repr(self))
 
     def start(self):
         """
@@ -206,9 +212,24 @@ class Dagger(Graph):
         output. See ``Piper.start``. The forced =`True` argument is passed to 
         the ``Piper.start`` method, allowing *Pipers* to share *IMaps*.
         """
-        postorder = self.postorder()
-        for piper in postorder:
-            piper.start(forced=True)
+        # top - > bottom of pipeline
+        pipers = self.postorder()
+        for piper in pipers:
+            piper.start(forgive=True)
+        # start only IMap pipers
+        imap_pipers = [pip for pip in pipers if hasattr(pip.imap, '_started')]
+        for piper in imap_pipers:
+            # start workers only once
+            if not piper.imap._started.isSet():
+                piper.imap._start_workers()
+                piper.imap._started.set()
+        started_imaps = []
+        for piper in imap_pipers:
+            # start managers only once
+            # requires _started to be set
+            if piper.imap not in started_imaps:
+                piper.imap._start_managers()
+                started_imaps.append(piper.imap)
 
     def stop(self):
         """
@@ -233,7 +254,7 @@ class Dagger(Graph):
                                    (repr(self), piper, excp))
         self.log.debug("%s tries to stop IMap's manager threads" % repr(self))
         for piper in postorder:
-            piper._stop_managers() #
+            piper.imap._stop_managers() #
         self.log.info('%s finishes stopping routine' % repr(self))
 
     def get_inputs(self):
@@ -563,7 +584,7 @@ class Plumber(Dagger):
             ws = W_SIG % (",".join([t.__name__ for t in w.task]), w.args, w.kwargs)
             cmp_ = p.cmp__name__ if p.cmp else None
             pcall += P_SIG % (p.name, ws, in_, p.consume, p.produce, p.spawn, \
-                              p.produce_from_sequence, p.timeout, cmp_, \
+                              p.timeout, cmp_, \
                               p.ornament, p.debug, p.name, p.track)
             for t in chain(w.task, [p.cmp]):
                 if (t in tdone) or not t:
@@ -797,21 +818,26 @@ class Piper(object):
         return cmp(x.ornament, y.ornament)
 
     def __init__(self, worker, parallel=False, consume=1, produce=1, \
-                 spawn=1, produce_from_sequence=False, timeout=None, cmp=None,
+                 spawn=1, timeout=None, cmp=None,
                  ornament=None, debug=False, name=None, track=False):
         self.inbox = None
         self.outbox = None
         self.connected = False
+        self.started = False
         self.finished = False
         self.imap_tasks = []
 
         self.consume = consume
         self.spawn = spawn
         self.produce = produce
-        self.produce_from_sequence = produce_from_sequence
+        #self.produce_from_sequence = produce_from_sequence
         self.timeout = timeout
         self.debug = debug
         self.track = track
+
+        self.tee_locks = [threading.Lock()]
+        self.tee_num = 0
+        self.tees = []
 
         self.log = getLogger('papy')
         self.log.info('Creating a new Piper from %s' % worker)
@@ -857,33 +883,43 @@ class Piper(object):
     def __repr__(self):
         return "%s(%s)" % (self.name, repr(self.worker))
 
-    def start(self, forced=False):
+    def start(self, forced=False, forgive=False):
         """
         Makes the *Piper* ready to return results. This involves starting the 
         the provided *IMap* instance. If multiple *Pipers* share an *IMap* 
         instance the order in which the *Pipers* are started is important. The
-        valid order is upstream before downstream. The forced argument has to be
-        ``True`` if this *Piper* shares the *IMap* instance.
+        valid order is upstream before downstream. The *IMap* instance has to 
+        be started only once. If this *Piper* shares an *IMap* with other 
+        *Pipers* the forced argument has to be ``True`` for exactly one of the 
+        *Pipers*.
         
         Arguments:
         
             * forced(bool) [default =``False``]
             
                 Starts the *IMap* instance if it is shared by multiple *Pipers* 
-                instead of raising a ``PiperError``.
+                instead of raising a ``PiperError`` if the *IMap* is not 
+                started.
         """
-        if not hasattr(self.imap, '_started'):
-            self.log.info('Piper %s does not need to be started' % self)
-        elif self.imap._started.isSet():
-            self.log.info('Piper %s has already been started' % self)
-        elif self.connected and (len(self.imap._tasks) == 1 or forced):
-            self.imap.start()
-            self.log.info('Piper %s has been started' % self)
+        if self.started:
+            self.log.error('Piper %s has already been started.' % self)
+            raise PiperError('Piper %s has already been started.' % self)
+        elif not self.connected:
+            self.log.error('Piper %s is not connected.' % self)
+            raise PiperError('Piper %s is not connected.' % self)
         else:
-            self.log.error('Piper %s cannot start. connected: %s, shared: %s' % \
-                           (self, self.connected, len(self.imap._tasks)))
-            raise PiperError('Piper %s cannot start. connected: %s, shared: %s' % \
-                             (self, self.connected, len(self.imap._tasks)))
+            # connected, but not started
+            self.tees.extend(tee(self, self.tee_num)) # no connect after start
+            if hasattr(self.imap, 'start'):
+                # if imap is not started try to start ele pass
+                if not self.imap._started.isSet():
+                    if forced:
+                        self.imap.start()
+                    elif not forgive:
+                        self.log.error('Piper %s could not be started.' % self)
+                        raise PiperError('Piper %s could not be started.' % self)
+            self.started = True
+            self.log.info('Piper %s has been started' % self)
 
     def connect(self, inbox):
         """
@@ -891,17 +927,23 @@ class Piper(object):
         be passed as a sequence. This connects the ``Piper.inbox`` with the 
         ``Piper.outbox`` respecting the consume, spawn and produce arguments. 
         """
-        if hasattr(self.imap, '_started') and self.imap._started.isSet():
-            self.log.error('Piper %s is started and cannot connect to %s' % \
+        if self.started:
+            self.log.error('Piper %s is started and cannot connect to %s.' % \
                            (self, inbox))
-            raise PiperError('Piper %s is started and cannot connect to %s' % \
+            raise PiperError('Piper %s is started and cannot connect to %s.' % \
                              (self, inbox))
         elif self.connected:
-            self.log.error('Piper %s is connected and cannot connect to %s' % \
+            self.log.error('Piper %s is connected and cannot connect to %s.' % \
                            (self, inbox))
-            raise PiperError('Piper %s is connected and cannot connect to %s' % \
+            raise PiperError('Piper %s is connected and cannot connect to %s.' % \
                              (self, inbox))
+        elif hasattr(self.imap, '_started') and self.imap._started.isSet():
+            self.log.error('Piper %s cannot connect (IMap is started).' % \
+                           self)
+            raise PiperError('Piper %s cannot connect (IMap is started).' % \
+                           self)
         else:
+            # not started and not connected and IMap not started
             # sort input
             inbox.sort((self.cmp or self._cmp))
             self.log.info('Piper %s connects to %s' % (self, inbox))
@@ -913,13 +955,16 @@ class Piper(object):
             teed = []
             for piper in inbox:
                 if hasattr(piper, '_iter'):
-                    piper._iter, piper = tee(piper, 2)
+                    piper.tee_num += 1
+                    tee_lock = threading.Lock()
+                    tee_lock.acquire()
+                    piper.tee_locks.append(tee_lock)
+                    piper = TeePiper(piper, piper.tee_num - 1, stride)
                 teed.append(piper)
 
             # set how much to consume from input iterators 
-            self.inbox = izip(*teed) if self.consume == 1 else\
-                  Consume(izip(*teed), n=self.consume, \
-                  stride=stride)
+            self.inbox = Zip(*teed) if self.consume == 1 else\
+                 Consume(Zip(*teed), n=self.consume, stride=stride)
 
             # set how much to 
             for i in xrange(self.spawn):
@@ -931,9 +976,9 @@ class Piper(object):
             # chain the results together.
             outbox = Chain(self.imap_tasks, stride=stride)
             # Make output
-            prd = ProduceFromSequence if self.produce_from_sequence else Produce
+            #prd = ProduceFromSequence if self.produce_from_sequence else Produce
             self.outbox = outbox if self.produce == 1 else\
-                  prd(outbox, n=self.produce, stride=stride)
+                  Produce(outbox, n=self.produce, stride=stride)
             self.connected = True
 
         return self # this is for __call__
@@ -972,19 +1017,22 @@ class Piper(object):
                 not call the ``IMap._stop_managers`` method.
         """
         # ends valid only if forced specified.
-        if not hasattr(self.imap, '_started'):
-            self.log.info('Piper %s does not need to be stopped' % self)
-        elif not self.imap._started.isSet():
-            self.log.error('Piper %s has not started and cannot be stopped' % \
-                           self)
-        elif self.finished or forced:
-            self.imap.stop(forced=forced, **kwargs)
-            self.log.info('Piper %s stops (finished: %s)' % \
-                          (self, self.finished))
-        else:
+        if not self.started:
+            self.log.error('Piper %s has not yet been started.' % self)
+            raise PiperError('Piper %s has not yet been started.' % self)
+        elif not self.finished and not forced:
             msg = 'Piper %s has not finished. Use forced =True' % self
             self.log.error(msg)
             raise PiperError(msg)
+        else:
+            # started and (finished or forced)
+            if hasattr(self.imap, 'stop') and self.imap._started.isSet():
+                # only if imap still started
+                self.imap.stop(forced=forced, **kwargs)
+            self.started = False
+            self.log.info('Piper %s stops (finished: %s)' % \
+                          (self, self.finished))
+
 
     def disconnect(self, forced=False):
         """
@@ -1001,14 +1049,19 @@ class Piper(object):
         if not self.connected:
             self.log.error('Piper %s is not connected and cannot be disconnected' % self)
             raise PiperError('Piper %s is not connected and cannot be disconnected' % self)
-        elif hasattr(self.imap, '_started') and self.imap._started.isSet():
+        elif self.started:
             self.log.error('Piper %s is started and cannot be disconnected (stop first)' % self)
             raise PiperError('Piper %s is started and cannot be disconnected (stop first)' % self)
+        elif hasattr(self.imap, '_started') and self.imap._started.isSet():
+            self.log.error('Piper %s cannot disconnect as its IMap is started' % self)
+            raise PiperError('Piper %s cannot disconnect as its IMap is started' % self)
         else:
             # connected and not started
             if hasattr(self.imap, '_started'):
-                # using an IMap
-                if self.imap_tasks[-1].task == len(self.imap._tasks) - 1:
+                if self.imap._tasks == []:
+                    # fully stopped
+                    pass
+                elif self.imap_tasks[-1].task == len(self.imap._tasks) - 1:
                     # the last task of this piper is the last task in the IMap
                     self.imap.pop_task(number=self.spawn)
                 elif forced:
@@ -1070,10 +1123,14 @@ class Piper(object):
             raise excp
         except (AttributeError, RuntimeError), excp:
             # probably self.outbox.next() is self.None.next()
-            self.log.error('Piper %s has not yet been started' % self)
-            raise PiperError('Piper %s has not yet been started' % self, excp)
+            self.log.error('Piper %s has not yet been started.' % self)
+            raise PiperError('Piper %s has not yet been started.' % self, excp)
+        except IndexError, excp:
+            # probably started before connected
+            self.log.error('Piper %s has been started before connect.' % self)
+            raise PiperError('Piper %s has been started before connect.' % self, excp)
         except TimeoutError, excp:
-            self.log.error('Piper %s timed out waited %ss' % \
+            self.log.error('Piper %s timed out waited %ss.' % \
                            (self, self.timeout))
             next = PiperError(excp)
             # we do not raise TimeoutErrors so they can be skipped.
@@ -1091,6 +1148,8 @@ class Piper(object):
             next = PiperError(next)
         elif isinstance(next, PiperError):
             # Worker/PiperErrors are wrapped by workers
+            if self.debug:
+                raise next
             self.log.info('Piper %s propagates %s' % (self, next[0]))
         return next
 
@@ -1369,6 +1428,29 @@ class Consume(object):
         return results
 
 
+
+class Zip(object):
+
+    def __init__(self, *iterables):
+        self.iterables = [iter(itr) for itr in iterables]
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        results = []
+        stop = False
+        for iter in self.iterables:
+            try:
+                results.append(iter.next())
+            except StopIteration:
+                stop = True
+        if stop:
+            raise StopIteration
+        else:
+            return results
+
+
 class Chain(object):
     """ 
     This is a generalization of the ``zip`` and ``chain`` functions. 
@@ -1396,7 +1478,7 @@ class Chain(object):
 
     def next(self):
         """
-        Returns the next result from the chained iterables given strid.
+        Returns the next result from the chained iterables given stride.
         """
         if self.s:
             self.s -= 1
@@ -1406,7 +1488,7 @@ class Chain(object):
         return self.iterables[self.i].next()
 
 
-class Produce(object):
+class _Produce(object):
     """ 
     This iterator-wrapper returns n-times each result from the wrapped iterator.
     i.e. if n =2 and the input iterators results are (1, Exception, 2) then the 
@@ -1439,6 +1521,7 @@ class Produce(object):
             except Exception, excp:
                 results.append(excp)
                 exceptions.append(True)
+        #print (results, exceptions)
         self._repeat_buffer = repeat((results, exceptions), self.n)
 
     def next(self):
@@ -1460,7 +1543,7 @@ class Produce(object):
             return res
 
 
-class ProduceFromSequence(Produce):
+class Produce(_Produce):
     """
     This iterator wrapper is an iterator, but it returns elements from the 
     sequence returned by the wrapped iterator. The number of returned elements
@@ -1499,6 +1582,52 @@ class ProduceFromSequence(Produce):
             res_exc.append((flat_results, exceptions))
         # make an iterator (like repeat)
         self._repeat_buffer = iter(res_exc)
+
+
+class TeePiper(object):
+    """
+    """
+    def __init__(self, piper, i, stride):
+        self.finished = False
+        self.piper = piper
+        self.stride = stride
+        self.i = i
+        self.s = 1
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        # do not acquire lock if IMap is not finished.
+        if self.finished:
+            raise StopIteration
+
+        # get per-tee lock
+        self.piper.tee_locks[self.i].acquire()
+
+        # get result or exception
+        exception = True
+        try:
+            result = self.piper.tees[self.i].next()
+            exception = False
+        except StopIteration, result:
+            self.finished = True
+        except Exception, result:
+            pass
+
+        # release per-tee lock either self or next
+        if self.s == self.stride or self.finished:
+            self.s = 1
+            self.piper.tee_locks[(self.i + 1) % len(self.piper.tees)].release()
+
+        else:
+            self.s += 1
+            self.piper.tee_locks[self.i].release()
+
+        if exception:
+            raise result
+        else:
+            return result
 
 
 #EOF
