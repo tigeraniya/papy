@@ -944,7 +944,7 @@ class test_Piper(GeneratorTest):
             piper2.start(stages=(2,))
             assert list(piper2) == [1, 2, 3]
 
-    def test_fork_join(self):
+    def xxtest_fork_join(self):
         for stride in (1, 2, 3, 4, 5):
             for r in range(13):
                 after1 = IMap(stride=stride)
@@ -997,7 +997,7 @@ class test_Piper(GeneratorTest):
                         except AttributeError:
                             pass
 
-    def test_3_fork(self):
+    def xxtest_3_fork(self):
         for stride in (1, 2, 3, 4, 5):
             for r in range(24):
                 after1 = IMap(stride=stride)
@@ -1980,10 +1980,76 @@ class test_Plumber(GeneratorTest):
         self.plum.pause()
         self.plum.stop()
 
-    def xtest_start_run_finish_stop(self):
-        self.pwr_linear = Piper(power)
-        self.pwr_parallel = Piper(power, parallel=IMap(buffer=2), track=True, name='power')
-        self.plum.add_piper(self.pwr_linear)
+    def xtest_start_run_finish_stop2(self):
+        pwr_l1 = Piper(power)
+        pwr_l2 = Piper(power)
+        pwr_l3 = Piper(power)
+        pwr_l4 = Piper(power)
+
+        pwr_p1 = Piper(power, parallel=IMap(), track=True, name='power1')
+        pwr_p2 = Piper(power, parallel=IMap(), track=True, name='power2')
+        pwr_p3 = Piper(power, parallel=IMap(), track=True, name='power3')
+        pwr_p4 = Piper(power, parallel=IMap(), track=True, name='power4')
+
+
+        # linear
+        self.plum.add_pipe((pwr_l1, pwr_l2))
+        data = iter(xrange(1000000000000))
+        self.plum.start([data])
+        self.assertRaises(PlumberError, self.plum.pause)
+        self.plum.run()
+        self.assertRaises(PlumberError, self.plum.stop)
+        self.plum.pause()
+        self.plum.stop()
+
+
+        #clean
+        self.plum.del_pipe((pwr_l1, pwr_l2))
+
+        # parallel
+        self.plum.add_pipe((pwr_p1, pwr_p2))
+        data = iter(xrange(1000000000000))
+        self.plum.start([data])
+        self.assertRaises(PlumberError, self.plum.pause)
+        self.plum.run()
+        self.assertRaises(PlumberError, self.plum.stop)
+        self.plum.pause()
+        self.plum.stop()
+        assert len(self.plum.stats['pipers_tracked']['power1'][0]) == len(self.plum.stats['pipers_tracked']['power2'][0]) == data.next()
+
+        # clean
+        self.plum.del_pipe((pwr_p1, pwr_p2))
+
+        # linear -> parallel
+        self.plum.add_pipe((pwr_l3, pwr_p3))
+        data = iter(xrange(1000000000000))
+        self.plum.start([data])
+        self.assertRaises(PlumberError, self.plum.pause)
+        self.plum.run()
+        self.assertRaises(PlumberError, self.plum.stop)
+        self.plum.pause()
+        self.plum.stop()
+        assert len(self.plum.stats['pipers_tracked']['power3'][0]) == data.next()
+
+        # clean
+        self.plum.del_pipe((pwr_l3, pwr_p3))
+
+        # parallel -> linear
+        self.plum.add_pipe((pwr_p4, pwr_l4))
+        data = iter(xrange(1000000000000))
+        self.plum.start([data])
+        self.assertRaises(PlumberError, self.plum.pause)
+        self.plum.run()
+        self.assertRaises(PlumberError, self.plum.stop)
+        self.plum.pause()
+        self.plum.stop()
+        assert len(self.plum.stats['pipers_tracked']['power4'][0]) == data.next()
+
+
+
+    def xtest_start_run_pause_run_stop(self):
+        pwr_linear = Piper(power)
+        self.plum.add_piper(pwr_linear)
         self.plum.start([xrange(1000000000000000)])
         self.assertRaises(PlumberError, self.plum.pause)
         self.plum.run()
@@ -1993,11 +2059,15 @@ class test_Plumber(GeneratorTest):
         self.plum.run()
         self.plum.pause()
         self.plum.stop()
-        print self.plum.stats
-        self.plum.del_piper(self.pwr_linear)
-        self.plum.add_piper(self.pwr_parallel)
-        self.plum.start([[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]])
+
+        pwr_parallel = Piper(power, parallel=IMap(buffer=2), track=True, name='power')
+        self.plum.del_piper(pwr_linear)
+        self.plum.add_piper(pwr_parallel)
+        self.plum.start([xrange(1000000000000000)])
         self.assertRaises(PlumberError, self.plum.pause)
+        self.plum.run()
+        self.assertRaises(PlumberError, self.plum.stop)
+        self.plum.pause()
         self.plum.run()
         self.assertRaises(PlumberError, self.plum.stop)
         self.plum.pause()
@@ -2045,7 +2115,7 @@ class test_Plumber(GeneratorTest):
 
 suite_Graph = unittest.makeSuite(test_Graph, 'test')
 suite_Worker = unittest.makeSuite(test_Worker, 'test')
-suite_Piper = unittest.makeSuite(test_Piper, 'xtest')
+suite_Piper = unittest.makeSuite(test_Piper, 'xxtest')
 suite_Dagger = unittest.makeSuite(test_Dagger, 'xtest')
 suite_Plumber = unittest.makeSuite(test_Plumber, 'xtest')
 
@@ -2053,8 +2123,8 @@ if __name__ == "__main__":
     runner = unittest.TextTestRunner()
     #runner.run(suite_Graph)
     #runner.run(suite_Worker)
-    runner.run(suite_Piper)
-    runner.run(suite_Dagger)
+    #runner.run(suite_Piper)
+    #runner.run(suite_Dagger)
     runner.run(suite_Plumber)
     #runner.run(suite_Plumber)
 
