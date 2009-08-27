@@ -214,22 +214,11 @@ class Dagger(Graph):
         """
         # top - > bottom of pipeline
         pipers = self.postorder()
+        # 
         for piper in pipers:
-            piper.start(forgive=True)
-        # start only IMap pipers
-        imap_pipers = [pip for pip in pipers if hasattr(pip.imap, '_started')]
-        for piper in imap_pipers:
-            # start workers only once
-            if not piper.imap._started.isSet():
-                piper.imap._start_workers()
-                piper.imap._started.set()
-        started_imaps = []
-        for piper in imap_pipers:
-            # start managers only once
-            # requires _started to be set
-            if piper.imap not in started_imaps:
-                piper.imap._start_managers()
-                started_imaps.append(piper.imap)
+            piper.start(stages=(0, 1))
+        for piper in pipers:
+            piper.start(stages=(2,))
 
     def stop(self):
         """
@@ -254,7 +243,8 @@ class Dagger(Graph):
                                    (repr(self), piper, excp))
         self.log.debug("%s tries to stop IMap's manager threads" % repr(self))
         for piper in postorder:
-            piper.imap._stop_managers() #
+            if hasattr(piper.imap, '_stop'):
+                piper.imap._stop() # this stops the threads
         self.log.info('%s finishes stopping routine' % repr(self))
 
     def get_inputs(self):
@@ -352,7 +342,6 @@ class Dagger(Graph):
                               (repr(self), piper))
         self.del_node(piper)
         self.log.info('%s deleted piper %s' % (repr(self), piper))
-
 
     def add_pipe(self, pipe):
         """
@@ -507,27 +496,18 @@ class Plumber(Dagger):
             An optional *Dagger* instance.
     """
 
-    def _finish(self, isstopped):
+    def _finish(self, ispausing):
         """
         (internal) Executes when last output piper raises ``StopIteration``.
         """
-        self.stats['run_time'] = time() - self.stats['start_time']
-        self.log.info('%s finished, stopped: %s.' % \
-        (repr(self), isstopped))
-        self._is_finished.set()
-
-    def _track(self, frame_finished):
-        """
-        (internal) Executes when last output *Piper* returns something.
-        """
-        # this should be fixed to monitor not only the last!
-        if frame_finished:
-            self.stats['last_frame'] += 1
-            self.log.info('%s finished tasklet %s' % \
-            (repr(self), self.stats['last_frame']))
+        if ispausing:
+            self.log.info('%s paused' % self)
+        else:
+            self._finished.set()
+            self.log.info('%s finished' % self)
 
     @staticmethod
-    def _plunge(tasks, is_stopping, track, finish):
+    def _plunge(tasks, pausing, finish):
         """
         (internal) Calls the next method of weaved tasks until they are finished
         or The *Plumber* instance is stopped see ``Dagger.chinkup``.
@@ -535,26 +515,19 @@ class Plumber(Dagger):
         # If no result received either not started or start & stop
         # could have been called before the plunger thread
         while True:
-            if is_stopping():
+            if pausing():
                 tasks.stop()
             try:
                 tasks.next()
-                frame_finished = (tasks.i == (tasks.lenght - 1))
-                track(frame_finished)
             except StopIteration:
-                finish(is_stopping())
+                finish(pausing())
                 break
 
     def __init__(self, logger_options={}, **kwargs):
-        self._is_stopping = Event()
-        self._is_finished = Event()
-        self._plunger = None
-
-        # Plumber statistics
-        self.stats = {}
-        self.stats['last_frame'] = -1
-        self.stats['start_time'] = None
-        self.stats['run_time'] = None
+        self._started = Event() # after start till stop
+        self._running = Event() # after run till pause
+        self._pausing = Event() # during pause
+        self._finished = Event() # after finishing the input
 
         logger.start_logger(**logger_options)
         self.log = getLogger('papy')
@@ -564,47 +537,47 @@ class Plumber(Dagger):
         # set for a predefined dagger.
         Dagger.__init__(self, **kwargs)
 
-    def _code(self):
-        """
-        (internal) Generates imports, code and runtime calls.
-        """
-        icode, tcode = '', '' # imports, task code
-        icall, pcall = '', '' # imap calls, piper calls
-        tdone, idone = [], [] # task done, imap done
-
-        for piper in self:
-            p = piper
-            w = piper.worker
-            i = piper.imap
-            in_ = i.name if hasattr(i, 'name') else False
-            if in_ and in_ not in idone:
-                icall += I_SIG % (in_, i.worker_type, i.worker_num, i.stride, \
-                                  i.buffer, i.ordered, i.skip, in_)
-                idone.append(in_)
-            ws = W_SIG % (",".join([t.__name__ for t in w.task]), w.args, w.kwargs)
-            cmp_ = p.cmp__name__ if p.cmp else None
-            pcall += P_SIG % (p.name, ws, in_, p.consume, p.produce, p.spawn, \
-                              p.timeout, cmp_, \
-                              p.ornament, p.debug, p.name, p.track)
-            for t in chain(w.task, [p.cmp]):
-                if (t in tdone) or not t:
-                    continue
-                tm, tn = t.__module__, t.__name__
-                if (tm == '__builtin__') or hasattr(p, tn):
-                    continue
-                if tm == '__main__':
-                    tcode += getsource(t)
-                else:
-                    icode += 'from %s import %s\n' % (tm, tn)
-                tdone.append(t)
-
-        pipers = [p.name for p in self]
-        pipers = '[%s]' % ", ".join(pipers)
-        pipes = [L_SIG % (d.name, s.name) for s, d in self.edges()]
-        pipes = '[%s]' % ", ".join(pipes)                           # pipes
-        xtras = [str(self[p].xtra) for p in self]
-        xtras = '[%s]' % ",".join(xtras)                            # node xtra
-        return (icode, tcode, icall, pcall, pipers, xtras, pipes)
+#    def _code(self):
+#        """
+#        (internal) Generates imports, code and runtime calls.
+#        """
+#        icode, tcode = '', '' # imports, task code
+#        icall, pcall = '', '' # imap calls, piper calls
+#        tdone, idone = [], [] # task done, imap done
+#
+#        for piper in self:
+#            p = piper
+#            w = piper.worker
+#            i = piper.imap
+#            in_ = i.name if hasattr(i, 'name') else False
+#            if in_ and in_ not in idone:
+#                icall += I_SIG % (in_, i.worker_type, i.worker_num, i.stride, \
+#                                  i.buffer, i.ordered, i.skip, in_)
+#                idone.append(in_)
+#            ws = W_SIG % (",".join([t.__name__ for t in w.task]), w.args, w.kwargs)
+#            cmp_ = p.cmp__name__ if p.cmp else None
+#            pcall += P_SIG % (p.name, ws, in_, p.consume, p.produce, p.spawn, \
+#                              p.timeout, cmp_, \
+#                              p.ornament, p.debug, p.name, p.track)
+#            for t in chain(w.task, [p.cmp]):
+#                if (t in tdone) or not t:
+#                    continue
+#                tm, tn = t.__module__, t.__name__
+#                if (tm == '__builtin__') or hasattr(p, tn):
+#                    continue
+#                if tm == '__main__':
+#                    tcode += getsource(t)
+#                else:
+#                    icode += 'from %s import %s\n' % (tm, tn)
+#                tdone.append(t)
+#
+#        pipers = [p.name for p in self]
+#        pipers = '[%s]' % ", ".join(pipers)
+#        pipes = [L_SIG % (d.name, s.name) for s, d in self.edges()]
+#        pipes = '[%s]' % ", ".join(pipes)                           # pipes
+#        xtras = [str(self[p].xtra) for p in self]
+#        xtras = '[%s]' % ",".join(xtras)                            # node xtra
+#        return (icode, tcode, icall, pcall, pipers, xtras, pipes)
 
     def __repr__(self):
         """
@@ -618,118 +591,192 @@ class Plumber(Dagger):
         """
         return super(Plumber, self).__str__()
 
-    def load(self, filename):
-        """
-        Load pipeline from source file.
-        
-        Arguments:
-        
-            * filename(path)
-            
-                Location of the pipeline source code.
-        """
-        namespace = {}
-        execfile(filename, namespace)
-        pipers, xtras, pipes = namespace['pipeline']()
-        self.add_pipers(pipers, xtras)
-        self.add_pipes(pipes)
+#    def load(self, filename):
+#        """
+#        Load pipeline from source file.
+#        
+#        Arguments:
+#        
+#            * filename(path)
+#            
+#                Location of the pipeline source code.
+#        """
+#        namespace = {}
+#        execfile(filename, namespace)
+#        pipers, xtras, pipes = namespace['pipeline']()
+#        self.add_pipers(pipers, xtras)
+#        self.add_pipes(pipes)
+#
+#    def save(self, filename):
+#        """
+#        Save pipeline as source file.
+#        
+#        Arguments:
+#        
+#            * filename(path)
+#            
+#                Path to save pipeline source code.
+#        """
+#        handle = open(filename, 'wb')
+#        handle.write(P_LAY % self._code())
+#        handle.close()
 
-    def save(self, filename):
-        """
-        Save pipeline as source file.
-        
-        Arguments:
-        
-            * filename(path)
-            
-                Path to save pipeline source code.
-        """
-        handle = open(filename, 'wb')
-        handle.write(P_LAY % self._code())
-        handle.close()
+#    def plunge(self, data, tasks=None, stride=1):
+#        """
+#        Executes the pipeline by connecting the input *Pipers* of the pipeline 
+#        to the input data, connecting the pipeline, starting the *IMaps* and 
+#        pulling results from output *Pipers*. A stride number of results is 
+#        pulled from a *Piper* is requested before the next next output *Piper*.
+#        *Pipers* with the ``track`` attribute set ``True`` will have their 
+#        results stored within ``Dagger.stats['pipers_tracked']``.
+#        
+#        Arguments:
+#
+#            .. note::
+#            
+#                Warning! If you change the defaults of these arguments you 
+#                should better know what you are doing. The order of the tasks
+#                in the sequence and the stride specified here should be 
+#                compatible with the buffer and stride attributes of the *IMap*
+#                instances used by the *Pipers* and the pipelines topology. 
+#                Please refer to the manual.
+#
+#            * tasks(sequence of *Piper* instances) [default: ``None``]
+#
+#                If no sequence is given all output *Pipers* are plunged in 
+#                correct topological order. If a sequence is given the *Pipers*
+#                are plunged in the left to right order.
+#
+#            * stride(int) [default: 1]
+#
+#                By default take only one result from each output *Piper*. As a 
+#                general rule the stride cannot be bigger then the stride of the
+#                *IMap* instances. The default will change in future versions.
+#        """
+#        #TODO: change the default stride for Plumber.plunge
+#        # connect pipers
+#        self.connect_inputs(data)
+#        self.connect()
+#
+#        # collect results for tracked tasks
+#        self.stats['pipers_tracked'] = {}
+#        for ppr in self.postorder():
+#            if hasattr(ppr.imap, '_tasks_tracked') and ppr.track:
+#                self.stats['pipers_tracked'][ppr.name] = \
+#                [ppr.imap._tasks_tracked[t.task] for t in ppr.imap_tasks]
+#
+#        # start IMaps
+#        self.stats['start_time'] = time()
+#        self.start()    # forced =True
+#
+#        # remove non-block results for end tasks
+#        tasks = (tasks or self.get_outputs())
+#        wtasks = Weave(tasks, repeats=stride)
+#        self._plunger = Thread(target=self._plunge, args=(wtasks, \
+#                        self._is_stopping.isSet, self._track, self._finish))
+#        self._plunger.deamon = True
+#        self._plunger.start()
+#
+#    def chinkup(self, stop=False):
+#        """
+#        Cleanly pauses or stops a running pipeline. Python will not terminate 
+#        cleanly if a pipeline is running or paused.
+#        
+#        Arguments:
+#        
+#            * stop(book) [default: False]
+#            
+#                If ``False`` *Plumber* will pause and can be re-plunged. 
+#                If ``True`` *Plumber* will stop the *Dagger*, *Pipers* and 
+#                *IMaps*. 
+#            
+#        """
+#        # 1. stop the plumbing thread by raising a StopIteration on a stride 
+#        #    boundary
+#        self._is_stopping.set()
+#        self._plunger.join()
+#        del self._plunger
+#        if stop:
+#            # 2. now stop the dagger
+#            self.stop()
+#            # 3. disconnect pipers
+#            self.disconnect()
+#            self.disconnect_inputs()
 
-    def plunge(self, data, tasks=None, stride=1):
-        """
-        Executes the pipeline by connecting the input *Pipers* of the pipeline 
-        to the input data, connecting the pipeline, starting the *IMaps* and 
-        pulling results from output *Pipers*. A stride number of results is 
-        pulled from a *Piper* is requested before the next next output *Piper*.
-        *Pipers* with the ``track`` attribute set ``True`` will have their 
-        results stored within ``Dagger.stats['pipers_tracked']``.
-        
-        Arguments:
+    def start(self, datas):
+        if not self._started.isSet() and \
+           not self._running.isSet() and \
+           not self._pausing.isSet():
+            # Plumber statistics
+            self.stats = {}
+            self.stats['start_time'] = None
+            self.stats['run_time'] = None
+            # connects input pipers to external data
+            self.connect_inputs(datas)
+            # connects pipers within the pipeline
+            self.connect()
+            # make pointers to results collected for pipers by imaps
+            self.stats['pipers_tracked'] = {}
+            for piper in self.postorder():
+                if hasattr(piper.imap, '_tasks_tracked') and piper.track:
+                    self.stats['pipers_tracked'][piper.name] = \
+                    [piper.imap._tasks_tracked[t.task] for t in piper.imap_tasks]
 
-            .. note::
-            
-                Warning! If you change the defaults of these arguments you 
-                should better know what you are doing. The order of the tasks
-                in the sequence and the stride specified here should be 
-                compatible with the buffer and stride attributes of the *IMap*
-                instances used by the *Pipers* and the pipelines topology. 
-                Please refer to the manual.
+            self.stats['start_time'] = time()
+            # starts the Dagger
+            # this starts Pipers and IMaps
+            super(Plumber, self).start()
+            # transitioning to started state
+            self._started.set()
+            self._finished.clear()
+        else:
+            raise PlumberError
 
-            * tasks(sequence of *Piper* instances) [default: ``None``]
-
-                If no sequence is given all output *Pipers* are plunged in 
-                correct topological order. If a sequence is given the *Pipers*
-                are plunged in the left to right order.
-
-            * stride(int) [default: 1]
-
-                By default take only one result from each output *Piper*. As a 
-                general rule the stride cannot be bigger then the stride of the
-                *IMap* instances. The default will change in future versions.
-        """
-        #TODO: change the default stride for Plumber.plunge
-        # connect pipers
-        self.connect_inputs(data)
-        self.connect()
-
-        # collect results for tracked tasks
-        self.stats['pipers_tracked'] = {}
-        for ppr in self.postorder():
-            if hasattr(ppr.imap, '_tasks_tracked') and ppr.track:
-                self.stats['pipers_tracked'][ppr.name] = \
-                [ppr.imap._tasks_tracked[t.task] for t in ppr.imap_tasks]
-
-        # start IMaps
-        self.stats['start_time'] = time()
-        self.start()    # forced =True
-
+    def run(self):
         # remove non-block results for end tasks
-        tasks = (tasks or self.get_outputs())
-        wtasks = Weave(tasks, repeats=stride)
-        self._plunger = Thread(target=self._plunge, args=(wtasks, \
-                        self._is_stopping.isSet, self._track, self._finish))
-        self._plunger.deamon = True
-        self._plunger.start()
+        if self._started.isSet() and \
+           not self._running.isSet() and \
+           not self._pausing.isSet() and \
+           not self._finished.isSet():
+            stride = 2 # FIXME
+            tasks = self.get_outputs()
+            wtasks = Weave(tasks, repeats=stride)
+            self._plunger = Thread(target=self._plunge, args=(wtasks, \
+                            self._pausing.isSet, self._finish))
+            self._plunger.deamon = True
+            self._plunger.start()
+            self._running.set()
+        else:
+            raise PlumberError
 
-
-    def chinkup(self, stop=False):
-        """
-        Cleanly pauses or stops a running pipeline. Python will not terminate 
-        cleanly if a pipeline is running or paused.
-        
-        Arguments:
-        
-            * stop(book) [default: False]
-            
-                If ``False`` *Plumber* will pause and can be re-plunged. 
-                If ``True`` *Plumber* will stop the *Dagger*, *Pipers* and 
-                *IMaps*. 
-            
-        """
+    def pause(self):
         # 1. stop the plumbing thread by raising a StopIteration on a stride 
         #    boundary
-        self._is_stopping.set()
-        self._plunger.join()
-        self._plunger = None
-        if stop:
-            # 2. now stop the dagger
-            self.stop()
-            # 3. disconnect pipers
+        if self._started.isSet() and \
+           self._running.isSet() and \
+           not self._pausing.isSet():
+            self._pausing.set()
+            self._plunger.join()
+            del self._plunger
+            self._pausing.clear()
+            self._running.clear()
+        else:
+            raise PlumberError
+
+    def stop(self):
+        if self._started.isSet() and \
+           not self._running.isSet() and \
+           not self._pausing.isSet():
+            # stops the dagger
+            print 'here'
+            super(Plumber, self).stop()
+            print 'not there'
+            # disconnects all pipers
             self.disconnect()
-            self.disconnect_inputs()
+            self.stats['run_time'] = time() - self.stats['start_time']
+            self._started.clear()
+        else:
+            raise PlumberError
 
 
 class Piper(object):
@@ -875,7 +922,7 @@ class Piper(object):
     def __repr__(self):
         return "%s(%s)" % (self.name, repr(self.worker))
 
-    def start(self, stages=(0,)):
+    def start(self, stages=None):
         """
         Makes the *Piper* ready to return results. This involves starting the 
         the provided *IMap* instance. If multiple *Pipers* share an *IMap* 
@@ -899,13 +946,15 @@ class Piper(object):
            
         Arguments:
         
-            * stages(tuple) [default =(0,)]
+            * stages(tuple) [default =(0,) if linear; (0,1,2) if parallel]
             
                 Performs the specified stages of the start of a *Piper* 
                 instance. Stage 0  is necessary and sufficient to start a 
                 *Piper* utilizing an ``itertools.imap``. Stages 1 and 2 are 
                 required to start a parallel *Piper*.
         """
+        # defaults differ linear vs. parallel
+        stages = stages or ((0,) if self.imap is imap else (0, 1, 2))
         if not self.connected:
             self.log.error('Piper %s is not connected.' % self)
             raise PiperError('Piper %s is not connected.' % self)
@@ -968,13 +1017,13 @@ class Piper(object):
             #   thread only if it finished a stride
             teed = []
             for piper in inbox:
-                if hasattr(piper, '_iter'):
+                if hasattr(piper, '_iter'): # isinstance Piper?
                     piper.tee_num += 1
                     tee_lock = threading.Lock()
                     tee_lock.acquire()
                     piper.tee_locks.append(tee_lock)
                     piper = TeePiper(piper, piper.tee_num - 1, stride)
-                teed.append(piper)
+                teed.append(InputIterator(piper, self))
 
             # set how much to consume from input iterators.
             self.inbox = Zip(*teed) if self.consume == 1 else\
@@ -1040,8 +1089,7 @@ class Piper(object):
             raise PiperError(msg)
         else:
             # started and (finished or forced)
-            if hasattr(self.imap, 'stop') and self.imap._started.isSet():
-                # only if imap still started
+            if hasattr(self.imap, 'stop'):
                 self.imap.stop(forced=forced, **kwargs)
             self.started = False
             self.log.info('Piper %s stops (finished: %s)' % \
@@ -1577,6 +1625,23 @@ class Produce(_Produce):
             res_exc.append((flat_results, exceptions))
         # make an iterator (like repeat)
         self._repeat_buffer = iter(res_exc)
+
+
+class InputIterator(object):
+
+    def __init__(self, iterator, piper):
+        self.iterator = iter(iterator)
+        self.piper = piper
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        if self.piper.imap is imap and \
+           self.piper.started is False:
+            raise StopIteration
+        else:
+            return self.iterator.next()
 
 
 class TeePiper(object):

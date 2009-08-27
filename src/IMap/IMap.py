@@ -435,8 +435,6 @@ class IMap(object):
         self._pool_putter.deamon = True
         self._pool_putter.start()
 
-
-
     def _start_workers(self):
         """
         (internal) Start the thread/process pool workers.
@@ -459,16 +457,26 @@ class IMap(object):
             __worker.start()
         log.debug('%s started the pool' % self)
 
-    def _stop_managers(self):
+    def _stop(self):
         """
         (internal) Stop the input/output pool queue managers.
         """
-        self._tasks = []
-        self._tasks_tracked = {}
-        self._pool_putter.join()
-        self._pool_getter.join()
-        self._stopping.clear()
-        self._started.clear()
+        if self._started.isSet():
+            # join threads
+            self._pool_getter.join()
+            self._pool_putter.join()
+            for worker in self.pool:
+                worker.join()
+            # remove threads  
+            del self._pool_putter
+            del self._pool_getter
+            del self.pool
+            # remove results
+            self._tasks = []
+            self._tasks_tracked = {}
+            # virgin variables
+            self._stopping.clear()
+            self._started.clear()
 
     def add_task(self, func, iterable, args=None, kwargs=None, timeout=None, \
                 block=True, track=False):
@@ -636,8 +644,8 @@ class IMap(object):
                         except Exception, excp:
                             log.debug('%s task %s raised exception %s' % \
                                       (self, task, excp))
-                # stop pool manager threads
-                self._stop_managers()
+                # stop threads remove queues 
+                self._stop()
                 log.debug('%s finished stopping routine' % self)
             elif forced:
                 self._stopping.set()
@@ -649,10 +657,6 @@ class IMap(object):
                         self
                 log.error(msg)
                 raise RuntimeError(msg)
-        else:
-            msg = '%s has not yet been started.' % self
-            log.error(msg)
-            raise RuntimeError(msg)
 
     def __str__(self):
         return "IMap(%s)" % id(self)

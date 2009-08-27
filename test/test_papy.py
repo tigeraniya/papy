@@ -622,7 +622,7 @@ class test_Worker(GeneratorTest):
 class test_Piper(GeneratorTest):
 
 
-    def test(self):
+    def xtest(self):
         piper = Piper(power)
         assert piper.tees == []
         assert piper.tee_locks[0].locked() is False
@@ -632,7 +632,7 @@ class test_Piper(GeneratorTest):
         assert piper.finished is False
         assert piper.imap is imap
 
-    def test_simple_exceptions(self):
+    def xtest_simple_exceptions(self):
         for par in (None, IMap()):
             piper = Piper(power, parallel=par)
             self.assertRaises(PiperError, piper.start)
@@ -640,8 +640,9 @@ class test_Piper(GeneratorTest):
             piper.connect([[1, 2, 3]])
             self.assertRaises(PiperError, piper.connect, [[1, 2, 3, 4]])
             self.assertRaises(PiperError, piper.stop)
-            piper.start() # stage 0 start
+            piper.start((0,)) # stage 0 start
             if par is not None:
+                assert piper.started is False
                 self.assertRaises(PiperError, piper.next)
                 self.assertRaises(PiperError, piper.stop)
                 assert piper.started is False
@@ -658,12 +659,12 @@ class test_Piper(GeneratorTest):
                 assert piper.finished is False
                 assert list(piper) == [1, 4, 9]
 
-    def testlogger(self):
+    def xtestlogger(self):
         from logging import Logger
         pwr = Piper(power)
         self.assertTrue(isinstance(pwr.log, Logger))
 
-    def testpool(self):
+    def xtestpool(self):
         pwr = Piper(power)
         dbl = Piper(double)
         assert pwr is not dbl
@@ -679,7 +680,7 @@ class test_Piper(GeneratorTest):
         assert dbl.imap is not imap
         assert isinstance(dbl.imap, IMap)
 
-    def testeq(self):
+    def xtesteq(self):
         pwr = Piper(power)
         pwrs = [pwr]
         self.assertEqual(pwr, pwrs[0])
@@ -687,14 +688,14 @@ class test_Piper(GeneratorTest):
         self.assertNotEqual(pwr, pwr2)
         self.assertEqual(pwr.worker, pwr2.worker)
 
-    def testbasic_call(self):
+    def xtestbasic_call(self):
         pool = IMap()
         for i in range(100):
             ppr_instance = Piper(power, parallel=pool)
             ppr_busy = ppr_instance([[1, 2, 3, 4]])
             assert ppr_instance is ppr_busy
             self.assertRaises(PiperError, ppr_busy.next)
-            ppr_busy.start()
+            ppr_busy.start(stages=(0,))
             self.assertRaises(PiperError, ppr_busy.next)
             ppr_busy.start(stages=(1, 2))
             assert ppr_busy.started is True
@@ -735,23 +736,26 @@ class test_Piper(GeneratorTest):
         self.assertRaises(PiperError, ppr_busy.next) # it. protocol
         self.assertRaises(PiperError, ppr_busy.next) # it. protocol
 
-    def testconnects(self):
+    def xtestconnects(self):
         pool = IMap()
-        ppr_instance = Piper(power, parallel=pool)
-        ppr_busy = ppr_instance([[7, 2, 3]])
-        assert ppr_instance is ppr_busy
-        self.assertRaises(PiperError, ppr_busy, [[7, 2, 3]]) # second connect
-        self.assertRaises(PiperError, ppr_busy.next)      # not started
-        ppr_busy.disconnect()
-        self.assertRaises(PiperError, ppr_busy.start)
-        assert not ppr_busy.imap._tasks
-        ppr_busy.connect([[1, 2, 3]])
-        ppr_busy.start(stages=(0, 1, 2))
-        assert ppr_busy.next() == 1
-        ppr_busy.stop(ends=[0], forced=True) # not finished
-        self.assertRaises(RuntimeError, ppr_busy.imap.next)
+        for i in range(100):
+            ppr_instance = Piper(power, parallel=pool)
+            ppr_busy = ppr_instance([[7, 2, 3]])
+            assert ppr_instance is ppr_busy
+            self.assertRaises(PiperError, ppr_busy, [[7, 2, 3]]) # second connect
+            self.assertRaises(PiperError, ppr_busy.next)      # not started
+            ppr_busy.disconnect()
+            self.assertRaises(PiperError, ppr_busy.start)
+            assert not ppr_busy.imap._tasks
+            ppr_busy.connect([[1, 2, 3]])
+            ppr_busy.start(stages=(0, 1, 2))
+            assert ppr_busy.next() == 1
+            ppr_busy.stop(ends=[0], forced=True) # not finished
+            self.assertRaises(RuntimeError, ppr_busy.imap.next)
+            assert not pool._started.isSet()
+            assert not hasattr(pool, 'pool')
 
-    def testtrack(self):
+    def xtesttrack(self):
         inpt = xrange(100)
         pool = IMap()
         ppr_instance = Piper(power, parallel=pool, track=True)
@@ -761,7 +765,7 @@ class test_Piper(GeneratorTest):
         assert ppr_instance.imap._tasks_tracked[0].values() == [i * i for i in
         ppr_instance.imap._tasks_tracked[0].keys()]
 
-    def testconnects2(self):
+    def xtestconnects2(self):
         pool = IMap()
         ppr_1 = Piper(power, parallel=pool)
         ppr_2 = Piper(double, parallel=pool)
@@ -791,11 +795,12 @@ class test_Piper(GeneratorTest):
 
         assert ppr_1busy.next() == 1
         assert ppr_2busy.next() == 14
+        ppr_1busy.stop(ends=[0, 1], forced=True)
         ppr_2busy.stop(ends=[0, 1], forced=True)
         self.assertRaises(RuntimeError, ppr_1busy.imap.next)
         self.assertRaises(RuntimeError, ppr_2busy.imap.next)
 
-    def testconnect_empty(self):
+    def xtestconnect_empty(self):
         for i, j in ((None, None), (IMap(), IMap())):
             passer = Piper(workers.core.ipasser, parallel=i)
             passer([[1]])
@@ -827,7 +832,7 @@ class test_Piper(GeneratorTest):
             assert passer.connected is False
 
 
-    def testconnectnew2(self):
+    def xtestconnectnew2(self):
         for inp in ([[1]],): # [[]]):      
             imap = IMap()
             for i, j in ((None, None), (imap, imap), (IMap(), IMap()), \
@@ -845,7 +850,7 @@ class test_Piper(GeneratorTest):
                 passer2.stop(ends=[0])
 
 
-    def testoutput_pickle(self):
+    def xtestoutput_pickle(self):
         import os
         handle = os.tmpfile()
         data = [{1:1}, {2:2}]
@@ -876,7 +881,7 @@ class test_Piper(GeneratorTest):
         pickle_piper.disconnect()
         depickler.disconnect()
 
-    def testoutput_simplejson(self):
+    def xtestoutput_simplejson(self):
         import os
         handle = os.tmpfile()
         data = [{'1':1}, {'2':2}]
@@ -887,24 +892,28 @@ class test_Piper(GeneratorTest):
         sj_piper([data])
         dump_piper([sj_piper])
         sj_piper.start()
+        dump_piper.start()
         list(dump_piper)
         handle.seek(0)
         input = workers.io.load_stream(handle, '---')
         passer = Piper(workers.io.json_loads)
         passer([input])
+        passer.start()
         a = list(passer)
         assert a == [{'1': 1}, {'2': 2}]
         handle.close()
 
-    def testconnect_pickle(self):
+    def xtestconnect_pickle(self):
         handle = open('test_pick', 'rb')
         input = workers.io.load_pickle_stream(handle)
         passer = Piper(workers.core.ipasser)
-        assert list(passer([input])) == [[1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], \
+        passer([input])
+        passer.start()
+        assert list(passer) == [[1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], \
         [4, 5, 6], [4, 5, 6], [4, 5, 6], [4, 5, 6], [4, 5, 6], [4, 5, 6], [4, 5, 6], \
         [4, 5, 6], [4, 5, 6], [4, 5, 6], [4, 5, 6], [4, 5, 6]]
 
-    def testposixshm(self):
+    def xtestposixshm(self):
         data = xrange(100)
         handle1 = workers.io.open_shm('posixshm')
         handle2 = workers.io.open_shm('posixshm')
@@ -917,7 +926,7 @@ class test_Piper(GeneratorTest):
         assert list(loader) == list(data)
         handle1.unlink()
 
-    def test_2_running(self):
+    def xtest_2_running(self):
         p = IMap()
         for pool1, pool2 in ((IMap(), IMap()),
                              (p, p),
@@ -935,7 +944,7 @@ class test_Piper(GeneratorTest):
             piper2.start(stages=(2,))
             assert list(piper2) == [1, 2, 3]
 
-    def xtest_fork_join(self):
+    def test_fork_join(self):
         for stride in (1, 2, 3, 4, 5):
             for r in range(13):
                 after1 = IMap(stride=stride)
@@ -1005,6 +1014,7 @@ class test_Piper(GeneratorTest):
                                 (before1, before1, before1)
                                 ]
                 for pool1, pool2, pool3 in combinations:
+                    print '.',
                     data = range(r)
                     if hasattr(pool3, 'stride'):
                         stride = pool3.stride
@@ -1016,9 +1026,12 @@ class test_Piper(GeneratorTest):
                     piper1.connect([data])
                     piper2.connect([piper1])
                     piper3.connect([piper1])
-                    piper1.start(forced=True)
-                    piper2.start(forced=True)
-                    piper3.start(forced=True)
+                    piper1.start(stages=(0, 1))
+                    piper2.start(stages=(0, 1))
+                    piper3.start(stages=(0, 1))
+                    piper1.start(stages=(2,))
+                    piper2.start(stages=(2,))
+                    piper3.start(stages=(2,))
                     a = []
                     for result in range((r / stride) + stride):
                         for s in range(stride):
@@ -1035,26 +1048,16 @@ class test_Piper(GeneratorTest):
                     assert piper2.finished
                     assert piper3.finished
 
-                    for p in (pool1, pool2, pool3, pool4):
-                         try:
-                             p._pool_getter.join()
-                         except AttributeError:
-                             pass
-
-                    for p in (pool1, pool2, pool3, pool4):
-                         try:
-                             p._pool_putter.join()
-                         except AttributeError:
-                             pass
-
-                    for p in (pool1, pool2, pool3, pool4):
+                    for p in (pool1, pool2, pool3):
                         try:
+                            p._pool_getter.join()
+                            p._pool_putter.join()
                             for pp in p.pool:
                                 pp.join()
                         except AttributeError:
                             pass
 
-    def test_2_stopping(self):
+    def xtest_2_stopping(self):
         p = IMap()
         for pool1, pool2 in ((IMap(), IMap()),
                              (p, p),
@@ -1068,8 +1071,11 @@ class test_Piper(GeneratorTest):
             piper2.connect([piper1])
             assert piper1.connected is True
             assert piper2.connected is True
-            piper1.start(forced=True)
-            piper2.start(forced=True)
+            piper1.start(stages=(0, 1))
+            piper2.start(stages=(0, 1))
+            piper1.start(stages=(2,))
+            piper2.start(stages=(2,))
+
             assert piper1.started is True
             assert piper2.started is True
             assert list(piper2) == [1, 2, 3]
@@ -1078,14 +1084,15 @@ class test_Piper(GeneratorTest):
             assert piper1.started is True
             assert piper2.started is True
 
-            if not pool1 is None:
+            try:
                 piper1.stop(ends=[len(piper1.imap._tasks) - 1])
-            else:
+            except AttributeError:
                 piper1.stop()
-            if not pool2 is None:
+            try:
                 piper2.stop(ends=[len(piper2.imap._tasks) - 1])
-            else:
+            except AttributeError:
                 piper2.stop()
+
             assert piper1.started is False
             assert piper2.started is False
             if not pool1 is None:
@@ -1093,7 +1100,7 @@ class test_Piper(GeneratorTest):
             if not pool2 is None:
                 assert not pool2._started.isSet()
 
-    def testdump_items(self):
+    def xtestdump_items(self):
         for typ in ('tcp', 'udp'):
             for typ2 in ('string',):
                 imap1 = IMap()
@@ -1117,12 +1124,22 @@ class test_Piper(GeneratorTest):
                     p_unpickler([p_loader])
 
                     p_pickler.start()
-                    p_dumper.start(forced=True)
-                    p_loader.start(forced=True)
+                    p_dumper.start(stages=(0, 1))
+                    p_loader.start(stages=(0, 1))
+                    p_dumper.start(stages=(2,))
+                    p_loader.start(stages=(2,))
                     p_unpickler.start()
                     assert list(data) == list(p_unpickler)
+                    try:
+                        p_dumper.stop(ends=[len(p_dumper.imap._tasks) - 1])
+                    except AttributeError:
+                        pass
+                    try:
+                        p_loader.stop(ends=[len(p_loader.imap._tasks) - 1])
+                    except AttributeError:
+                        pass
 
-    def testdump_itmes_thread(self):
+    def xtestdump_itmes_thread(self):
         for typ in ('tcp', 'udp'):
             for typ2 in ('string',):
                 imap1 = IMap(worker_type='thread')
@@ -1146,20 +1163,29 @@ class test_Piper(GeneratorTest):
                     p_unpickler([p_loader])
 
                     p_pickler.start()
-                    p_dumper.start(forced=True)
-                    p_loader.start(forced=True)
+                    p_dumper.start(stages=(0, 1))
+                    p_loader.start(stages=(0, 1))
+                    p_dumper.start(stages=(2,))
+                    p_loader.start(stages=(2,))
                     p_unpickler.start()
                     assert list(data) == list(p_unpickler)
+                    try:
+                        p_dumper.stop(ends=[len(p_dumper.imap._tasks) - 1])
+                    except AttributeError:
+                        pass
+                    try:
+                        p_loader.stop(ends=[len(p_loader.imap._tasks) - 1])
+                    except AttributeError:
+                        pass
 
-
-    def testsort(self):
+    def xtestsort(self):
         p2 = Piper(workers.core.ipasser, ornament=2)
         p1 = Piper(workers.core.ipasser, ornament=1)
         a = [p2, p1]
         a.sort(cmp=Piper._cmp)
         assert a == [p1, p2]
 
-    def testfailure(self):
+    def xtestfailure(self):
         pwr = Piper(power)
         pwr = pwr([[1, 'a', 3]])
         pwr.start() # should not raise even if not needed
@@ -1177,7 +1203,7 @@ class test_Piper(GeneratorTest):
         pool = IMap()
         pwr = Piper(power, parallel=pool)
         pwr = pwr([[1, 'a', 3]])
-        pwr.start(forced=True) # should work
+        pwr.start(stages=(0, 1, 2)) # should work
         self.assertEqual(pwr.next(), 1)
         self.assertTrue(isinstance(pwr.next(), PiperError))
         self.assertEqual(pwr.next(), 9)
@@ -1190,7 +1216,7 @@ class test_Piper(GeneratorTest):
         self.assertEqual(pwr.next(), 9)
         self.assertRaises(StopIteration, pwr.next)
 
-    def testchained_failure(self):
+    def xtestchained_failure(self):
         from exceptions import StopIteration
         pwr = Piper(power)
         dbl = Piper(double)
@@ -1212,9 +1238,10 @@ class test_Piper(GeneratorTest):
         dbl = Piper(double, parallel=pool)
         pwr = pwr([[1, 'a', 3]])
         dbl = dbl([pwr])
-        self.assertRaises(PiperError, pwr.start)
-        self.assertRaises(PiperError, dbl.start)
-        dbl.start(forced=True)
+        pwr.start(stages=(0, 1))
+        dbl.start(stages=(0, 1))
+        pwr.start(stages=(2,))
+        dbl.start(stages=(2,))
         self.assertEqual(dbl.next(), 2)
         a = dbl.next()
         self.assertTrue(isinstance(a, PiperError))  # this is what dbl return (it wrapped what it got)
@@ -1227,114 +1254,119 @@ class test_Piper(GeneratorTest):
         dbl.stop(ends=[1])
         self.assertRaises(PiperError, pwr.next)
 
-    def testverysimple(self):
+    def xtestverysimple(self):
         for par in (False, IMap()):
             gen10 = (i for i in xrange(1, 10))
             gen15 = (i for i in xrange(1, 15))
             ppr = Piper(power, parallel=par)
             ppr = ppr([gen15])
-            ppr.start(forced=True)
+            ppr.start(stages=(0, 1, 2))
             for i, j in izip(ppr, xrange(1, 15)):
                 self.assertEqual(i, j * j)
             ppr.stop(ends=[0])
             ppr = Piper(power, parallel=par)
             ppr = ppr([gen10])
-            ppr.start(forced=True)
+            ppr.start(stages=(0, 1, 2))
             for i, j in izip(ppr, xrange(1, 10)):
                 self.assertEqual(i, j * j)
 
-    def testsingle(self):
+    def xtestsingle(self):
         for par in (False, IMap()):
+            # imap reuse!
             gen10 = (i for i in xrange(1, 10))
             gen15 = (i for i in xrange(1, 15))
             gen20 = (i for i in xrange(1, 20))
             ppr = Piper(power, parallel=par)
             ppr = ppr([gen10])
-            ppr.start(forced=True)
+            ppr.start(stages=(0, 1, 2))
             for i, j in izip(ppr, xrange(1, 20)):
                 self.assertEqual(i, j * j)
             ppr.stop(ends=[0])
             ppr = Piper([power], parallel=par)
             ppr = ppr([gen15])
-            ppr.start(forced=True)
+            ppr.start(stages=(0, 1, 2))
             for i, j in izip(ppr, xrange(1, 15)):
                 self.assertEqual(i, j * j)
             ppr.stop(ends=[0])
             pwr = Worker(power)
             ppr = Piper(pwr, parallel=par)
             ppr = ppr([gen20])
-            ppr.start(forced=True)
+            ppr.start(stages=(0, 1, 2))
             for i, j in izip(ppr, xrange(1, 20)):
                 self.assertEqual(i, j * j)
             ppr.stop(ends=[0])
 
-    def testdouble(self):
+    def xtestdouble(self):
         for par in (False, IMap()):
             gen10 = (i for i in xrange(1, 10))
             gen15 = (i for i in xrange(1, 15))
             gen20 = (i for i in xrange(1, 20))
             ppr = Piper([power, double], parallel=par)
             ppr = ppr([gen20])
-            ppr.start(forced=True)
+            ppr.start()
             for i, j in izip(ppr, xrange(1, 20)):
                 self.assertEqual(i, 2 * j * j)
             ppr.stop(ends=[0])
             pwrdbl = Worker([power, double])
             ppr = Piper(pwrdbl, parallel=par)
             ppr = ppr([gen15])
-            ppr.start(forced=True)
+            ppr.start()
             for i, j in izip(ppr, xrange(1, 15)):
                 self.assertEqual(i, 2 * j * j)
             ppr.stop(ends=[0])
             dblpwr = Worker([double, power])
             ppr = Piper(dblpwr, parallel=par)
             ppr = ppr([gen10])
-            ppr.start(forced=True)
+            ppr.start()
             for i, j in izip(ppr, xrange(1, 10)):
                 self.assertEqual(i, (2 * j) * (2 * j))
             ppr.stop(ends=[0])
 
-    def testlinked(self):
+    def xtestlinked(self):
         for par in (False, IMap()):
             gen10 = (i for i in xrange(10))
             pwr = Piper(power, parallel=par)
             dbl = Piper(double, parallel=par)
             dbl([gen10])
             ppr = pwr([dbl])
-            dbl.start(forced=True)
-            ppr.start(forced=True)
+            dbl.start(stages=(0, 1))
+            ppr.start(stages=(0, 1))
+            dbl.start(stages=(2,))
+            ppr.start(stages=(2,))
             for i, j in izip(ppr, (i for i in xrange(10))):
                 self.assertEqual(i, (2 * j) * (2 * j))
             ppr.stop(ends=[1])
 
-    def testlinked2(self):
+    def xtestlinked2(self):
         for par in (False, IMap()):
             gen10 = (i for i in xrange(10))
             pwr = Piper(power, parallel=par)
             dbl = Piper(double, parallel=par)
             ppr = pwr([dbl([gen10])])
-            dbl.start(forgive=True)
-            ppr.start(forced=True)
+            dbl.start(stages=(0, 1))
+            ppr.start(stages=(0, 1))
+            dbl.start(stages=(2,))
+            ppr.start(stages=(2,))
             for i, j in izip(ppr, (i for i in xrange(10))):
                 self.assertEqual(i, (2 * j) * (2 * j))
             ppr.stop(ends=[1])
 
-    def testexceptions(self):
+    def xtestexceptions(self):
         self.assertRaises(PiperError, Piper, 1)
         self.assertRaises(PiperError, Piper, [1])
 
-    def testlinear(self):
+    def xtestlinear(self):
         for par in (False, IMap()):
             gen20 = (i for i in xrange(1, 20))
             piper = Piper(pow2, parallel=par)
             piper([gen20])
-            piper.start(forced=True)
+            piper.start()
             for i, j in izip(piper, xrange(1, 20)):
                 self.assertEqual(i, j * j)
             self.assertRaises(StopIteration, piper.next)
             piper.stop(ends=[0])
 
-    def test__Produce(self):
+    def xtest__Produce(self):
         product = _Produce(iter([0, 1, 2, 3, 4, 5, 6]), n=2, stride=3)
         result = []
         for i in range(24):
@@ -1345,7 +1377,7 @@ class test_Piper(GeneratorTest):
         self.assertEqual(result,
         [0, 1, 2, 0, 1, 2, 3, 4, 5, 3, 4, 5, 6, 's', 's', 6, 's', 's', 's', 's', 's', 's', 's', 's'])
 
-    def test_Produce(self):
+    def xtest_Produce(self):
         product = Produce(iter([(11, 12), (21, 22), (31, 32), (41, 42), (51, 52), (61, 62), (71, 72)]), n=2, stride=3)
         result = []
         for i in range(24):
@@ -1356,7 +1388,7 @@ class test_Piper(GeneratorTest):
         self.assertEqual(result,
         [11, 21, 31, 12, 22, 32, 41, 51, 61, 42, 52, 62, 71, 's', 's', 72, 's', 's', 's', 's', 's', 's', 's', 's'])
 
-    def test_Consume(self):
+    def xtest_Consume(self):
         consumpt = \
         Consume(iter([0, 1, 2, 0, 1, 2, 3, 4, 5, 3, 4, 5, 6, 's', 's', 6, 's', 's', 's', 's', 's', 's', 's', 's']), stride=3, n=2)
         result = []
@@ -1366,13 +1398,13 @@ class test_Piper(GeneratorTest):
                                 [4, 4], [5, 5], [6, 6], ['s', 's'],
                                 ['s', 's'], ['s', 's'], ['s', 's'], ['s', 's']])
 
-    def test_produce_from_sequence(self):
+    def xtest_produce_from_sequence(self):
         inp = [(11, 12), (21, 22), (31, 32), (41, 42), (51, 52), (61, 62), (71, 72)]
         par = IMap(stride=3)
         w_p2 = Worker(workers.core.ipasser)
         p_p2 = Piper(w_p2, parallel=par, produce=2)
         p_p2 = p_p2([inp])
-        p_p2.start(forced=True)
+        p_p2.start()
         result = []
         for i in range(24):
             try:
@@ -1382,6 +1414,7 @@ class test_Piper(GeneratorTest):
         self.assertEqual(result,
         [11, 21, 31, 12, 22, 32, 41, 51, 61, 42,
          52, 62, 71, 's', 's', 72, 's', 's', 's', 's', 's', 's', 's', 's'])
+        p_p2.stop(ends=[0])
 
 #    def testproduce(self):
 #        inp = [0, 1, 2, 3, 4, 5, 6]
@@ -1439,15 +1472,16 @@ class test_Piper(GeneratorTest):
 #                                  9, 16, 25, 16, 25, 36, 36, 's', 's', 49, 's', 's', 36,
 #                                  's', 's', 49, 's', 's', ])
 
-    def test_consume(self):
+    def xtest_consume(self):
         inp = [0, 1, 4, 0, 1, 4, 9, 16, 25, 9, 16, 25, 36, 's', 's', 36, 's', 's', 's', 's', 's', 's', 's', 's']
         par = IMap(stride=3)
         w_s2 = Worker(ss2)
         p_s2 = Piper(w_s2, parallel=par, consume=2)
         p_s2 = p_s2([inp])
-        p_s2.start(forced=True)
+        p_s2.start()
         result = list(p_s2)
         self.assertEqual([0, 2, 8, 18, 32, 50, 72, 'ss', 'ss', 'ss', 'ss', 'ss'], result)
+        p_s2.stop(ends=[0])
 
 #    def testproduce_consume(self):
 #        inp = [0, 1, 2, 3, 4, 5, 6]
@@ -1576,12 +1610,12 @@ class test_Piper(GeneratorTest):
 #                self.assertRaises(StopIteration, p_ss.next)
 #                p_ss.stop(ends=[1])
 
-    def testtimeout(self):
+    def xtesttimeout(self):
         par = IMap(worker_num=1)
         piper = Piper(sleeper, parallel=par, timeout=0.75)
         inp = [0.5, 1.0, 0.5]
         piper([inp])
-        piper.start(forced=True)
+        piper.start()
         assert piper.next()[0] == 0.5 # get 1
         a = piper.next() # get timeout
         self.assertTrue(isinstance(a, PiperError))
@@ -1590,7 +1624,7 @@ class test_Piper(GeneratorTest):
         assert piper.next()[0] == 0.5
         piper.stop(ends=[0], forced=True) # really did not finish
 
-    def test_tee(self):
+    def xtest_tee(self):
         for i in range(20):
             inp = iter([1, 2, 3, 4, 5, 6])
             w_ip = Worker(workers.core.ipasser)
@@ -1658,11 +1692,11 @@ class test_Dagger(unittest.TestCase):
         #assert dag2
         #assert dag1 != dag2
 
-    def test_logger(self):
+    def xtest_logger(self):
         from logging import Logger
         self.assertTrue(isinstance(self.dag.log, Logger))
 
-    def testresolve(self):
+    def xtestresolve(self):
         self.dag = Dagger((self.dbl, self.pwr))
         self.assertEqual(len(self.dag.nodes()), 2)
         assert self.dbl is self.dag.resolve(self.dbl)
@@ -1675,14 +1709,14 @@ class test_Dagger(unittest.TestCase):
         w_dbl = Worker(double)
         self.assertRaises(DaggerError, self.dag.resolve, self.w_dbl)
 
-    def test_make_piper(self):
+    def xtest_make_piper(self):
         assert self.pwr is not Piper(self.pwr)
         assert self.pwr is not Piper(power)
         assert self.pwr is not Piper(self.w_pwr)
         self.dag.add_piper(self.pwr)
         assert self.pwr is self.dag.resolve(self.pwr)
 
-    def test_add_piper(self):
+    def xtest_add_piper(self):
         self.dag.add_piper(self.pwr)
         self.dag.add_piper(self.pwr)
         self.assertEqual(len(self.dag), 1)
@@ -1697,7 +1731,7 @@ class test_Dagger(unittest.TestCase):
         self.dag.add_pipers([self.dblpwr, self.pwrdbl])
         self.assertEqual(len(self.dag), 4)
 
-    def test_incoming(self):
+    def xtest_incoming(self):
         self.dag.add_pipe((self.pwr, self.dbl, self.pwrdbl))
         self.assertRaises(DaggerError, self.dag.del_piper, self.pwr)
         self.assertRaises(DaggerError, self.dag.del_piper, self.dbl)
@@ -1706,7 +1740,7 @@ class test_Dagger(unittest.TestCase):
         self.dag.del_piper(self.pwr)
 
 
-    def test_del_piper(self):
+    def xtest_del_piper(self):
         self.dag.add_piper(self.pwr)
         self.dag.del_piper(self.pwr)
         self.dag.add_piper(self.pwr)
@@ -1756,14 +1790,14 @@ class test_Dagger(unittest.TestCase):
                                                [self.dbl, self.pwrpwr])
         self.assertRaises(DaggerError, self.dag.del_piper, (1, 2))
 
-    def test_incoming2(self):
+    def xtest_incoming2(self):
         self.dag.add_pipe((self.pwr, self.dbl, self.pwrdbl))
         self.assertTrue(self.pwr in self.dag)
         self.assertRaises(DaggerError, self.dag.del_piper, self.pwr)
         self.dag.del_piper(self.pwr, forced=True)
         self.assertFalse(self.pwr in self.dag)
 
-    def test_add_workers(self):
+    def xtest_add_workers(self):
         self.dag.add_piper(self.w_pwr)
         self.dag.add_pipers([self.w_pwr])
         self.assertEqual(len(self.dag), 2)
@@ -1777,7 +1811,7 @@ class test_Dagger(unittest.TestCase):
         self.assertRaises(DaggerError, self.dag.add_piper, self.w_pwrdbl, create=False)
         self.assertEqual(len(self.dag), 6)
 
-    def test_add_pipe(self):
+    def xtest_add_pipe(self):
         self.dag = Dagger()
         self.dag.add_pipe((self.pwr, self.dbl))
         self.assertEqual(len(self.dag.nodes()), 2)
@@ -1787,7 +1821,7 @@ class test_Dagger(unittest.TestCase):
         self.assertEqual(len(self.dag.edges()), 2)
         self.assertEqual(len(self.dag.deep_nodes(self.pwrdbl)), 2)
 
-    def test_del_pipe(self):
+    def xtest_del_pipe(self):
         self.dag.add_pipe((self.pwr, self.sm2))
         self.dag.add_pipe((self.pwr, self.dbl))
         self.dag.add_pipe((self.dbl, self.sm2))
@@ -1797,7 +1831,7 @@ class test_Dagger(unittest.TestCase):
         self.dag.del_pipe((self.dbl, self.sm2))
         self.assertEqual(len(self.dag.nodes()), 1)
 
-    def test_del_pipe2(self):
+    def xtest_del_pipe2(self):
         self.dag.add_pipe((self.pwr, self.dbl, self.pwrpwr, self.dblpwr))
         self.dag.add_pipe((self.pwr, self.spr))
         self.dag.del_piper(self.dblpwr)
@@ -1806,12 +1840,12 @@ class test_Dagger(unittest.TestCase):
         assert self.pwr in self.dag
         assert self.spr not in self.dag
 
-    def test_circular_prevention(self):
+    def xtest_circular_prevention(self):
         self.dag.add_pipe((self.dbl, self.dbldbl, self.sm2))
         self.assertRaises(DaggerError, self.dag.add_pipe, (self.sm2, self.dbl))
         self.dag.add_pipe((self.dbl, self.sm2))
 
-    def test_connect_simple(self):
+    def xtest_connect_simple(self):
         for par in (False, IMap()):
             self.dag = Dagger()
             inp = [1, 2, 3, 4]
@@ -1820,11 +1854,14 @@ class test_Dagger(unittest.TestCase):
             self.dag.add_pipe((pwr, dbl))
             pwr([inp])
             self.dag.connect()
-            pwr.start(forced=True)
+            pwr.start(stages=(0, 1))
+            dbl.start(stages=(0, 1))
+            pwr.start(stages=(2,))
+            dbl.start(stages=(2,))
             self.assertEqual(list(dbl), [2, 8, 18, 32])
             pwr.stop(ends=[1])
 
-    def test_connect_disconnect(self):
+    def xtest_connect_disconnect(self):
         for par in (IMap(), None):
             self.dag = Dagger()
             pwr = Piper(pow2, parallel=par)
@@ -1841,7 +1878,7 @@ class test_Dagger(unittest.TestCase):
             if pwrdbl.imap is not imap:
                 assert pwrdbl.imap._tasks == []
 
-    def test_connect_disconnect2(self):
+    def xtest_connect_disconnect2(self):
         for par in (IMap(), None):
             self.dag = Dagger()
             pwr = Piper(pow2, parallel=par)
@@ -1859,44 +1896,30 @@ class test_Dagger(unittest.TestCase):
             if pwrdbl.imap is not imap:
                 assert pwrdbl.imap._tasks == []
 
-    def test_startstop(self):
-        for rep in range(5):
-            for i in range(12):
-                for w in (1, 2, 3, 4, 5, 6, 7):
-                    d = range(i)
-                    print '#',
-                    self.dag = Dagger()
-                    imaps = [IMap(worker_num=w), IMap(worker_num=w), \
-                             IMap(worker_num=w), IMap(worker_num=w)]
+    def xtest_startstop(self):
+        for i in range(12):
+            data = range(i)
+            for stride in (1, 2, 3, 4, 5, 6, 7):
+                # pipers
+                imaps = [IMap(worker_num=stride), IMap(worker_num=stride), \
+                         IMap(worker_num=stride), IMap(worker_num=stride)]
+                pwr = Piper(power, parallel=imaps[randint(0, 3)])
+                dbl_3 = Piper(double, parallel=imaps[randint(0, 3)])
+                dbl_4 = Piper(double, parallel=imaps[randint(0, 3)])
+                sum_2 = Piper(sum2, parallel=imaps[randint(0, 3)])
+                # topology
+                self.dag = Dagger()
+                self.dag.add_pipe((pwr, dbl_3))
+                self.dag.add_pipe((pwr, dbl_4))
+                self.dag.add_pipe((dbl_3, sum_2))
+                self.dag.add_pipe((dbl_4, sum_2))
+                # runit
+                self.dag.connect([data])
+                self.dag.start()
+                assert list(sum_2) == [(i ** 2) * 4 for i in data]
+                self.dag.stop()
 
-                    i1 = randint(0, 3)
-                    i2 = randint(0, 3)
-                    i3 = randint(0, 3)
-                    i4 = randint(0, 3)
-                    pwr = Piper(power, parallel=imaps[i1])
-                    #dbl_1 = Piper(double, parallel=imaps[1])
-                    #dbl_2 = Piper(double, parallel=imaps[2])
-                    dbl_3 = Piper(double, parallel=imaps[i2])
-                    dbl_4 = Piper(double, parallel=imaps[i3])
-                    sum_2 = Piper(sum2, parallel=imaps[i4])
-
-
-
-
-                    self.dag.add_pipe((pwr, dbl_3))
-                    self.dag.add_pipe((pwr, dbl_4))
-                    #self.dag.add_pipe((dbl_1, dbl_3))
-                    #self.dag.add_pipe((dbl_2, dbl_4))
-                    self.dag.add_pipe((dbl_3, sum_2))
-                    self.dag.add_pipe((dbl_4, sum_2))
-
-                    self.dag.connect([d])
-                    self.dag.start()
-
-                    assert list(sum_2) == [(i ** 2) * 4 for i in d]
-        print
-
-    def test_inputoutput(self):
+    def xtest_inputoutput(self):
         for par in (False, IMap()):
             self.dag = Dagger()
             pwr = Piper(pow2, parallel=par)
@@ -1923,7 +1946,6 @@ class test_Plumber(GeneratorTest):
 
     def setUp(self):
         self.sm2 = Piper(sum2)
-        self.pwr = Piper(power)
         self.mul = Piper(workers.maths.mul)
         i = IMap()
         self.pwrp = Piper(power, parallel=i)
@@ -1936,8 +1958,51 @@ class test_Plumber(GeneratorTest):
         self.pwrpwr = Piper([power, power])
         self.plum = Plumber()
 
-    def test_init(self):
+    def xtest_init(self):
         assert isinstance(self.plum, Dagger)
+
+    def xtest_start_run_finish_stop(self):
+        self.pwr_linear = Piper(power)
+        self.pwr_parallel = Piper(power, parallel=IMap(buffer=2), track=True, name='power')
+        self.plum.add_piper(self.pwr_linear)
+        self.plum.start([[2]])
+        self.assertRaises(PlumberError, self.plum.pause)
+        self.plum.run()
+        self.assertRaises(PlumberError, self.plum.stop)
+        self.plum.pause()
+        self.plum.stop()
+        self.plum.del_piper(self.pwr_linear)
+        self.plum.add_piper(self.pwr_parallel)
+        self.plum.start([[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]])
+        self.assertRaises(PlumberError, self.plum.pause)
+        self.plum.run()
+        self.assertRaises(PlumberError, self.plum.stop)
+        self.plum.pause()
+        self.plum.stop()
+
+    def xtest_start_run_finish_stop(self):
+        self.pwr_linear = Piper(power)
+        self.pwr_parallel = Piper(power, parallel=IMap(buffer=2), track=True, name='power')
+        self.plum.add_piper(self.pwr_linear)
+        self.plum.start([xrange(1000000000000000)])
+        self.assertRaises(PlumberError, self.plum.pause)
+        self.plum.run()
+        self.assertRaises(PlumberError, self.plum.stop)
+        self.assertRaises(PlumberError, self.plum.start, [[1, 2, 3]])
+        self.plum.pause()
+        self.plum.run()
+        self.plum.pause()
+        self.plum.stop()
+        print self.plum.stats
+        self.plum.del_piper(self.pwr_linear)
+        self.plum.add_piper(self.pwr_parallel)
+        self.plum.start([[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]])
+        self.assertRaises(PlumberError, self.plum.pause)
+        self.plum.run()
+        self.assertRaises(PlumberError, self.plum.stop)
+        self.plum.pause()
+        self.plum.stop()
+
 
     def test_round(self):
         self.plum.add_piper(self.mul, xtra={'color':'red'})
@@ -1981,16 +2046,16 @@ class test_Plumber(GeneratorTest):
 suite_Graph = unittest.makeSuite(test_Graph, 'test')
 suite_Worker = unittest.makeSuite(test_Worker, 'test')
 suite_Piper = unittest.makeSuite(test_Piper, 'xtest')
-suite_Dagger = unittest.makeSuite(test_Dagger, 'test')
-suite_Plumber = unittest.makeSuite(test_Plumber, 'test')
+suite_Dagger = unittest.makeSuite(test_Dagger, 'xtest')
+suite_Plumber = unittest.makeSuite(test_Plumber, 'xtest')
 
 if __name__ == "__main__":
     runner = unittest.TextTestRunner()
     #runner.run(suite_Graph)
     #runner.run(suite_Worker)
     runner.run(suite_Piper)
-    #runner.run(suite_Dagger)
-    #runner.run(suite_Plumber)
+    runner.run(suite_Dagger)
+    runner.run(suite_Plumber)
     #runner.run(suite_Plumber)
 
 
