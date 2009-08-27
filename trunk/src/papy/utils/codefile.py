@@ -7,7 +7,7 @@ I_SIG = '    %s = IMap(worker_type="%s", worker_num=%s, stride=%s, buffer=%s, ' 
 
 # piper call signature
 P_SIG = '    %s = Piper(%s, parallel=%s, consume=%s, produce=%s, spawn=%s, ' + \
-                            'produce_from_sequence=%s, timeout=%s, ' + \
+                            'timeout=%s, ' + \
                             'cmp=%s, ornament=%s, debug=%s, name="%s", ' + \
                             'track=%s)\n'
 # worker call signature
