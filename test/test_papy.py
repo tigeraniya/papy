@@ -2073,51 +2073,98 @@ class test_Plumber(GeneratorTest):
         self.plum.pause()
         self.plum.stop()
 
+    def test_load_save(self):
 
-    def test_round(self):
-        self.plum.add_piper(self.mul, xtra={'color':'red'})
-        #print self.plum[self.mul].xtra
-        self.plum.add_piper(self.pwr)
-        rr = Worker(sys_ver)
-        pr = Piper(rr, parallel=IMap(name='illo'))
-        self.plum.add_piper(self.pwrp)
-        self.plum.add_piper(pr)
-        self.plum.add_pipe((self.mul, self.pwr))
-        self.plum.save('test.py')
-        self.plum2 = Plumber()
-        self.plum2.load('test.py')
+        imap1 = IMap(name='imap1')
+        imap2 = IMap(name='imap2')
 
-    def test_pluge1(self):
-        #imap
-        self.plum.add_pipe([self.pwr, self.dbl])
-        self.plum.plunge([[1, 2, 3]])
-        self.plum.chinkup()
-        # IMap
-        self.plum = Plumber()
-        self.plum.add_pipe([self.pwrp, self.dblp])
-        self.plum.plunge([[1, 2, 3]])
-        self.plum.chinkup()
+        pwr_p1 = Piper(power, parallel=imap1, track=True, name='power_p1', debug=True)
+        pwr_p2 = Piper(power, parallel=IMap(), track=True, name='power_p2', debug=True)
+        pwr_p3 = Piper(power, parallel=imap2, track=True, name='power_p3', debug=True)
+        sum_p4 = Piper(sum2, parallel=imap2, track=True, name='sum_p4', debug=True)
 
-    def test_track(self):
+
+        self.plum.add_piper(pwr_p1, xtra={'name':'power_p1'})
+        self.plum.add_piper(pwr_p2, xtra={'name':'power_p2'})
+        self.plum.add_piper(pwr_p3, xtra={'name':'power_p3'})
+        self.plum.add_piper(sum_p4, xtra={'name':'sum_p4'})
+
+        self.plum.add_pipe((pwr_p1, pwr_p2, pwr_p3, sum_p4))
+        self.plum.add_pipe((pwr_p2, sum_p4))
+
+        self.plum.start([range(10)])
+        self.plum.run()
+        self.plum._finished.wait()
+        self.plum.pause()
+        self.plum.stop()
+        self.plum.save('remove_me.py')
+        print self.plum.stats
+
+        plum = Plumber()
+        r = __import__('remove_me')
+
+
+#        namespace = {}
+#        namespace =
+#        from remove_me import pipeline
+#        execfile('remove_me.py', namespace)
+#        globals().update(namespace)
+        pipers, xtras, pipes = r.pipeline()
+        print pipers
+        plum.add_pipers(pipers, xtras)
+        plum.add_pipes(pipes)
+
+
+
+#        plum.load('remove_me.py')
+        plum.start([range(10)])
+        plum.run()
+        plum._finished.wait()
+        plum.pause()
+        plum.stop()
+        plum.save('remove_me.py')
+        print self.plum.stats
+
+
+
+
+
+
+#        
+#        print plum.get_inputs()
+#        print plum.get_outputs()
+#        for piper in plum.postorder():
+#            print piper.imap
+#        plum.start([range(10)])
+#        plum.run()
+#        self.plum._started.wait()
+#        self.plum.save('remove_me2.py')
+
+
+
+
+
+
+    def xtest_track(self):
         inpt = xrange(100)
         imap_ = IMap()
-        wrkr = Worker((power, workers.io.json_dumps, workers.io.dump_shm_item))
+        wrkr = Worker((power, workers.io.json_dumps, workers.io.dump_item), ((), (), ('shm',)))
         pipr = Piper(wrkr, parallel=imap_, track=True)
         self.plum.add_piper(pipr)
-        pipr([inpt])
-        self.plum.plunge()
-        self.plum._is_finished.wait()
+        self.plum.start([inpt])
+        self.plum.run()
+        self.plum._finished.wait()
         dct = self.plum.stats['pipers_tracked'].values()[0][0]
         assert len(dct) == 100
         for i in dct.values():
-            os.unlink('/dev/shm/%s' % i)
+            os.unlink('/dev/shm/%s' % i[0])
 
 
 suite_Graph = unittest.makeSuite(test_Graph, 'test')
 suite_Worker = unittest.makeSuite(test_Worker, 'test')
 suite_Piper = unittest.makeSuite(test_Piper, 'xxtest')
 suite_Dagger = unittest.makeSuite(test_Dagger, 'xtest')
-suite_Plumber = unittest.makeSuite(test_Plumber, 'xtest')
+suite_Plumber = unittest.makeSuite(test_Plumber, 'test')
 
 if __name__ == "__main__":
     runner = unittest.TextTestRunner()
