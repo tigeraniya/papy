@@ -225,9 +225,11 @@ class Dagger(Graph):
         Given the pipeline topology stops the *Pipers*.
         """
         self.log.info('%s begins stopping routine' % repr(self))
-        postorder = self.postorder()
-        for piper in postorder:
-            piper.stop(forced=True) # this just triggers stopping in IMaps
+        self.log.info('%s triggers stopping in input pipers' % repr(self))
+        inputs = self.get_inputs()
+        for piper in inputs:
+            piper.stop(forced=True)
+        self.log.info('%s pulls output pipers until stop' % repr(self))
         outputs = self.get_outputs()
         while outputs:
             for piper in outputs:
@@ -236,15 +238,21 @@ class Dagger(Graph):
                     piper.next()
                 except StopIteration:
                     outputs.remove(piper)
-                    self.log.debug("%s stopped %s" % (repr(self), repr(piper)))
+                    self.log.debug("%s stopped output piper: %s" % \
+                                   (repr(self), repr(piper)))
                     continue
                 except Exception, excp:
                     self.log.debug("%s %s raised an exception: %s" % \
                                    (repr(self), piper, excp))
-        self.log.debug("%s tries to stop IMap's manager threads" % repr(self))
+        self.log.debug("%s stops the remaining pipers" % repr(self))
+        postorder = self.postorder()
         for piper in postorder:
-            if hasattr(piper.imap, '_stop'):
-                piper.imap._stop() # this stops the threads
+            if piper not in inputs:
+                piper.stop(ends=[0])
+        self.log.debug("%s finishes stopping of input pipers" % repr(self))
+        for piper in inputs:
+            if hasattr(piper.imap, 'stop'):
+                piper.imap.stop(ends=[0])
         self.log.info('%s finishes stopping routine' % repr(self))
 
     def get_inputs(self):
@@ -738,7 +746,7 @@ class Plumber(Dagger):
            not self._running.isSet() and \
            not self._pausing.isSet() and \
            not self._finished.isSet():
-            stride = 2 # FIXME
+            stride = 1 # FIXME
             tasks = self.get_outputs()
             wtasks = Weave(tasks, repeats=stride)
             self._plunger = Thread(target=self._plunge, args=(wtasks, \
@@ -768,9 +776,7 @@ class Plumber(Dagger):
            not self._running.isSet() and \
            not self._pausing.isSet():
             # stops the dagger
-            print 'here'
             super(Plumber, self).stop()
-            print 'not there'
             # disconnects all pipers
             self.disconnect()
             self.stats['run_time'] = time() - self.stats['start_time']
@@ -1628,7 +1634,8 @@ class Produce(_Produce):
 
 
 class InputIterator(object):
-
+    """
+    """
     def __init__(self, iterator, piper):
         self.iterator = iter(iterator)
         self.piper = piper
@@ -1637,6 +1644,8 @@ class InputIterator(object):
         return self
 
     def next(self):
+        """
+        """
         if self.piper.imap is imap and \
            self.piper.started is False:
             raise StopIteration
