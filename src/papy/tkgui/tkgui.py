@@ -15,6 +15,7 @@ import papy
 import IMap
 
 # Python imports
+from itertools import imap, izip
 import inspect
 import sys
 import os
@@ -200,7 +201,7 @@ class PiperTreeItem(_TreeItem):
 class WorkerTreeItem(_TreeItem):
 
     def GetSubList(self):
-        return [FuncArgsTreeItem(self, f, a) for f, a in zip(self.item.task, self.item.args)]
+        return [FuncArgsTreeItem(self, f, a) for f, a in izip(self.item.task, self.item.args)]
 
 
 class ModuleTreeItem(_TreeItem):
@@ -325,11 +326,15 @@ class MainMenuBar(Pmw.MainMenuBar):
         self.addmenu('File', 'Load/Save/Exit')
 
         self.addmenuitem('File', 'command', 'Load',
-		                 command=None,
+                         command=self.dialogs['new'].activate,
+                           label='New')
+
+        self.addmenuitem('File', 'command', 'Load',
+		                 command=self.dialogs['load_file'].activate,
 		                   label='Load')
 
         self.addmenuitem('File', 'command', 'Save',
-		                 command=None,
+		                 command=self.dialogs['save_file'].activate,
 		                   label='Save')
 
         self.addmenuitem('File', 'command', 'Exit',
@@ -888,6 +893,33 @@ class LabeledWidgetClear(Pmw.LabeledWidget):
         # self.interior().children.values()
 
 
+class NewDialog(Pmw.Dialog):
+
+    def __init__(self, parent, **kwargs):
+        kwargs['buttons'] = ('New', 'Cancel', 'Help')
+        kwargs['title'] = 'Create new PaPy pipeline.'
+        kwargs['command'] = self.handler
+        kwargs['defaultbutton'] = 'Cancel'
+        apply(Pmw.Dialog.__init__, (self, parent), kwargs)
+
+        self.message = Tk.Label(self.interior(), text=\
+                                'Do you want to start a new PaPy pipeline?')
+        self.message.pack(expand=YES, fill=BOTH)
+        self.geometry("+%d+%d" % (parent.winfo_rootx() + 250,
+                                  parent.winfo_rooty() + 250))
+        self.wm_resizable(NO, NO)
+
+    def handler(self, result):
+        if result == 'Cancel':
+            self.destroy()
+        elif result == 'New':
+            papyg.new()
+            self.destroy()
+        elif result == 'Help':
+            #TODO: implement common help
+            pass
+
+
 class _DeleteDialog(Pmw.Dialog):
 
     def __init__(self, parent, name, item_name, **kwargs):
@@ -1187,6 +1219,23 @@ class ModuleDialog(object):
             papyg.add_tree(self.name, path=abs_path)
 
 
+class LoadDialog(object):
+
+    def activate(self):
+        abs_path = tkFileDialog.askopenfilename(filetypes=\
+                                                [("Python Files", "*.py")])
+        if abs_path:
+            papyg.load(abs_path)
+
+
+class SaveDialog(object):
+
+    def activate(self):
+        import sys
+        abs_path = tkFileDialog.asksaveasfilename(filetypes=\
+                                                [("Python Files", "*.py")])
+        if abs_path:
+            papyg.save(abs_path)
 
 
 
@@ -1398,21 +1447,16 @@ class PaPyGui(object):
         self.toplevel = parent
         self.toplevel.option_add("*font", O['default_font'])
         self.toplevel.title(O['app_name'])
-        #        
-
-        # create object namespace
-        self.namespace = {}
-        self.make_namespace()
-        # create modal dialogs
-        self.dialogs = {}
-        self.make_dialogs()
         # initialize widgets
+        self.make_namespace()
+        self.make_dialogs()
         self.make_widgets()
         self.update_widgets()
         self.plumber = papy.Plumber({'log_to_stream': True, 'log_stream':self.log})
 
     def make_namespace(self):
         # make the plumber:
+        self.namespace = {}
         self.namespace['pipeline'] = self
         # PaPy modules
         self.namespace['papy'] = papy
@@ -1441,19 +1485,34 @@ class PaPyGui(object):
         self.modules.update()
         self.objects.update()
 
+    def new(self):
+        # only if plumber is stopped
+        # remove everything from canvas
+        # remove pipers and pipes from plumber
+        # 
+        pass
+
     def load(self, filename):
         #1. add filename as module
-        #2. add pipers to namespace
-        #3. add workers to namespace
-        #4. add worker-functions to namespace
-        #5. add objects to namespace
-        #9. update plumber with pipers, pipes and xtra
-        pass
+        mod = self.add_tree('Modules', path=filename)
+        #2. add pipers/workers/imaps to namespace
+        pipers, xtras, pipes = mod.pipeline()
+        for piper, xtra in izip(pipers, xtras):
+            self.add_tree('Pipers', piper)
+            self.add_tree('Workers', piper.worker)
+            if piper.imap is not imap:
+                self.add_tree('IMaps', piper.imap)
+            # 3. add piper to graph
+            self.add_piper_canvas(piper, xtra)
+        # 4. add pipes to canvas
+        for pipe in pipes:
+            self.add_pipe_canvas(pipe)
 
     def save(self, filename):
         self.plumber.save(filename)
 
     def make_dialogs(self):
+        self.dialogs = {}
         # About is a Pmw, no auto withdraw
         self.dialogs['about'] = Pmw.AboutDialog(self.toplevel, applicationname='My Application')
         self.dialogs['about'].withdraw()
@@ -1465,6 +1524,18 @@ class PaPyGui(object):
         self.dialogs['add_worker'] = WorkerDialog(self.toplevel)
         self.dialogs['add_piper'] = PiperDialog(self.toplevel)
         self.dialogs['add_module'] = ModuleDialog()
+        # these are use by the main menu
+        self.dialogs['new'] = NewDialog(self.toplevel)
+        self.dialogs['new'].withdraw()
+        self.dialogs['load_file'] = LoadDialog()
+        self.dialogs['save_file'] = SaveDialog()
+
+    def _new_dialog(self):
+        error = Pmw.MessageDialog(self.toplevel, title='PaPy Panic!',
+                                        defaultbutton=0,
+                                        message_text=txt)
+        error.iconname('Simple message dialog')
+        error.activate()
 
     def _delete_dialog(self, name, item_name):
         _DeleteDialog(self.toplevel, name, item_name)
@@ -1515,8 +1586,8 @@ class PaPyGui(object):
         self.pipeline_buttons = Pmw.ButtonBox(pipeline_,
                                                 orient=VERTICAL,
                                                 padx=0, pady=0)
-        self.pipeline_buttons.add('Run\nPipeline', command=self.plunge_plumber)
-        self.pipeline_buttons.add('Stop\nPipeline', command=self.plunge_plumber)
+        self.pipeline_buttons.add('Start\nStop', command=self.start_stop_plumber)
+        self.pipeline_buttons.add('Run\nPause', command=self.run_pause_plumber)
         self.pipeline_buttons.add('Add\nPiper', command=self.add_piper_canvas)
         self.pipeline_buttons.add('Delete\nPiper', command=self.del_piper_canvas)
         self.pipeline_buttons.add('Add\nObject', command=self.add_object_canvas)
@@ -1605,7 +1676,7 @@ class PaPyGui(object):
                 mod_name = os.path.basename(kwargs['path']).split('.')[0]
                 sys.path.insert(0, dir_name)
                 obj = __import__(mod_name)
-                sys.path.remove(dir_name) # do not pollute the path.
+                #sys.path.remove(dir_name) # do not pollute the path.
             elif obj_type == 'Objects':
                 pass
         try:
@@ -1719,19 +1790,30 @@ class PaPyGui(object):
         self.plumber.del_edge((pipe[1], pipe[0]))
         return pipe
 
-    def plunge_plumber(self):
-        inputs = []
-        for piper in self.plumber.get_inputs():
-            Node = self.plumber[piper]
-            input_name = Node.xtra.get('obj_name')
-            if not input_name:
-                self._error_dialog('Not all inputs are connected.')
-                return
-            inputs.append(self.namespace['objects'][input_name])
-        self.plumber.plunge(inputs)
+    def start_stop_plumber(self):
+        if self.plumber._started.isSet():
+            self.plumber.stop()
 
-    def chinkup_plumber(self):
-        pass
+
+
+        else:
+            inputs = []
+            for piper in self.plumber.get_inputs():
+                Node = self.plumber[piper]
+                input_name = Node.xtra.get('obj_name')
+                if not input_name:
+                    self._error_dialog('Not all inputs are connected.')
+                    return
+                inputs.append(self.namespace['objects'][input_name])
+            self.plumber.start(inputs)
+
+    def run_pause_plumber(self):
+        if self.plumber._running.isSet():
+            # if running pause
+            self.plumber.pause()
+        else:
+            self.plumber.run()
+
 
 class Options(dict):
     """ Provide options throughout the PaPy Gui application.
@@ -1807,33 +1889,11 @@ def main():
     root = Tk.Tk()
     Pmw.initialise(root)
     root.withdraw()
-
     # make gui
     papyg = PaPyGui(root)
-
-    def make_junk(papyg):
-
-        w1 = papy.Worker(papy.workers.core.szipper)
-        papyg.add_tree('Workers', w1)
-        papyg.add_tree('Workers', functions=[papy.workers.io.dump_item])
-        papyg.add_tree('Workers', functions=[papy.workers.io.print_])
-
-        p = papy.Piper(w1, name='zeneka')
-        papyg.add_tree('Pipers', p)
-        papyg.add_tree('Pipers', worker=papyg.namespace['workers'].values()[1], name='orthur')
-        papyg.add_tree('Pipers', worker=papyg.namespace['workers'].values()[2], name='juhas')
-
-        position = {'x':20, 'y': 20}
-        papyg.add_piper_canvas(papyg.namespace['pipers'].values()[0], position)
-        papyg.add_piper_canvas(papyg.namespace['pipers'].values()[1])
-        papyg.add_piper_canvas(papyg.namespace['pipers'].values()[2])
-
-    make_junk(papyg)
-
     # show gui
     root.deiconify()
     root.mainloop()
-
 
 if __name__ == '__main__':
     main()

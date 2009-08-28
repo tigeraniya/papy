@@ -14,6 +14,8 @@ from utils.defaults import get_defaults
 from utils.runtime import get_runtime
 # python imports
 from multiprocessing import TimeoutError
+import os
+import sys
 import threading
 from itertools import izip, imap, chain, repeat, tee
 from threading import Thread, Event
@@ -541,6 +543,7 @@ class Plumber(Dagger):
         self.log = getLogger('papy')
 
         # init
+        self.filename = None
         #TODO: check if this works with and the stats attributes are correctly
         # set for a predefined dagger.
         Dagger.__init__(self, **kwargs)
@@ -573,7 +576,7 @@ class Plumber(Dagger):
                 tm, tn = t.__module__, t.__name__
                 if (tm == '__builtin__') or hasattr(p, tn):
                     continue
-                if tm == '__main__':
+                if tm == '__main__' or tm == self.filename:
                     tcode += getsource(t)
                 else:
                     icode += 'from %s import %s\n' % (tm, tn)
@@ -624,12 +627,15 @@ class Plumber(Dagger):
             
                 Location of the pipeline source code.
         """
-
-        #namespace = {}
-        #execfile(filename, namespace)
-        #pipers, xtras, pipes = namespace['pipeline']()
-        #self.add_pipers(pipers, xtras)
-        #self.add_pipes(pipes)
+        dir_name = os.path.dirname(filename)
+        mod_name = os.path.basename(filename).split('.')[0]
+        self.filename = mod_name
+        sys.path.insert(0, dir_name)
+        mod = __import__(mod_name)
+        sys.path.remove(dir_name) # do not pollute the path.
+        pipers, xtras, pipes = mod.pipeline()
+        self.add_pipers(pipers, xtras)
+        self.add_pipes(pipes)
 
     def start(self, datas):
         """
@@ -693,6 +699,24 @@ class Plumber(Dagger):
             self._plunger.deamon = True
             self._plunger.start()
             self._running.set()
+        else:
+            raise PlumberError
+
+    def wait(self, timeout=None):
+        """
+        Waits(blocks) until a running pipeline finishes.
+        
+        Arguments:
+        
+            * timeout(int) [default =None]
+            
+                Specifies the timeout, ``RuntimeError`` will be raised. The 
+                default is to wait indefinetely for the pipeline to finish.
+        """
+        if self._started.isSet() and \
+           self._running.isSet() and \
+           not self._pausing.isSet():
+            self._finished.wait(timeout)
         else:
             raise PlumberError
 
