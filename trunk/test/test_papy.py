@@ -2101,49 +2101,14 @@ class test_Plumber(GeneratorTest):
         print self.plum.stats
 
         plum = Plumber()
-        r = __import__('remove_me')
-
-
-#        namespace = {}
-#        namespace =
-#        from remove_me import pipeline
-#        execfile('remove_me.py', namespace)
-#        globals().update(namespace)
-        pipers, xtras, pipes = r.pipeline()
-        print pipers
-        plum.add_pipers(pipers, xtras)
-        plum.add_pipes(pipes)
-
-
-
-#        plum.load('remove_me.py')
+        plum.load('remove_me.py')
         plum.start([range(10)])
         plum.run()
         plum._finished.wait()
         plum.pause()
         plum.stop()
-        plum.save('remove_me.py')
+        plum.save('remove_me2.py')
         print self.plum.stats
-
-
-
-
-
-
-#        
-#        print plum.get_inputs()
-#        print plum.get_outputs()
-#        for piper in plum.postorder():
-#            print piper.imap
-#        plum.start([range(10)])
-#        plum.run()
-#        self.plum._started.wait()
-#        self.plum.save('remove_me2.py')
-
-
-
-
-
 
     def xtest_track(self):
         inpt = xrange(100)

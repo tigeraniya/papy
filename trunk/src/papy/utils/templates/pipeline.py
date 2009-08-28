@@ -38,7 +38,7 @@ def pipeline(resources):
     w_who = Worker(who)
     w_prn = Worker(workers.io.print_)
     # initialize Piper instances (i.e. attach functions to runtime)
-    p_mul = Piper(w_mul, parallel=imap1)
+    p_mul = Piper(w_mul, parallel=imap1, track=True, name='mul')
     p_who = Piper(w_who, parallel=imap2)
     p_prn = Piper(w_prn, parallel=imap3)
     # create the pipeline and connect pipers
@@ -80,8 +80,12 @@ if __name__ == '__main__':
     # attach resources to pipeline
     pipes = pipeline(rsrc)
     # connect and start pipeline
-    pipes.plunge([inpt])
-    # wait until pipeline is finished
-    pipes._is_finished.wait()
+    pipes.start([inpt])
+    # run and wait until pipeline is finished
+    pipes.run()
+    pipes.wait()
+    pipes.pause()
+    pipes.stop()
+    print pipes.stats
 
 
