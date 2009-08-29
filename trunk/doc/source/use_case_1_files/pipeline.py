@@ -57,7 +57,7 @@ def define_loops(inbox, min_size, max_gaps):
 
 @imports(['MMTK'])
 def create_loop_models(inbox, loop_num):
-    model = inbox[0]
+    model, loop = inbox
     loop_models = []
     for i in xrange(loop_num - len(loop_models)):
         loop_models.append(None)
@@ -105,13 +105,13 @@ def pipeline():
                                                   'max_gaps':2
                                                   })
     w_create_loop_models = Worker(create_loop_models, kwargs={
-                                                               'loop_num':LOOP_NUM
-                                                               })
+                                                              'loop_num':LOOP_NUM
+                                                              })
     w_md_loop_model = Worker(md_loop_model, kwargs={
-                                                     'steps':10000,
-                                                     'temp':300, # K 
-                                                     'save':False
-                                                     })
+                                                    'steps':10000,
+                                                    'temp':300, # K 
+                                                    'save':False
+                                                    })
     w_combine_models = Worker(combine_models)
     w_save_final_model = Worker(save_model, kwargs={
                                                     'formats':['mmtk', 'pdb'],
@@ -132,20 +132,20 @@ def pipeline():
     # create the pipeline and connect pipers
     pipes.add_pipe((
                     p_create_model,
-                    p_minimize_model,
                     p_equilibrate_model,
+                    p_minimize_model,
                     p_create_loop_models,
                     p_md_loop_model,
                     p_combine_models,
                     p_save_final_model
                     ))
-#    pipes.add_pipe((
-#                    p_equilibrate_model,
-#                    p_save_model,
-#                    P_call_stride,
-#                    p_define_loops,
-#                    p_create_loop_models
-#                    ))
+    pipes.add_pipe((
+                    p_equilibrate_model,
+                    p_save_model,
+                    P_call_stride,
+                    p_define_loops,
+                    p_create_loop_models
+                    ))
     return pipes
 
 

@@ -20,6 +20,7 @@ class Node(dict):
     def __init__(self, entity=None, xtra=None):
         self.discovered = False
         self.examined = False
+        self.branch = None
         try:
             if entity is not None:
                 dict.__init__(self, {entity:Node(xtra=xtra)})
@@ -99,6 +100,15 @@ class Graph(dict):
         self.add_edges(edges)
         dict.__init__(self)
 
+    def cmp_branch(self, node1, node2):
+        """
+        To sort by branch of the topological Node corresponding to the node 
+        object.
+        """
+        # note reverse
+        return cmp(getattr(self[node2], 'branch', None), \
+                   getattr(self[node1], 'branch', None))
+
     def dfs(self, node, bucket=None, order='append'):
         """
         Recursive depth first search. By default (order = 'append') this returns
@@ -120,32 +130,60 @@ class Graph(dict):
         if self[node].discovered:
             return bucket
         self[node].discovered = True
-        for node_ in self[node].iternodes():
+        nodes_ = sorted(self[node].iternodes(), cmp=self.cmp_branch)
+        for node_ in nodes_:
             self.dfs(node_, bucket, order)
         getattr(bucket, order)(node)
         self[node].examined = True
         return bucket
 
-    def postorder(self, reverse=False):
+    def postorder(self):
         """
-        Returns the postorder of node objects of the *Graph* if it is a directed
-        acyclic graph.
+        Returns some postorder of node objects of the *Graph* if it is a 
+        directed acyclic graph. A postorder is not random, because the order
+        of elements in a dictionary is not random and so are the starting nodes 
+        of the depth-first search traversal which produces the postorder.
+        Therefore some postorders will be discovered more frequently.
         
-        Arguments:
+        This postorder enforces additional order:
         
-            * reverse(bool) [default: ``False``]
-            
-                Should the order be reversed?
+            - (TODO: describe earthworm branch order)
+        
+            - if the topological Nodes corresponding to the node objects have
+              a 'branch' attribute it will be used to sort the graph from left 
+              to right.
+              
+        
+         is, but not unique either.
         """
-        nodes = []
-        for node in self.nodes():
-            self.dfs(node, nodes)
-            #if reverse:
-            #    nodes.reverse()
-        if reverse:
-            nodes.reverse()
+        nodes_random = self.nodes()
+        # for debugging we could make it more random;)
+        # from random import shuffle
+        # shuffle(nodes_random)
+        # 1. sort branches
+        nodes_by_branch = sorted(nodes_random, cmp=self.cmp_branch)
+
+        # 1. topological sort
+        nodes_topological = []
+        for node in nodes_by_branch:
+            self.dfs(node, nodes_topological)
         self.clear_nodes()
-        return nodes
+
+        # 2. earthworm sort
+        nodes_consecutive = []
+        for node in nodes_topological:
+            Node = self[node]
+            outgoing_nodes = Node.nodes()
+            if outgoing_nodes:
+                last_index = max([nodes_consecutive.index(on) for on in \
+                                   outgoing_nodes])
+                nodes_consecutive.insert(last_index + 1, node)
+            else:
+                nodes_consecutive.append(node)
+
+        return nodes_consecutive
+
+
 
     def node_rank(self):
         """
@@ -184,7 +222,7 @@ class Graph(dict):
         return dict(rank_width)
 
 
-    def add_node(self, node, xtra=None):
+    def add_node(self, node, xtra=None, branch=None):
         """
         Adds a node object to the *Graph*. Returns ``True`` if a new node object
         has been added. If the node object is already in the *Graph* returns 
@@ -200,10 +238,15 @@ class Graph(dict):
             
                 The newly created topological ``Node.xtra`` dictionary will be 
                 updated with the contents of this dictionary. 
+                
+            * branch(object) [default: ``None``]
+            
+                
         """
         if not node in self:
             node_ = Node(node, xtra)
             self.update(node_)
+            self[node].branch = (branch or getattr(node, 'branch', None))
             return True
         return False
 
