@@ -100,13 +100,19 @@ class Dagger(Graph):
                "\n".join(('\t\t' + repr(p[1]) + '>>>' + \
                           repr(p[0]) for p in self.edges()))
 
-    @staticmethod
-    def _cmp(x, y):
+
+    def children_after_parents(self, piper1, piper2):
         """
-        A compare function like ``cmp``, which compares *Pipers* by ornament. To 
-        be used when sorting upstream *Pipers*.
         """
-        return cmp(x.ornament, y.ornament)
+
+
+        if piper1 in self[piper2].deep_nodes():
+            return 1
+        elif piper2 in self[piper1].deep_nodes():
+            # 2nd is child of 1st ???
+            return - 1
+        else:
+            return 0
 
     def resolve(self, piper, forgive=False):
         """
@@ -157,9 +163,14 @@ class Dagger(Graph):
         self.log.info('%s trying to connect in the order %s' % \
                       (repr(self), repr(postorder)))
         for piper in postorder:
-            if not piper.connected and self[piper].keys():
-                # we don't want to disconnect input piers
-                piper.connect(self[piper].keys())
+            if not piper.connected and self[piper].nodes():
+                # 1. sort inputs by index in postorder
+                inputs = [p for p in postorder if p in self[piper].nodes()]
+                # 2. sort postorder so that all parents come before children
+                # mind that the top of a pipeline is a child!
+                inputs.sort(cmp=self.children_after_parents)
+                # 2. branch age sorted inputs
+                piper.connect(inputs)
         self.log.info('%s succesfuly connected' % repr(self))
 
     def connect_inputs(self, datas):
@@ -180,7 +191,6 @@ class Dagger(Graph):
                 Ordered sequence of inputs for all input *Pipers*.
         """
         start_pipers = self.get_inputs()
-        start_pipers.sort(self._cmp)
         self.log.info('%s trying to connect inputs in the order %s' % \
                       (repr(self), repr(start_pipers)))
         for piper, data in izip(start_pipers, datas):
@@ -199,7 +209,7 @@ class Dagger(Graph):
             
                 If set ``True`` all tasks from all IMaps will be removed.
         """
-        reversed_postorder = self.postorder(reverse=True)
+        reversed_postorder = reversed(self.postorder())
         self.log.info('%s trying to disconnect in the order %s' % \
                       (repr(self), repr(reversed_postorder)))
         for piper in reversed_postorder:
@@ -566,11 +576,9 @@ class Plumber(Dagger):
                                   i.buffer, i.ordered, i.skip, in_)
                 idone.append(in_)
             ws = W_SIG % (",".join([t.__name__ for t in w.task]), w.args, w.kwargs)
-            cmp_ = p.cmp__name__ if p.cmp else None
             pcall += P_SIG % (p.name, ws, in_, p.consume, p.produce, p.spawn, \
-                              p.timeout, cmp_, \
-                              p.ornament, p.debug, p.name, p.track)
-            for t in chain(w.task, [p.cmp]):
+                              p.timeout, p.branch, p.debug, p.name, p.track)
+            for t in w.task:
                 if (t in tdone) or not t:
                     continue
                 tm, tn = t.__module__, t.__name__
@@ -813,14 +821,16 @@ class Piper(object):
             *Pipers*. By convention using the ornament argument/attribute. By 
             default the ``Piper._cmp`` method is used for sorting.
 
-        * ornament(object) [default: self]
+        * branch(object) [default: None]
 
-            Anything which can be used by compare functions of downstream
-            *Pipers*. By default the ornament is the same as the instance 
-            object, i.e. the default behavior is equivalent to.::
-          
-               cmp(piper_instance1, piper_instance2)
-
+            Anything which can be used by the ``cmp`` built-in function. If
+            multiple *Pipers* are connected to a single source *Piper* the
+            branch object will be used to lexicographically sort the branches in
+            the topological postorder. This argument is required if the branches
+            are to be merged by a non-symmetrical *Piper* i.e.::
+            
+                function([res_1, res_2]) != function([res_2, res_1])
+                
         * debug(bool) [default: False]
 
             Verbose debugging mode. Raises a ``PiperError`` on ``WorkerErrors``.
@@ -838,7 +848,7 @@ class Piper(object):
         return cmp(x.ornament, y.ornament)
 
     def __init__(self, worker, parallel=False, consume=1, produce=1, \
-                 spawn=1, timeout=None, cmp=None, ornament=None, debug=False, \
+                 spawn=1, timeout=None, cmp=None, branch=None, debug=False, \
                  name=None, track=False):
         self.inbox = None
         self.outbox = None
@@ -863,8 +873,8 @@ class Piper(object):
 
         self.imap = parallel if parallel else imap # this is itetools.imap
 
-        self.cmp = cmp if cmp else None
-        self.ornament = ornament if ornament else None
+        #self.cmp = cmp if cmp else None
+        self.branch = (None or branch)
 
         is_p, is_w, is_f, is_ip, is_iw, is_if = inspect(worker)
         if is_p:
@@ -981,7 +991,7 @@ class Piper(object):
         else:
             # not started and not connected and IMap not started
             # sort input
-            inbox.sort((self.cmp or self._cmp))
+            #inbox.sort((self.cmp or self._cmp))
             self.log.info('Piper %s connects to %s' % (self, inbox))
             # determine the stride with which result will be consumed from the
             # input.

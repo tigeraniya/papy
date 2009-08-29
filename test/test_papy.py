@@ -54,6 +54,10 @@ def mul2(i):
 
 def sum2(i):
     return i[0] + i[1]
+
+def sum3(i):
+    return i[0] + i[1] + i[2]
+
 def ss2(i):
     return i[0][0] + i[1][0]
 
@@ -237,6 +241,45 @@ class test_Graph(unittest.TestCase):
         assert self.graph.postorder() == list(reversed(self.graph.postorder(True)))
         edges = [(4, 5)]
         assert self.graph.postorder() == list(reversed(self.graph.postorder(True)))
+
+
+    def xtest_postorder4(self):
+        edges = [(2, 1), (3, 1), (4, 3), (5, 3)]
+        self.graph.add_edges(edges)
+        #print self.graph.postorder()
+
+    def xtest_postorder5(self):
+        for i in range(1000):
+            edges = [(2, 1), (3, 1), (4, 3), (5, 3), (6, 4), (7, 4), (6, 5)]
+            self.graph.add_edges(edges)
+            self.graph[2].branch = 'C'
+            self.graph[3].branch = 'D'
+            self.graph[4].branch = 'A'
+            self.graph[5].branch = 'B'
+            self.graph[7].branch = 0
+            self.graph[6].branch = 1
+            assert self.graph.postorder() == [1, 2, 3, 4, 7, 5, 6]
+
+    def xtest_postorder6(self):
+        for i in range(1000):
+            edges = [(2, 1), (3, 1), (4, 3), (5, 3), (6, 4), (7, 4), (6, 7), (6, 5)]
+            self.graph.add_edges(edges)
+            self.graph[2].branch = 'C'
+            self.graph[3].branch = 'D'
+            self.graph[4].branch = 'A'
+            self.graph[5].branch = 'B'
+            assert self.graph.postorder() == [1, 2, 3, 4, 7, 5, 6]
+
+    def xtest_postorder7(self):
+        for i in range(1000):
+            edges = [(2, 1), (3, 1), (4, 3), (5, 3), (7, 4), (6, 7), (6, 5)]
+            self.graph.add_edges(edges)
+            self.graph[2].branch = 'C'
+            self.graph[3].branch = 'D'
+            self.graph[4].branch = 'A'
+            self.graph[5].branch = 'B'
+            assert self.graph.postorder() == [1, 2, 3, 4, 7, 5, 6]
+
 
 
     def test_node_rank1(self):
@@ -944,7 +987,7 @@ class test_Piper(GeneratorTest):
             piper2.start(stages=(2,))
             assert list(piper2) == [1, 2, 3]
 
-    def xxtest_fork_join(self):
+    def xtest_fork_join(self):
         for stride in (1, 2, 3, 4, 5):
             for r in range(13):
                 after1 = IMap(stride=stride)
@@ -997,7 +1040,7 @@ class test_Piper(GeneratorTest):
                         except AttributeError:
                             pass
 
-    def xxtest_3_fork(self):
+    def xtest_3_fork(self):
         for stride in (1, 2, 3, 4, 5):
             for r in range(24):
                 after1 = IMap(stride=stride)
@@ -1178,12 +1221,12 @@ class test_Piper(GeneratorTest):
                     except AttributeError:
                         pass
 
-    def xtestsort(self):
-        p2 = Piper(workers.core.ipasser, ornament=2)
-        p1 = Piper(workers.core.ipasser, ornament=1)
-        a = [p2, p1]
-        a.sort(cmp=Piper._cmp)
-        assert a == [p1, p2]
+#    def xtestsort(self):
+#        p2 = Piper(workers.core.ipasser, branch=2)
+#        p1 = Piper(workers.core.ipasser, branch=1)
+#        a = [p2, p1]
+#        a.sort(cmp=Dagger.cmp_branch)
+#        assert a == [p1, p2]
 
     def xtestfailure(self):
         pwr = Piper(power)
@@ -1709,6 +1752,12 @@ class test_Dagger(unittest.TestCase):
         w_dbl = Worker(double)
         self.assertRaises(DaggerError, self.dag.resolve, self.w_dbl)
 
+    def xtest_addwithbranch(self):
+        ppr = Piper(self.w_pwr, branch='the_new_b')
+        self.dag.add_piper(ppr)
+        assert ppr.branch == 'the_new_b'
+        assert self.dag[ppr].branch == 'the_new_b'
+
     def xtest_make_piper(self):
         assert self.pwr is not Piper(self.pwr)
         assert self.pwr is not Piper(power)
@@ -1919,6 +1968,63 @@ class test_Dagger(unittest.TestCase):
                 assert list(sum_2) == [(i ** 2) * 4 for i in data]
                 self.dag.stop()
 
+    def xxtest_childparentsort(self):
+
+        for i in range(100):
+            dag = Dagger()
+            dbl1 = Piper(double)
+            dbl2 = Piper(double)
+            sum = Piper(sum2)
+            dag.add_pipe((dbl1, dbl2))
+            dag.add_pipe((dbl1, sum))
+            dag.add_pipe((dbl2, sum))
+            dag.connect()
+            inputs = dag[sum].nodes()
+            sorted_inputs = [p for p in dag.postorder() if p in inputs]
+            sorted_inputs.sort(cmp=dag.children_after_parents)
+            assert sorted_inputs == [dbl2, dbl1]
+
+        for i in range(100):
+            dag = Dagger()
+            dbl1 = Piper(double, name='1')
+            dbl2a = Piper(double, name='2a')
+            dbl2b = Piper(double, name='2b')
+            sum = Piper(sum3, name='sum')
+            dag.add_pipe((dbl1, dbl2a))
+            dag.add_pipe((dbl1, dbl2b))
+            dag.add_pipe((dbl1, sum))
+            dag.add_pipe((dbl2a, sum))
+            dag.add_pipe((dbl2b, sum))
+            postorder = dag.postorder()
+            assert postorder[0] == dbl1
+            assert postorder[-1] == sum
+            inputs = dag[sum].nodes()
+            sorted_inputs = [p for p in postorder if p in inputs]
+            sorted_inputs.sort(cmp=dag.children_after_parents)
+            assert sorted_inputs[0:2] == postorder[1:3]
+
+        for i in range(100):
+            dag = Dagger()
+            dbl1 = Piper(double, name='1')
+            dbl2a = Piper(double, name='2a', branch='a')
+            dbl2b = Piper(double, name='2b', branch='b')
+            sum = Piper(sum3, name='sum')
+            dag.add_pipe((dbl1, dbl2a))
+            dag.add_pipe((dbl1, dbl2b))
+            dag.add_pipe((dbl1, sum))
+            dag.add_pipe((dbl2a, sum))
+            dag.add_pipe((dbl2b, sum))
+            postorder = dag.postorder()
+            assert postorder[0] == dbl1
+            assert postorder[1] == dbl2a
+            assert postorder[2] == dbl2b
+            assert postorder[-1] == sum
+            inputs = dag[sum].nodes()
+            sorted_inputs = [p for p in postorder if p in inputs]
+            sorted_inputs.sort(cmp=dag.children_after_parents)
+            assert sorted_inputs[0:2] == postorder[1:3]
+
+
     def xtest_inputoutput(self):
         for par in (False, IMap()):
             self.dag = Dagger()
@@ -2073,7 +2179,7 @@ class test_Plumber(GeneratorTest):
         self.plum.pause()
         self.plum.stop()
 
-    def test_load_save(self):
+    def xtest_load_save(self):
 
         imap1 = IMap(name='imap1')
         imap2 = IMap(name='imap2')
@@ -2125,20 +2231,19 @@ class test_Plumber(GeneratorTest):
             os.unlink('/dev/shm/%s' % i[0])
 
 
-suite_Graph = unittest.makeSuite(test_Graph, 'test')
+suite_Graph = unittest.makeSuite(test_Graph, 'xtest')
 suite_Worker = unittest.makeSuite(test_Worker, 'test')
-suite_Piper = unittest.makeSuite(test_Piper, 'xxtest')
-suite_Dagger = unittest.makeSuite(test_Dagger, 'xtest')
-suite_Plumber = unittest.makeSuite(test_Plumber, 'test')
+suite_Piper = unittest.makeSuite(test_Piper, 'xtest')
+suite_Dagger = unittest.makeSuite(test_Dagger, 'xxtest')
+suite_Plumber = unittest.makeSuite(test_Plumber, 'xtest')
 
 if __name__ == "__main__":
     runner = unittest.TextTestRunner()
-    #runner.run(suite_Graph)
+    runner.run(suite_Graph)
     #runner.run(suite_Worker)
-    #runner.run(suite_Piper)
-    #runner.run(suite_Dagger)
+    runner.run(suite_Piper)
+    runner.run(suite_Dagger)
     runner.run(suite_Plumber)
-    #runner.run(suite_Plumber)
 
 
 #EOF
