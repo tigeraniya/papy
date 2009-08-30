@@ -95,7 +95,7 @@ class Dagger(Graph):
         """
         return repr(self) + "\n" + \
                "\tPipers:\n" + \
-               "\n".join(('\t\t' + repr(p) + ' ' for p in self.nodes())) + '\n'\
+               "\n".join(('\t\t' + repr(p) + ' ' for p in self.postorder())) + '\n'\
                "\tPipes:\n" + \
                "\n".join(('\t\t' + repr(p[1]) + '>>>' + \
                           repr(p[0]) for p in self.edges()))
@@ -285,7 +285,7 @@ class Dagger(Graph):
         self.log.info('%s got output pipers %s' % (repr(self), end_p))
         return end_p
 
-    def add_piper(self, piper, xtra=None, create=True):
+    def add_piper(self, piper, xtra=None, create=True, branch=None):
         """
         Adds a *Piper* to the *Dagger*, only if the *Piper* is not already in 
         a *Node*. Optionally creates a new *Piper* if the piper argument is 
@@ -325,7 +325,7 @@ class Dagger(Graph):
                                (repr(self), repr(piper)))
                 raise DaggerError('%s cannot resolve a piper from %s' % \
                                   (repr(self), repr(piper)))
-        new_piper_created = self.add_node(piper, xtra)
+        new_piper_created = self.add_node(piper, xtra, branch)
         if new_piper_created:
             self.log.info('%s added piper %s' % (repr(self), piper))
         return (new_piper_created, piper)
@@ -363,7 +363,7 @@ class Dagger(Graph):
         self.del_node(piper)
         self.log.info('%s deleted piper %s' % (repr(self), piper))
 
-    def add_pipe(self, pipe):
+    def add_pipe(self, pipe, branch=None):
         """
         Adds a pipe (A, ..., N) which is an N-tuple tuple of *Pipers*. Adding a 
         pipe means to add all the *Pipers* and connect them in the specified 
@@ -386,8 +386,8 @@ class Dagger(Graph):
         self.log.info('%s adding pipe: %s' % (repr(self), repr(pipe)))
         for i in xrange(len(pipe) - 1):
             edge = (pipe[i + 1], pipe[i])
-            edge = (self.add_piper(edge[0], create=True)[1], \
-                    self.add_piper(edge[1], create=True)[1])
+            edge = (self.add_piper(edge[0], create=True, branch=branch)[1], \
+                    self.add_piper(edge[1], create=True, branch=branch)[1])
             if edge[0] in self.dfs(edge[1], []):
                 self.log.error('%s cannot add the %s>>>%s edge (introduces a cycle)' % \
                                 (repr(self), edge[0], edge[1]))
@@ -521,10 +521,10 @@ class Plumber(Dagger):
         (internal) Executes when last output piper raises ``StopIteration``.
         """
         if ispausing:
-            self.log.info('%s paused' % self)
+            self.log.info('%s paused' % repr(self))
         else:
             self._finished.set()
-            self.log.info('%s finished' % self)
+            self.log.info('%s finished' % repr(self))
 
     @staticmethod
     def _plunge(tasks, pausing, finish):
@@ -848,7 +848,7 @@ class Piper(object):
         return cmp(x.ornament, y.ornament)
 
     def __init__(self, worker, parallel=False, consume=1, produce=1, \
-                 spawn=1, timeout=None, cmp=None, branch=None, debug=False, \
+                 spawn=1, timeout=None, branch=None, debug=False, \
                  name=None, track=False):
         self.inbox = None
         self.outbox = None
@@ -990,8 +990,6 @@ class Piper(object):
                            self)
         else:
             # not started and not connected and IMap not started
-            # sort input
-            #inbox.sort((self.cmp or self._cmp))
             self.log.info('Piper %s connects to %s' % (self, inbox))
             # determine the stride with which result will be consumed from the
             # input.
@@ -1283,7 +1281,7 @@ class Worker(object):
                             "({kwargs}, ... ,{kwargs.}) got: %s" % \
                             repr(arguments))
         # for representation
-        self.__name__ = ">".join([f.__name__ for f in self.task])
+        self.__name__ = ">".join([f.__name__ for f in self.task]) or name
         # for identification
         self.name = "%s_%s" % (self.__name__, id(self))
 
@@ -1292,7 +1290,7 @@ class Worker(object):
         Functions within a worker e.g. (f, g, h) are evaluated from left to 
         right i.e.: h(g(f(x))) thus their representation f>g>h.
         """
-        return "%s(%s)" % (self.name, self.__name__)
+        return "%s(%s)" % (self.__name__, id(self))
 
     def __hash__(self):
         """
