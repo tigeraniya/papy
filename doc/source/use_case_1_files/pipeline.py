@@ -21,14 +21,18 @@ def create_dummy_files(input_file):
     handle = open(input_file)
     match_content = re.compile('<content>(.*?)</content>.*?UP (.*?)\s+\d', re.DOTALL)
     file_strings = match_content.finditer(handle.read())
+    model = 0
     while True:
         file_content, model_name = file_strings.next().groups()
         yield (StringIO(file_content), model_name)
-        break
+        model += 1
+        if model == 10:
+            raise StopIteration
 
 @imports(['MMTK', 'MMTK.PDB', 'MMTK.Proteins', 'MMTK.ForceFields'])
 def create_model(inbox, forcefield, save_file):
     dummy_file, model_name = inbox[0]
+    print 'create_model: %s' % model_name
     # create the protein
     configuration = PDB.PDBConfiguration(dummy_file)
     chains = configuration.createPeptideChains()
@@ -49,6 +53,7 @@ def create_model(inbox, forcefield, save_file):
 @imports(['MMTK.Trajectory', 'MMTK.Minimization'])
 def minimize_model(inbox, steps, convergence, save_file, save_log):
     universe = inbox[0]
+    print 'minimize_model: %s' % universe.name
     actions = []
     if save_log:
         actions.append(
@@ -63,6 +68,7 @@ def minimize_model(inbox, steps, convergence, save_file, save_log):
 @imports(['MMTK', 'MMTK.Dynamics', 'MMTK.Trajectory'])
 def equilibrate_model(inbox, steps, t_start, t_stop, t_step, save_file, save_log):
     universe = inbox[0]
+    print 'equilibrate_model: %s' % universe.name
     universe.initializeVelocitiesToTemperature(t_start * MMTK.Units.K)
 
     # Create integrator
@@ -91,6 +97,7 @@ def equilibrate_model(inbox, steps, t_start, t_stop, t_step, save_file, save_log
 @imports(['subprocess'])
 def call_stride(inbox):
     universe = inbox[0]
+    print 'call_stride on model: %s' % universe.name
     filename = "results/%s_equilibrated.pdb" % universe.name
     process = subprocess.Popen('stride %s' % filename, shell=True,
                                stdin=subprocess.PIPE,
@@ -121,6 +128,7 @@ def call_stride(inbox):
     return output
 
 def define_loops(inbox, min_size, max_gaps):
+    print 'define loops'
     stride_results = inbox[0]
     loops = []
     new = True
@@ -135,54 +143,112 @@ def define_loops(inbox, min_size, max_gaps):
             loops[-1].append(res_id)
     return loops
 
-@imports(['MMTK'])
+@imports(['MMTK', 'MMTK.Proteins', 'MMTK.PDB', 'os'])
 def create_loop_models(inbox, loop_num, sphere_margin, save_file):
     loops, universe = inbox
+    print 'create loop models: %s' % universe.name, loops
     residues = universe.protein.residues()
     loop_models = []
-    for i, loop in enumerate(loops):
-        # figure out which residues belong to loop
-        loop_res = MMTK.Collections.Collection()
-        for res_id in loop:
-            loop_res.addObject(residues[res_id - 1])
-        loop_res_names = [r.name for r in loop_res]
-        # determine a bounding sphere for the residues
-        bs = loop_res.boundingSphere()
-        # select all residues in protein within the sphere plus margin
-        loop_sphere = residues.selectShell(bs.center, bs.radius + sphere_margin)
-        # create new universe
-        loop_universe = MMTK.InfiniteUniverse(name="%s_loop%s" % (universe.name, i))
-        loop_universe.setForceField(universe.forcefield())
-        loop_sphere = MMTK.deepcopy(loop_sphere)
-        loop_universe.addObject(loop_sphere, steal=True)
-        # fix all atoms which are not the refined loop
-        for residue in loop_universe:
-            if not residue.name in loop_res_names:
+    try:
+        for i, loop in enumerate(loops):
+            # figure out which residues belong to loop
+            loop_res = MMTK.Collections.Collection()
+            for res_id in loop:
+                loop_res.addObject(residues[res_id - 1])
+            # determine a bounding sphere for the residues
+            bs = loop_res.boundingSphere()
+            # select all residues in protein within the sphere plus margin
+            loop_sphere = residues.selectShell(bs.center, bs.radius + sphere_margin)
+            # determine the offset of the loop
+            offset_protein = loop[0] - 1
+            offset_loop = list(loop_sphere).index(residues[offset_protein])
+            ###### create new universe
+            # save the sphere around the loop as a new file
+            loop_name = "%s_loop%s" % (universe.name, i)
+            loop_file = 'results/%s_equilibrated.pdb' % loop_name
+            pdb_file = PDB.PDBOutputFile(loop_file)
+            pdb_file.write(loop_sphere)
+            pdb_file.close()
+            # load the new file as if it was a proper chain (the loop is proper)
+            # MMTK writes terminal forms of residues 
+            configuration = PDB.PDBConfiguration(loop_file)
+            chain = Proteins.PeptideChain(configuration.peptide_chains[0],
+                                  #n_terminus=(offset_protein == 0),
+                                  n_terminus=loop_sphere[0] == residues[0],
+                                  c_terminus=loop_sphere[-1] == residues[-1]) # not sure about that
+            protein = Proteins.Protein(chain)
+            loop_universe = MMTK.InfiniteUniverse(name=loop_name)
+            loop_universe.setForceField(universe.forcefield())
+            loop_universe.protein = protein
+            loop_residues = loop_universe.protein.residues()
+            # now fix all atoms which are not the initial loop
+            # select real loop residues
+            left_residues = loop_residues[0:offset_loop]
+            right_residues = loop_residues[offset_loop + len(loop):]
+            #print 'loop: %s' % (i + 1,)
+            #print 'residues in loop: %s' % list(residues[offset_protein:offset_protein + len(loop)])
+            #print 'residues in shell: %s' % list(loop_sphere)
+            #print 'residues to be fixed: %s' % (left_residues + right_residues)
+            for residue in left_residues + right_residues:
                 for atom in residue.atomList():
                     atom.fixed = True
-        loop_models.append(loop_universe)
-        if save_file:
-            try:
-                loop_universe.writeToFile('results/%s_equilibrated.pdb' % loop_universe.name)
-            except Exception, e:
-                print e
+            loop_models.append((loop_universe, (offset_loop, offset_protein, len(loop))))
+            if not save_file:
+                os.unlink(loop_file)
+    except Exception, e:
+        print i, loop, list(loop_sphere), e
+        raise
+    print 'created loop models: %s' % loop_models
     for i in xrange(loop_num - len(loop_models)):
         loop_models.append(None)
     return loop_models
 
 @imports(['MMTK', 'MMTK.Dynamics', 'MMTK.Trajectory'])
-def md_loop_model(inbox, steps, temp, save):
-    loop_model = inbox[0]
-    print loop_model
-    if loop_model:
-        pass
-    return loop_model
+def md_loop_model(inbox, steps, temp, save_file, save_trajectory, save_log):
+    # this is for produce/spawn/consume padding
+    if inbox[0] is None:
+        return None
+    loop_universe = inbox[0][0]
+    print 'md of loop model: %s' % loop_universe.name
+    actions = []
+    if save_log:
+        actions.append(Trajectory.LogOutput('results/%s_refinement.log' % \
+                                            loop_universe.name))
+    if save_trajectory:
+        traj = Trajectory.Trajectory(loop_universe, "%s.nc" % loop_universe.name, "w")
+        # Write every second step to the trajectory file.
+        actions.append(Trajectory.TrajectoryOutput(traj, \
+                        ("time", "energy", "thermodynamic", "configuration"),
+                        0, None, 2))
 
-@imports(['MMTK'])
-def combine_models(inboxes):
-    models = [inbox[0] for inbox in inboxes]
-    model = 'dummy_model'
-    return model
+    loop_universe.initializeVelocitiesToTemperature(temp * MMTK.Units.K)
+    integrator = Dynamics.VelocityVerletIntegrator(loop_universe, delta_t=1. * MMTK.Units.fs)
+    integrator(steps=steps, actions=actions)
+    if save_trajectory:
+        traj.close()
+    if save_file:
+        loop_universe.protein.writeToFile('results/%s_refined.pdb' % loop_universe.name)
+    return inbox[0]
+
+def combine_loop_models(inboxes):
+    print 'collect loop models model'
+    loop_universes_offsets = [i[0] for i in inboxes if i[0] is not None]
+    return loop_universes_offsets
+
+@imports(['itertools'])
+def make_refined_model(inbox, save_file):
+    combined, initial = inbox
+    print 'make refined model: %s' % initial.name
+    residues = initial.protein[0].residues() # residues in the first peptide chain
+    for loop_universe, (offset_loop, offset_protein, len_loop) in combined:
+        initial_residues = residues[offset_protein:offset_protein + len_loop]
+        refined_residues = loop_universe.protein[0].residues()[offset_loop:offset_loop + len_loop]
+        for ir, rr in itertools.izip(initial_residues, refined_residues):
+            for ia, ra in itertools.izip(ir.atomList(), rr.atomList()):
+                ia.setPosition(ra.position())
+    if save_file:
+        initial.protein.writeToFile('results/%s_refined.pdb' % initial.name)
+
 
 
 # Part 2: Define the topology
@@ -196,13 +262,13 @@ def pipeline():
                                                   'save_file':True
                                                   })
     w_minimize_model = Worker(minimize_model, kwargs={
-                                                      'steps': 5,
+                                                      'steps': 100,
                                                       'convergence':1.0e-4,
                                                       'save_log':True,
                                                       'save_file':True
                                                       })
     w_equilibrate_model = Worker(equilibrate_model, kwargs={
-                                                            'steps':5,
+                                                            'steps':100,
                                                             't_start':50., # K
                                                             't_stop':300., # K
                                                             't_step':0.5, # K
@@ -220,11 +286,16 @@ def pipeline():
                                                               'save_file':True
                                                               })
     w_md_loop_model = Worker(md_loop_model, kwargs={
-                                                    'steps':50,
+                                                    'steps':10000,
                                                     'temp':300, # K 
-                                                    'save':False
+                                                    'save_file':True,
+                                                    'save_trajectory':False,
+                                                    'save_log':True
                                                     })
-    w_combine_models = Worker(combine_models)
+    w_combine_loop_models = Worker(combine_loop_models)
+    w_make_refined_model = Worker(make_refined_model, kwargs={
+                                                               'save_file':True
+                                                               })
 
     # initialize Piper instances (i.e. attach functions to runtime)
     p_create_model = Piper(w_create_model, debug=True)
@@ -232,9 +303,10 @@ def pipeline():
     p_equilibrate_model = Piper(w_equilibrate_model, parallel=pool, debug=True)
     P_call_stride = Piper(w_call_stride, debug=True)
     p_define_loops = Piper(w_define_loops, debug=True)
-    p_create_loop_models = Piper(w_create_loop_models, debug=True, produce=LOOP_NUM)
+    p_create_loop_models = Piper(w_create_loop_models, debug=False, produce=LOOP_NUM)
     p_md_loop_model = Piper(w_md_loop_model, debug=True, parallel=pool, spawn=LOOP_NUM)
-    p_combine_models = Piper(w_combine_models, debug=True, consume=LOOP_NUM)
+    p_combine_loop_models = Piper(w_combine_loop_models, debug=True, consume=LOOP_NUM)
+    p_make_refined_model = Piper(w_make_refined_model, debug=True)
 
     # create the pipeline and connect pipers
     pipes.add_pipe((
@@ -243,13 +315,18 @@ def pipeline():
                     p_equilibrate_model,
                     p_create_loop_models,
                     p_md_loop_model,
-                    p_combine_models
+                    p_combine_loop_models,
+                    p_make_refined_model
                     ))
     pipes.add_pipe((
                     p_equilibrate_model,
                     P_call_stride,
                     p_define_loops,
                     p_create_loop_models
+                    ))
+    pipes.add_pipe((
+                    p_equilibrate_model,
+                    p_make_refined_model
                     ))
     return pipes
 
