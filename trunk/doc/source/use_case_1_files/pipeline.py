@@ -26,7 +26,7 @@ def create_dummy_files(input_file):
         file_content, model_name = file_strings.next().groups()
         yield (StringIO(file_content), model_name)
         model += 1
-        if model == 10:
+        if model == 2:
             raise StopIteration
 
 @imports(['MMTK', 'MMTK.PDB', 'MMTK.Proteins', 'MMTK.ForceFields'])
@@ -253,7 +253,7 @@ def make_refined_model(inbox, save_file):
 
 # Part 2: Define the topology
 def pipeline():
-    pool = IMap()
+    pool = IMap(worker_num=2, buffer=100)
     pipes = Plumber()
 
     # initialize Worker instances (i.e. wrap the functions).
@@ -268,13 +268,14 @@ def pipeline():
                                                       'save_file':True
                                                       })
     w_equilibrate_model = Worker(equilibrate_model, kwargs={
-                                                            'steps':100,
+                                                            'steps':250,
                                                             't_start':50., # K
                                                             't_stop':300., # K
                                                             't_step':0.5, # K
                                                             'save_log':True,
                                                             'save_file':True
                                                             })
+    w_minimize_equilibrate_model = Worker((w_minimize_model, w_equilibrate_model))
     w_call_stride = Worker(call_stride)
     w_define_loops = Worker(define_loops, kwargs={
                                                   'min_size':7,
@@ -299,8 +300,8 @@ def pipeline():
 
     # initialize Piper instances (i.e. attach functions to runtime)
     p_create_model = Piper(w_create_model, debug=True)
-    p_minimize_model = Piper(w_minimize_model, parallel=pool, debug=True)
-    p_equilibrate_model = Piper(w_equilibrate_model, parallel=pool, debug=True)
+    #p_minimize_model = Piper(w_minimize_model, parallel=pool, debug=True)
+    p_equilibrate_model = Piper(w_minimize_equilibrate_model, parallel=pool, debug=True)
     P_call_stride = Piper(w_call_stride, debug=True)
     p_define_loops = Piper(w_define_loops, debug=True)
     p_create_loop_models = Piper(w_create_loop_models, debug=False, produce=LOOP_NUM)
@@ -311,7 +312,7 @@ def pipeline():
     # create the pipeline and connect pipers
     pipes.add_pipe((
                     p_create_model,
-                    p_minimize_model,
+                    #p_minimize_model,
                     p_equilibrate_model,
                     p_create_loop_models,
                     p_md_loop_model,
