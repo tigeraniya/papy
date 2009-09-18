@@ -14,26 +14,26 @@ imap
 
 Iterated higher-order map function. A function which evaluates another function
 on all elements of the input collection returning and evaluating the restuls 
-iteratively and lazily. Papy depends on the imap implementation provided by the
-standard Python imap from the itertoos module (itertools.imap) and the custom 
-IMap.
-
+iteratively and lazily. *PaPy* depends on the imap implementation provided by 
+the standard Python imap from the itertoos module (itertools.imap) and the 
+custom *IMap*.
 
 *IMap*
 ------
 
-A parallel implementation of a multi-task imap function used within papy. Which
-uses a pool of worker-threads or worker-processes and evaluates functions
-locally or remotely
+A parallel implementation of a multi-task imap function, which is used within 
+*PaPy. It uses a pool of worker-threads or worker-processes and evaluates 
+functions in parallel either locally or remotely.
 
-worker function
+worker-function
 ---------------
 
-A function with standarized input/output written to be used by a Worker class
-instance. (related to: Worker, RPyC)
+A function with a standarized input written to be used by a *Worker* class
+instance. All functionality of a *PaPy* pipeline has to be coded as 
+worker-functions.
 
 
-worker process/thread
+worker-process/thread
 ---------------------
 
 A thread or process inside an IMap instance evaluating a tasklet remotely or

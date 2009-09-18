@@ -9,7 +9,7 @@ from logging import handlers, Formatter
 import time
 
 
-def start_logger(log_to_file=True, \
+def start_logger(log_to_file=False, \
                  log_to_stream=False, \
                  log_to_file_level=logging.INFO, \
                  log_to_stream_level=logging.INFO, \

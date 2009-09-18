@@ -285,44 +285,49 @@ Example::
   # PH
 
 
-The Piper
----------
+The *Piper*
+-----------
 
-A Piper class instance represents a node in the directed graph of the pipeline.
-It defines what function should at this place be evaluated (via the supplied
-Worker instance) and how it should be evaluated (via the optional IMap
-instance). Besides that it has performs additional functions which include:
+A *Piper* class instance represents a node in the directed graph of the 
+pipeline. It defines what function(s) should at this place be evaluated 
+(via the supplied *Worker* instance) and how it should be evaluated (via the 
+optional *IMap *instance, which defines the uses computational resources). 
+Besides that it performs additional functions which include:
 
   * logging and reporting
   * exception handling
-  * timeouts 
-  * input sorting
+  * timeouts
   * produce/spawn/consume schemes
 
-To use a piper outside a pipeline three steps are required:
+To use a *Piper* outside a pipeline three steps are required:
 
-  * creation - requires a worker instance, optional arguments e.g. an IMap 
-    instance.
-  * connection - connects the piper to the input
-  * start - starts the calculation (starts the IMap)
+  * creation - requires a *Worker* instance, optional arguments e.g. an *IMap* 
+    instance. (``__init__`` method)
+  * connection - connects the *Piper* to the input. (``connect`` method)
+  * start - allows the *Piper* to return results, starts the *IMap*. (``start`` method)
 
-In the first step we define the worker which will be evaluated by the piper and
-the means to do this computation (a custom IMap instance or the standard
-itertools.imap function). Optional arguments are thoroughly explained in the 
-automatic documentation.
+In the first step we define the *Worker* which will be evaluated by the *Piper*
+and the resources to do this computation. Computational resources are 
+represented by *IMap* instances. An *IMap* instance can utilize local or remote
+threads or processes. If no *IMap* instance is given to the constructor the
+``itertools.imap`` function will be used instead. This function will be called
+by the Python process used to construct and start the *PaPy* pipeline.
 
-Papy has been designed to log it's execution at multiple levels. The IMap
-function which should at this stage be bug free logs only debug statments.
-Exceptions within worker functions are wrapped as WorkerError exceptions, these
-errors are logged by the Piper instance, which called this worker (remember a
-single worker instance can be called by multiple pipers). By default the
-pipeline is robust to WorkerErrors and these exceptions are logged, but they do
-not stop the flow. In this mode if the called Worker instance returnes a
-WorkerError the calling Piper instance wraps this error as a PiperError and
-returns it down-stream in the pipeline. On the other end if a Worker receives a
-PiperError as input it just propagates it further down-stream i.e. it does not
-try meaningless calculations on exceptions. In this way errors in the pipeline
-propagate down-stream as place-holder PiperErrors. 
+*PaPy* has been designed to log the execution of a workflow at multiple levels 
+and with a level of detail which can be specified it uses built-in Python 
+logging (the ``logging`` module). The *IMap* function, which should at this 
+stage be bug free logs only debug statements. Exceptions within worker-functions
+are wrapped as ``WorkerError`` exceptions, these errors are logged by the 
+*Piper* instance, which wraps this *Worker* (a single *Worker* instance can be 
+used by multiple *Pipers*). By default the pipeline is robust to 
+``WorkerErrors`` and these exceptions are logged, but they do not stop the flow.
+In this mode if the called *Worker* instance returnes a ``WorkerError`` the 
+calling *Piper* instance wraps this error as a ``PiperError`` and
+**returns**(not raises) it down-stream into the pipeline. On the other end if a
+*Worker* receives a *PiperError* as input it just propagates it further 
+down-stream i.e. it does not try meaningless calculations on exceptions. 
+In this way errors in the pipeline propagate down-stream as place-holder 
+PiperErrors.
 
 A Piper instance evaluates the Worker either by the supplied IMap instance
 (described elswhere) or by the builtin itertools.imap function (default). In
@@ -426,42 +431,47 @@ mentioned a proper papy pipeline should have an output piper i.e. a piper which
 persistently stores the result.
 
 
-The Dagger
-----------
+The *Dagger*
+------------
 
-The Dagger is an object to connect Piper instances into a directed acyclic
-graph (DAG). It inherits most methods of the Graph object, which is a concise
-implementation of the Graph data-structure. The Graph instance is a
-dictionary of arbitary hashable objects "real nodes". For example a Piper instance) 
-connected instances of the Node class "topological nodes". A Node instance is a 
-also dictionary of "real nodes" and their corresponding "topological nodes". A
-"real node" is in this dictionary if it has an incoming edges from the "real
-node" in the Graph. A "topological node" is therefore a sub-graph of the Graph
-object around a hashable object and the whole Graph is a recursively nested
-dictionary. The Dagger is designed to store Piper instances as "real nodes",
-whereas the Graph makes no assumptions about the object type. 
+The *Dagger* is an object to connect *Piper* instances into a directed acyclic
+graph (DAG). It inherits most methods of the *Graph* object, which is a concise
+implementation of the *Graph* data-structure. The *Graph* instance is a
+dictionary of arbitary hashable objects "real nodes" e.g. a *Piper* (the keys of
+the dictionary) and instances of the Node class "topological nodes" (the values 
+of the dictionary). A "topological node" instance is a also dictionary of 
+"real nodes" and their corresponding "topological nodes". A "real node"(A) of the 
+*Graph* is contained in a "topological node" for another "real node"(B) if there
+exist an edge from (A) to (B). A and B might be the same "real node". 
+A "topological node" is therefore a sub-graph of the *Graph* object around a 
+hashable object and the whole *Graph* is a recursively nested dictionary. The 
+*Dagger* is designed to store *Piper* instances as "real nodes" and provides 
+additional methods, whereas the  *Graph* makes no assumptions about the object 
+type. 
 
 
 Edges vs. pipes
 +++++++++++++++
 
-A piper instance is created by specifiying a worker (and optionally IMap
-instance) and connected to an input. A single input might be consumed by several
-pipers. Also the output of a single piper might be an input to several others.
-If several down-stream pipers are connected to a single up-stream piper it's
-output is 'tee'd' this means that each downstream piper creates it's own virtual
-copy of the input iterator. As a result of the above it is much more natural to
-think of thos connections as down-stream pipers connected to their input which
-implies that the edge direction in the DAG is down-stream --> up-stream. This
-direction is opposite to the direction of the data flow which is up-stream --> 
-down-stream. The Dagger class introduces the concept of pipes to ease the 
-understanding of papy and make mistakes less common. A pipe is nothing else then
-a reversed edge. To make this explicit::
+A *Piper* instance is created by specifiying a *Worker* (and optionally *IMap*
+instance) and needs to be connected to an input. The input might be another 
+*Piper* or any Python iterator. The output of a *Piper* (up-stream) can be 
+consumed by several *Pipers* (down-stream), while a *Piper* (down-stream) might
+consume the results of multiple *Pipers* (up-stream). This allows *Pipers* to be
+used as any nodes in a directed acyclic graph the *Dagger*
 
-    input -> piper0 -> piper1 -> output # -> represents a pipe
-    input <- piper0 <- piper1 <- output # <- represents an edge
+As a result of the above it is much more natural to think of connections between
+*Pipers* in terms of data-flow up-stream --> down-stream (data flows from 
+up-stream to down-stream) then dependency down-stream --> up-stream (down-stream
+depends on up-stream). The *Graph* represents dependancy information as directed
+edges (down-stream --> up-stream), while the *Dagger* class introduces the 
+concept of pipes to ease the understanding of *PaPy* and make mistakes less 
+common. A pipe is nothing else then a reversed edge. To make this explicit::
 
-The data is stored internally as edges, but the interface expects pipes. Method
+    input -> piper0 -> piper1 -> output # -> represents a pipe (data-flow)
+    input <- piper0 <- piper1 <- output # <- represents an edge (dependancy)
+
+The data is stored internally as edges, but the interface uses pipes. Method
 names are explicit.::
 
     dagger_instance.add_edge() # (inherited from Graph) expects and edge as input 
@@ -469,39 +479,46 @@ names are explicit.::
 
 .. note::
 
-    Although all Graph methods are availble from the Dagger the end-user should
-    rely on Dagger specific methods only. For example the Graph method add_edge
-    will allow to add any edge to the instance, whereas add_pipe will not allow
-    to introduce cycles.
+    Although all *Graph* methods are availble from the *Dagger* the end-user 
+    should use *Dagger* specific methods only. For example the *Graph* method 
+    ``add_edge`` will allow to add any edge to the instance, whereas 
+    ``add_pipe`` method will not allow to introduce cycles.
 
-Working with the Dagger
-+++++++++++++++++++++++
 
-Creation of the a Dagger instance is very easy. An empty Dagger instance is
+Working with the *Dagger*
++++++++++++++++++++++++++
+
+Creation of the a *Dagger* instance is very easy. An empty *Dagger* instance is
 created without any arguments to the constructor.::
 
     dagger_instance = Dagger()
 
-Optionally a set of pipers and pipes can be specified:: 
+Optionally a set of *Pipers* and/or pipes can be given:: 
 
     dagger_instance = Dagger(sequence_of_pipers, sequence_of_pipes)
-    # is equivalent to 
-    dagger_instance.add_pipers(sequence_of_nodes)
+    # which is equivalent to: 
+    dagger_instance.add_pipers(sequence_of_pipers)
     dagger_instance.add_pipes(sequence_of_pipes)
+    # a sequence of pipers allows to easily add branches
+    dagger_instance.add_pipers([1, 2a, 3a, 4])
+    dagger_instance.add_pipers([1, 2b, 3b, 4])
+    # in this example a Dagger will have 6 pipers (1, 2a, 2b, 3a, 3b, 4), one 
+    # branch point 1, one merge point 4, and two branches (2a, 3a) and (2b, 3b).
 
-The dagger allows to add/delete pipers and pipes::
+The *Dagger* allows to add/delete *Pipers* and pipes::
 
     dagger_instance.add_piper(piper) 
     dagger_instance.del_piper(piper or piper_id)
     dagger_instance.add_pipers(pipers)
     dagger_instance.del_pipers(pipers or piper_ids)
 
-The piper_id is the run-time specific id associated with a given piper instance.
-It can be obtained by calling the built-in function id::
+The id of a *Piper* is a run-time specific number associated with a given 
+*Piper* instance. This number can be obtained by calling the built-in function
+id::
 
     id(piper)
 
-This number is also shown when a piper instance is printed.::
+This number is also shown when a *Piper* instance is printed.::
 
     print piper_instance
 
@@ -509,108 +526,100 @@ or represented::
 
     repr(piper_instance)
 
-The representation of a Dagger instance also shows the id of the pipers
+The representation of a *Dagger* instance also shows the id of the *Pipers*
 which are contained in the pipeline.::
 
     print dagger_instance
 
-The id of a Piper instance is created at run-time (it corresponds to the memory
-address of the object) therefore they should not be used in scripts. Further two 
-objects with non overlapping lifetimes can have the same id.
-
-The resolve method::
+The id of a *Piper* instance is define at run-time (it corresponds to the memory
+address of the object) therefore it should not be used in scripts or seved in 
+any way. Note that the lenght of this number is platform-specific and that no 
+guarantee is made that two *Pipers* with non-overlapping will not have the same 
+id. The resolve method::
 
    dagger_instance.resolve(piper or piper_id)
 
-returns a piper instance if the supplied piper or a piper with the supplied id
-is contained in the dagger_instance. This method by default raises a DaggerError
-if the piper is not found. If the argument forgive is True the method
-returns None instead::
+returns a *Piper* instance if the supplied *Piper* or a *Piper* with the 
+supplied id is contained in the dagger_instance. This method by default raises a
+``DaggerError`` if the *Piper* is not found. If the argument forgive is ``True``
+the method returns ``None`` instead::
 
    dagger_instance.resolve(missing_piper) # raise DaggerError
    dagger_instance.resolve(missing_piper, forgive =True) # returns None
 
 
-The Dagger run-time
-+++++++++++++++++++
+The *Dagger* run-time
++++++++++++++++++++++
 
-The run-time of a dagger starts when it's start method is called, but prior to
-that all the Piper instances in the dagger need to be connect to their inputs.
-The input or inputs for a given piper are defined by its outgoing edges and
-those edges are implicit in the Graph data-structure. Therefore after finishing
-adding pipers and pipes the Piper instances need to be cross-connected. This is
-accomplished by the connect method, which calls the connect method of the Piper
-instances within a Dagger instance. After the pipers have been connected they
-can be started. Starting a piper means to start it's task evaluation, but 
-because Piper instances can share an IMap instance the order of connections must
-be valid, which means that a piper inscance has to be connected to other
-pipers only if all its up-stream pipers have been connected. The dagger can
-determine the correct order (which corresponds to the reverse postorder of the
-graph) and call the connect methods accordingly. The dagger instance keeps track
-of all pipers and connections between them not about the run-time specific data
-input data to the pipeline. This means that "input pipers" i.e. pipers which
-have no incoming pipes (or in other words outgoing edges), are not connected
-automatically using the connect method call. If the "input piper" is connected
-to the input manually before the dagger connect method call the connection *is
-not* overriden.::
+The run-time of a *Dagger* instance begins when it's start method is called.
+A *Dagger* can only be started if it is connected. Connecting a *Dagger* means
+to connect all *Pipers* which it contains as defined by the pipes in the 
+*Dagger*. After the *Dagger* is connected it can be started, starting a *Dagger
+means to start all it's *Pipers*. *Pipers* have to be started in the order of 
+the data-flow i.e. a *Piper* can only be started after all it's up-stream 
+*Pipers* have been started. An ordering of nodes/*Pipers* of a graph/*Dagger* 
+which has this property is called a postorder. There are possibly more then one
+postorder per graph/*Dagger*. The exact postorder used to connect the *Pipers*
+has some additional properties
 
-    input_piper.connect(input_data)
-    dagger_instance.add_pipe((input_piper, output_piper))
-    dagger_instance.connect()
-    # this results in:
-    #    output_piper.connect(input_piper)
-    # input_piper is still connected to input_data
+    - all down-stream *Pipers* for a *Piper* (A) come before the next *Piper* 
+      (B) for which no such relationship can be established. This can be thought
+      as maintaining branch contiguity.
+      
+    - such branches can additionally be sorted according to the branch argument
+      passed to the *Piper* constructor.
 
-!!!TODO!!! update code to allow for disconnects
+Another aspect of order of a *Dagger* is the sequence by which a down-stream 
+*Piper* connects multiple up-stream *Pipers*. The inputs cannot be sorted 
+based solely on their postorder because the down-stream *Piper* might be 
+connected directly to a *Piper* to which one of it's other inputs has been 
+connected before. The inputs of a *Piper* are additionaly sorted so that all 
+down-stream *Pipers* come before up-stream *Pipers*, while *Pipers* for which no
+such relation can be established are still sorted according to their index in 
+the postorder. This can be thought of as sorting branches by their "generation".
+
+A started *Dagger* is able to process input data. The simplest way to process 
+all inputs is to zip it's output *Pipers*::
+
+    output_pipers = dagger_instance.get_outputs()
+    final_results = zip(output_pipers)
+    
+If any of the *Pipers* used within a *Dagger* uses an *IMap* instance and the 
+*Dagger* is started. The Python process can only be exited cleanly if the 
+*Dagger* instance is stopped by calling it's `stop` method. 
+    
+
+The *Plumber*
+-------------
+
+The *Plumber* is an easy to use interface to *PaPy*. It inherits from the 
+*Dagger* object and can be used like a *Dagger*, but the *Plumber* class adds 
+methods related to the "run time" of a pipeline. A *Plumber* can 
+start/run/pause/stop a pipeline.
+
+  #. loading/saving a pipeline.
+
+  #. starting/stopping a pipeline.
   
-The start method is similar to the connect method in that it is just a wrapper
-call to the start method of the Piper instances in the graph. The order of call
-is also the reverse postorder of nodes in the graph. The start method might not 
-do anything (besides logging it's call) for pipers which use the itertools.imap
-linear evaluation as only shared IMap instances need to be started.
+  #. running/pausing a pipeline.
 
-The Plumber
------------
-
-The Plumber is an easy to use interface to papy. It inherits from the Dagger
-objects and can be used like a Dagger, but the Plumber class adds methods
-related to the "run time" of a pipeline. It should be emphasized that by using a
-Plumber instance a pipeline can run in the background.
-
-  #. loading/saving a pipeline
-
-  #. starting/stopping a pipeline
-
-  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+A *PaPy* pipeline is loaded and saved as executable Python code, which has the 
+same priviliges as the Python process. Please keep this in mind starting when 
+pipelines from untrusted sources!
 
 
 The additional components
 -------------------------
 
-Those classes and functions are used by the core components, but are general and might find
-application in your code.
+Those classes and functions are used by the core components, but are general and
+might find application in your code.
 
-  * Graph(Node) - Two classes which implement a graph data-structure using a recursively 
-                  nested dictionary. This allows for simplicity of algorithms/methods 
-                  i.e. there are no edge objects because edges are the keys of the Node 
-                  dictionary which in turn is the value in the dictionary for the arbitrary 
-                  object in the graph i.e.::
+  * *Graph*(*Node*) - Two classes which implement a graph data-structure using a 
+                  recursively nested dictionary. This allows for simplicity of 
+                  algorithms/methods i.e. there are no edge objects because 
+                  edges are the keys of the *Node* dictionary which in turn is 
+                  the value in the dictionary for the arbitrary object in the 
+                  *Graph* object i.e.::
 
                     from papy import Graph
                     graph = Graph()
@@ -620,12 +629,13 @@ application in your code.
                     node_for_object1 = graph[object1]
                     node_for_object2 = graph[object2]
 
-                  The Dagger is a Graph object with directed edges and no cycles. 
+                  The *Dagger* is a *Graph* object with directed edges only and 
+                  no cycles.
 
   * imports    - a function-wrapper, which allows to inject import statments to
-                 a functions local namespace at creation (code execution) e.g. on a 
-                 remote python process.
+                 a functions local namespace at creation (code execution) 
+                 e.g. on a remote Python process.
 
-  * inject     - injects a function(builtin or user) into a RPyC remote connection
-                 namespace. 
+  * inject     - injects a function(builtin or user) into a *RPyC* remote 
+                 connection namespace. 
   

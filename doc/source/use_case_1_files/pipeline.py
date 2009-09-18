@@ -9,8 +9,9 @@ from IMap import IMap, imports
 # all example workers
 from papy import workers
 # logging support
+import logging
 from papy.utils import logger
-logger.start_logger(log_to_file=False, log_to_stream=True,)
+# 
 import sys
 sys.stderr = open('/dev/null', 'w')
 LOOP_NUM = 10 # maximum number of loops
@@ -66,10 +67,10 @@ def minimize_model(inbox, steps, convergence, save_file, save_log):
     return universe
 
 @imports(['MMTK', 'MMTK.Dynamics', 'MMTK.Trajectory'])
-def equilibrate_model(inbox, steps, t_start, t_stop, t_step, save_file, save_log):
+def equilibrate_model(inbox, steps, T_start, T_stop, T_step, save_file, save_log):
     universe = inbox[0]
     print 'equilibrate_model: %s' % universe.name
-    universe.initializeVelocitiesToTemperature(t_start * MMTK.Units.K)
+    universe.initializeVelocitiesToTemperature(T_start * MMTK.Units.K)
 
     # Create integrator
     integrator = Dynamics.VelocityVerletIntegrator(universe,
@@ -77,9 +78,9 @@ def equilibrate_model(inbox, steps, t_start, t_stop, t_step, save_file, save_log
     actions = [
         # Heat from t_start K to t_stop K applying a temperature
         # change of t_step K/fs; scale velocities at every step.
-        Dynamics.Heater(t_start * MMTK.Units.K,
-                        t_stop * MMTK.Units.K,
-                        t_step * MMTK.Units.K / MMTK.Units.fs,
+        Dynamics.Heater(T_start * MMTK.Units.K,
+                        T_stop * MMTK.Units.K,
+                        T_step * MMTK.Units.K / MMTK.Units.fs,
                         0, None, 1),
         # Remove global translation every 50 steps.
         Dynamics.TranslationRemover(0, None, 50),
@@ -103,6 +104,8 @@ def call_stride(inbox):
                                stdin=subprocess.PIPE,
                                stdout=subprocess.PIPE)
     output = []
+    # here the STRIDE output file is parsed for the relevant data.
+    # Lines beginning with ASG contain per-residue sec. structure assignments.
     for line in process.stdout.xreadlines():
         if line.startswith('ASG'):
             res_name = line[5:8] # we use 3
@@ -173,7 +176,6 @@ def create_loop_models(inbox, loop_num, sphere_margin, save_file):
             # MMTK writes terminal forms of residues 
             configuration = PDB.PDBConfiguration(loop_file)
             chain = Proteins.PeptideChain(configuration.peptide_chains[0],
-                                  #n_terminus=(offset_protein == 0),
                                   n_terminus=loop_sphere[0] == residues[0],
                                   c_terminus=loop_sphere[-1] == residues[-1]) # not sure about that
             protein = Proteins.Protein(chain)
@@ -254,7 +256,10 @@ def make_refined_model(inbox, save_file):
 # Part 2: Define the topology
 def pipeline():
     pool = IMap(worker_num=2, buffer=100)
-    pipes = Plumber()
+    pipes = Plumber(logger_options ={
+                                     'log_to_screen':True,
+                                     'log_to_screen_level':logging.INFOR   
+                                     })
 
     # initialize Worker instances (i.e. wrap the functions).
     w_create_model = Worker(create_model, kwargs={
@@ -268,7 +273,8 @@ def pipeline():
                                                       'save_file':True
                                                       })
     w_equilibrate_model = Worker(equilibrate_model, kwargs={
-                                                            'steps':250,
+                        # 50K -> 300K in 500 0.5K steps
+                                                            'steps':500, 
                                                             't_start':50., # K
                                                             't_stop':300., # K
                                                             't_step':0.5, # K
@@ -277,17 +283,14 @@ def pipeline():
                                                             })
     w_minimize_equilibrate_model = Worker((w_minimize_model, w_equilibrate_model))
     w_call_stride = Worker(call_stride)
-    w_define_loops = Worker(define_loops, kwargs={
-                                                  'min_size':7,
-                                                  'max_gaps':2
-                                                  })
+    w_define_loops = Worker(define_loops)
     w_create_loop_models = Worker(create_loop_models, kwargs={
                                                               'sphere_margin':0.5, # nm
                                                               'loop_num':LOOP_NUM,
                                                               'save_file':True
                                                               })
     w_md_loop_model = Worker(md_loop_model, kwargs={
-                                                    'steps':10000,
+                                                    'steps':50000,
                                                     'temp':300, # K 
                                                     'save_file':True,
                                                     'save_trajectory':False,
@@ -300,7 +303,6 @@ def pipeline():
 
     # initialize Piper instances (i.e. attach functions to runtime)
     p_create_model = Piper(w_create_model, debug=True)
-    #p_minimize_model = Piper(w_minimize_model, parallel=pool, debug=True)
     p_equilibrate_model = Piper(w_minimize_equilibrate_model, parallel=pool, debug=True)
     P_call_stride = Piper(w_call_stride, debug=True)
     p_define_loops = Piper(w_define_loops, debug=True)
@@ -312,23 +314,22 @@ def pipeline():
     # create the pipeline and connect pipers
     pipes.add_pipe((
                     p_create_model,
-                    #p_minimize_model,
                     p_equilibrate_model,
                     p_create_loop_models,
                     p_md_loop_model,
                     p_combine_loop_models,
                     p_make_refined_model
-                    ))
+                    ))  # main branch
     pipes.add_pipe((
                     p_equilibrate_model,
                     P_call_stride,
                     p_define_loops,
                     p_create_loop_models
-                    ))
+                    ))  # stride branch
     pipes.add_pipe((
                     p_equilibrate_model,
                     p_make_refined_model
-                    ))
+                    ))  # data-link branch
     return pipes
 
 

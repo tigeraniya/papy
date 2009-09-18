@@ -361,7 +361,10 @@ class IMap(object):
         self._started = Event()         # (if not raise TimeoutError on next)
         self._stopping = Event()        # (starting stopping procedure see stop)
         # pool options
-        self.worker_num = (worker_num or stride or cpu_count())
+        if worker_num is None:
+            self.worker_num = stride or cpu_count()
+        else:
+            self.worker_num = worker_num
         self.worker_remote = (worker_remote or [])    # [('host', #workers)]
         self.stride = stride or \
                       self.worker_num + sum([i[1] for i in self.worker_remote])
