@@ -103,14 +103,14 @@ class Dagger(Graph):
 
     def children_after_parents(self, piper1, piper2):
         """
+        Custom compare function. Returns 1 if the first Piper is upstream of the
+        second Piper, -1 if the first Piper is downstream of the second Piper 
+        and 0 if the two Pipers are independent.
         """
-
-
         if piper1 in self[piper2].deep_nodes():
             return 1
         elif piper2 in self[piper1].deep_nodes():
-            # 2nd is child of 1st ???
-            return - 1
+            return -1
         else:
             return 0
 
@@ -790,14 +790,14 @@ class Piper(object):
         
             If parallel =``False`` *Piper* will not evaluate the *Worker* in 
             parallel but use the "manager" process and the ``itertools.imap`` 
-            function. Otherwise the specified *IMap* instance will be used. 
+            function. Otherwise the specified *IMap* instance and it's 
+            threads/processes will be used. 
 
         * consume(int) [default: 1]
 
             The number of input items consumed from *all* directly connected 
             upstream *Pipers* per one *Worker* evaluation. Results will be 
             passed to the worker-function as a sequence of individual results.
-
 
         * produce(int) [default: 1]
 
@@ -815,21 +815,31 @@ class Piper(object):
             Time to wait till a result is available. Otherwise a ``PiperError``
             is **returned** not raised.
 
-        * cmp(func) [default: Piper._cmp]
-
-            Compare function to sort the randomly ordered list of upstream
-            *Pipers*. By convention using the ornament argument/attribute. By 
-            default the ``Piper._cmp`` method is used for sorting.
-
-        * branch(object) [default: None]
-
-            Anything which can be used by the ``cmp`` built-in function. If
-            multiple *Pipers* are connected to a single source *Piper* the
-            branch object will be used to lexicographically sort the branches in
-            the topological postorder. This argument is required if the branches
-            are to be merged by a non-symmetrical *Piper* i.e.::
+        * branch(object) [default: ``None``]
+        
+            This affects the order of *Pipers* in the *Dagger*. *Pipers* are 
+            sorted according to:
             
-                function([res_1, res_2]) != function([res_2, res_1])
+                #. data-flow upstream->downstream 
+                
+                #. branch attribute
+                
+            This argument sets the branch attribute of a *Piper*. If two 
+            *Pipers* have no upstream->downstream relation they will be sorted 
+            according to their branch attribute. If neither of them has a branch
+            set or it is identical their order will be semi-random. *Pipers* 
+            will implicitly inherit the branch of an up-stream *Piper*, thus it 
+            is only necessary to sepcify the branch of a *Piper if it is the
+            first one after a branch point.
+            
+            The argument can be any object which can be used by the ``cmp`` 
+            built-in function. If necessary they could override the __cmp__ 
+            method. 
+        
+            Note that it is possible to construct pipelines without specifying 
+            branches if *Pipers* which are connected to multiple up-stream 
+            *Pipers* use *Workers* which act correctly regardless of the ordere
+            of branch results in the inbox of the worker-function.
                 
         * debug(bool) [default: False]
 
@@ -869,7 +879,7 @@ class Piper(object):
         self.tees = []
 
         self.log = getLogger('papy')
-        self.log.info('Creating a new Piper from %s' % worker)
+        self.log.info('Creating a new Piper from %s' % repr(worker))
 
         self.imap = parallel if parallel else imap # this is itetools.imap
 
@@ -1331,11 +1341,10 @@ class Worker(object):
         conn.execute('TASK = %s' % \
                    str(tuple([i.__name__ for i in self.task])).replace("'", ""))
                     # ['func1', 'func2'] -> "(func1, func2)"
-        # inject compose function, wil
-
+        # inject compose function, will ...
         self.task = [conn.namespace['comp_task']]
         self.args = [[self.args]]
-        self.kwargs = [[self.kwargs]]
+        self.kwargs = [{'kwargs':self.kwargs}]
         # instead of multiple remote back and the combined functions is
         # evaluated remotely.
         return self
