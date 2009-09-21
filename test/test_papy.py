@@ -2214,6 +2214,8 @@ class test_Plumber(GeneratorTest):
         plum.pause()
         plum.stop()
         plum.save('remove_me2.py')
+        os.unlink('remove_me.py')
+        os.unlink('remove_me2.py')
         print self.plum.stats
 
     def xtest_track(self):

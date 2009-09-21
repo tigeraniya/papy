@@ -829,7 +829,7 @@ class Piper(object):
             according to their branch attribute. If neither of them has a branch
             set or it is identical their order will be semi-random. *Pipers* 
             will implicitly inherit the branch of an up-stream *Piper*, thus it 
-            is only necessary to sepcify the branch of a *Piper if it is the
+            is only necessary to sepcify the branch of a *Piper* if it is the
             first one after a branch point.
             
             The argument can be any object which can be used by the ``cmp`` 

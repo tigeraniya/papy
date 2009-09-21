@@ -291,7 +291,7 @@ The *Piper*
 A *Piper* class instance represents a node in the directed graph of the 
 pipeline. It defines what function(s) should at this place be evaluated 
 (via the supplied *Worker* instance) and how it should be evaluated (via the 
-optional *IMap *instance, which defines the uses computational resources). 
+optional *IMap* instance, which defines the uses computational resources). 
 Besides that it performs additional functions which include:
 
   * logging and reporting
@@ -323,7 +323,7 @@ used by multiple *Pipers*). By default the pipeline is robust to
 ``WorkerErrors`` and these exceptions are logged, but they do not stop the flow.
 In this mode if the called *Worker* instance returnes a ``WorkerError`` the 
 calling *Piper* instance wraps this error as a ``PiperError`` and
-**returns**(not raises) it down-stream into the pipeline. On the other end if a
+**returns** (not raises) it down-stream into the pipeline. On the other end if a
 *Worker* receives a *PiperError* as input it just propagates it further 
 down-stream i.e. it does not try meaningless calculations on exceptions. 
 In this way errors in the pipeline propagate down-stream as place-holder 

@@ -22,7 +22,7 @@ custom *IMap*.
 ------
 
 A parallel implementation of a multi-task imap function, which is used within 
-*PaPy. It uses a pool of worker-threads or worker-processes and evaluates 
+*PaPy*. It uses a pool of worker-threads or worker-processes and evaluates 
 functions in parallel either locally or remotely.
 
 worker-function
