@@ -1,0 +1,5 @@
+#!/usr/bin/env python
+# This is the PaPy tkgui startup script.
+from papy.tkgui import tkgui
+if __name__ == '__main__':
+    tkgui.main()

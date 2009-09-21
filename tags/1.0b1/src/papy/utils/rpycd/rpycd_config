@@ -1,0 +1,14 @@
+# python ConfigParser
+# RPyCd - The RPyC daemon.
+
+[options]
+mode = forking
+port = 18888
+host = 127.0.0.1
+#logfile = /tmp/rpycd_log
+#quiet = False
+#vbdfile = None
+#auto_register = False
+#regtype = udp
+#regport = 
+#reghost = 

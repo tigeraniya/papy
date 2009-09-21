@@ -1,0 +1,23 @@
+#!/bin/bash
+args=("$@")
+pidfile=$PWD/rpycd.pid
+binpath=$PWD/rpyc_server.py
+
+test -f $binpath || exit 0
+
+case "${1:-''}" in
+  'start')
+           start-stop-daemon --start --pidfile $pidfile --chdir $PWD --exec $binpath -- ${args[@]:1}
+        ;;
+  'stop')
+           start-stop-daemon --stop --pidfile $pidfile 
+        ;;
+  'restart')
+           #
+        ;;
+  *)      # no parameter specified
+        echo "Usage: $SELF start|stop|restart|status"
+        exit 1
+        ;;
+esac
+
