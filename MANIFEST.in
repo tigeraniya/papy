@@ -9,4 +9,6 @@ include bootstrap.py
 recursive-include doc *
 recursive-include test *
 recursive-include src *
+global-exclude *.elc *.orig *.rej *~ *.o *.so *.pyc *.swp *.prof
+prune snapshots
 prune doc/build
