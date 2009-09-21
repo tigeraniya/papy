@@ -4,15 +4,15 @@ Use case 2: Distributed computing.
 This use case illustrates the simplest possible pipeline which utilizes remote
 Python processes. Each remote computer has to expose it's computational 
 resources in the form of a Python process server. A client (for example a PaPy 
-IMap instace) attaches to this server and starts executing code remotely. Every 
+IMap instance) attaches to this server and starts executing code remotely. Every 
 server is a security risk and RPyC servers should only be exposed on a secure 
 network (e.g. by using a firewall to restrict access from other than local
 computers). We will use the RPyC 'classic_server.py' script which comes with 
 RPyC, but is not installed as a binary or added to the executable path, 
 therefore we will have to find it and start manually. (another option is to use
-the "rpyc_server.py" daemon which comes together with PaPy, but this requires
-an additional dependancy). This example will not work if the default port i.e. 
-18811 is firewalled or already used.  
+the "rpyc_server.py" daemon which comes together with PaPy). 
+This example will not work if the default port i.e. 18812 is firewalled or 
+already used.  
 
 Finding the "classic_server.py" file on a remote unix machine 
 (example result shown)::

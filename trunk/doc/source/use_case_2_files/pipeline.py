@@ -25,15 +25,19 @@ def where(inbox):
     return result
 
 # Part 2: Define the topology
-def pipeline(workers):
-    imap_ = IMap(worker_num =0, worker_remote=workers)
+def pipeline(worker_remote, use_tcp):
+    imap_ = IMap(worker_num=0, worker_remote=worker_remote)
     if not use_tcp:
         w_where = Worker(where)
         w_print = Worker(workers.io.print_)
     else:
-        w_where = Worker((where, workers.io.dump)
-    p_where = Piper(w_where, parallel =imap_)
-    p_print = Piper(workers.io.print_, debug =True)
+        w_where = Worker((where, workers.io.dump_item), kwargs=(
+                                                       {},
+                                                       {'type':'tcp'}
+                                                       ))
+        w_print = Worker((workers.io.load_item, workers.io.print_))
+    p_where = Piper(w_where, parallel=imap_)
+    p_print = Piper(w_print, debug=True)
     pipes = Plumber()
     pipes.add_pipe((p_where, p_print))
     return pipes
@@ -46,14 +50,14 @@ if __name__ == '__main__':
     args = dict(getopt(sys.argv[1:], '', ['use_tcp=', 'workers='])[0])
 
     # parse arguments    
-    use_tcp = eval(args['--use_tcp'])
-    host_numbers = args['--workers']
-    host_numbers = host_number_commas.split(',')
-    workers = [hn.split('#') for hn in host_numbers]
-    
-    pipes = pipeline(workers, use_tcp)
-    pipes.start([range(4)])
-    print pipes.get_inputs()[0].imap.pool
+    use_tcp = eval(args['--use_tcp']) # bool
+    worker_remote = args['--workers']
+    worker_remote = worker_remote.split(',')
+    worker_remote = [hn.split('#') for hn in worker_remote]
+    worker_remote = [(h, int(n)) for h, n in worker_remote]
+
+    pipes = pipeline(worker_remote, use_tcp)
+    pipes.start([range(100)])
     pipes.run()
     pipes.wait()
     pipes.pause()
