@@ -2,7 +2,7 @@
 # -*- Import: -*-
 #
 NAME = 'PaPy'
-VERSION = '1.0'
+VERSION = '1.0b1'
 
 # python
 import os
@@ -28,7 +28,7 @@ PACKAGES = ['papy', 'IMap', 'papy.workers', 'papy.utils', 'papy.tkgui']
 SCRIPTS = ['src/papy/tkgui/papy']
 
 PACKAGE_DIR = {'papy': 'src/papy', 'IMap': 'src/IMap'}
-PACKAGE_DATA = {'papy.utils':['templates/*', 'rpycd/*'], 'papy.tkgui':['icons/*']}
+PACKAGE_DATA = {'papy':['utils/templates/*', 'rpycd/*', 'icons/*']}
 
 REQUIRES = [
     # -*- Install requires: -*-
@@ -76,7 +76,6 @@ options(
 
 # bdist etc.
 paver.setuputils.install_distutils_tasks()
-
 
 @task
 def clean():
