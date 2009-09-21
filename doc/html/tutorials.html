@@ -1,0 +1,525 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+ "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<head>
+ 
+ <title>papy - Google Code</title>
+ <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+ 
+ <link rel="shortcut icon" href="http://www.gstatic.com/codesite/ph/images/defaultlogo.png"/>
+ <link type="text/css" rel="stylesheet"
+       href="./_static/custom.css" />
+ <link type="text/css" rel="stylesheet"
+       href="http://www.gstatic.com/codesite/ph/3770121226765569314/css/ph_core.css" />
+ <link type="text/css" rel="stylesheet"
+       href="http://www.gstatic.com/codesite/ph/3770121226765569314/css/ph_detail.css" />
+ <link rel="stylesheet"  type="text/css"
+       href="./_static/pygments.css" /> 
+ 
+ <link type="application/atom+xml" rel="alternate"
+ href="/feeds/p/papy/svnchanges/basic?path=/wiki/" />
+ 
+ 
+<!--[if IE]>
+ <link type="text/css" rel="stylesheet"
+       href="http://code.google.com/hosting/css/d_ie.css" />
+<![endif]-->
+
+<script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+          URL_ROOT:    '',
+          VERSION:     '1.0b1',
+          COLLAPSE_MODINDEX: false,
+          FILE_SUFFIX: '.html'
+      };
+    </script>
+    <script type="text/javascript" src="./_static/jquery.js"></script>
+    <script type="text/javascript" src="./_static/interface.js"></script>
+    <script type="text/javascript" src="./_static/doctools.js"></script>
+    <link rel="contents" title="Global table of contents" href="contents.html" />
+    <link rel="index" title="Global index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="top" title="papy v1.0b1 documentation" href="index.html" />
+    <link rel="next" title="Examples" href="examples.html" />
+    <link rel="prev" title="Inter Process Communication" href="communication.html" />
+</head>
+<body class="t6">
+ <div id=gaia>
+  <font size="-1">
+ 
+ <a href="http://code.google.com/p/support/wiki/WhatsNew" style="color:#a03">What's new?</a>
+ | <a href="http://code.google.com/p/support/">Help</a>
+ 
+ </font> 
+
+ </div>
+ <table style="padding:0px; margin: 0px 0px -6px 0; width:100%" cellpadding=0 cellspacing=0>
+ <tr>
+ <td><a href="/"><img src="http://www.gstatic.com/codesite/ph/images/defaultlogo.png" alt=papy/></a></td>
+ <td>
+ 
+ <div id="pname">
+ <a href="http://code.google.com/p/papy/" style="text-decoration:none; color:#000">papy</a>
+ 
+ </div>
+ <div id="psum">
+ <i><a href="http://code.google.com/p/papy/" style="text-decoration:none; color:#000">papy v1.0b1 documentation</a></i>
+ </div>
+ 
+ </td>
+ <td style="white-space:nowrap; text-align:right">
+ 
+ <form action="http://code.google.com/hosting/search">
+ <input size=30 name=q value=""/>
+ <input type=submit name=projectsearch value="Search Projects" />
+ <input type=submit name=websearch value="Search the Web" />
+ </form>
+ 
+ </tr>
+ </table>
+
+
+<table id="mt" cellspacing="0" cellpadding="0" width="100%" border="0">
+ <tr>
+ <th onclick="if (!cancelBubble) _go('http://code.google.com/p/papy/');">
+ <div class="tab inactive">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <a onclick="cancelBubble=true;" href="http://code.google.com/p/papy/">Project&nbsp;Home</a>
+ </div>
+ </div>
+ </th><td>&nbsp;&nbsp;</td>
+ 
+ 
+ 
+ 
+ <th onclick="if (!cancelBubble) _go('http://code.google.com/p/papy/downloads/list');">
+ <div class="tab inactive">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <a onclick="cancelBubble=true;" href="http://code.google.com/p/papy/downloads/list">Downloads</a>
+ </div>
+ </div>
+ </th><td>&nbsp;&nbsp;</td>
+ 
+ 
+ 
+ 
+ 
+ <th onclick="if (!cancelBubble) _go('http://code.google.com/p/papy/w/list');">
+ <div class="tab inactive">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <a onclick="cancelBubble=true;" href="http://code.google.com/p/papy/w/list">Wiki</a>
+ </div>
+ </div>
+ </th><td>&nbsp;&nbsp;</td>
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ <th onclick="if (!cancelBubble) _go('http://code.google.com/p/papy/issues/list');">
+ <div class="tab inactive">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <a onclick="cancelBubble=true;" href="http://code.google.com/p/papy/issues/list">Issues</a>
+ </div>
+ </div>
+ </th><td>&nbsp;&nbsp;</td>
+ 
+ 
+ 
+ 
+ 
+ 
+ <th onclick="if (!cancelBubble) _go('http://code.google.com/p/papy/source/list');">
+ <div class="tab inactive">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <a onclick="cancelBubble=true;" href="http://code.google.com/p/papy/source/list">Source</a>
+ </div>
+ </div>
+ </th><td>&nbsp;&nbsp;</td>
+ 
+ 
+ 
+ <td width="100%">&nbsp;</td>
+ </tr>
+</table>
+<table cellspacing="0" cellpadding="0" width="100%" align="center" border="0" class="st">
+ <tr>
+ 
+ 
+ 
+ <td>
+ <div class="issueList">
+<div class=isf>
+ 
+ 
+ 
+ <a href="index.html">papy v1.0b1 documentation</a> |
+ <span>
+   <a href="genindex.html" title="General Index"
+      accesskey="I">index</a>
+ </span> |
+ <span>
+   <a href="modindex.html" title="Global Module Index"
+      accesskey="M">modules</a>
+ </span> |
+ <span>
+   <a href="examples.html" title="Examples"
+      accesskey="N">next</a>
+ </span> |
+ <span>
+   <a href="communication.html" title="Inter Process Communication"
+      accesskey="P">previous</a>
+ </span> |
+ <span class="inIssueList">
+   <span>Search</span>
+    <form action="search.html" method="GET" style="display:inline">
+      <input size=30 name=q value=""/>
+      <input type=submit name=projectsearch value="Search Documentation" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+ </span>
+
+</div>
+</div>
+
+ </td>
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ <td height=4 align=right valign=top class="bevel-right">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ </td>
+ </tr>
+</table>
+<script>
+ var cancelBubble = false;
+ function _go(url) { document.location = url; }
+</script>
+
+<div id="maincol">
+<!-- IE -->
+
+
+
+<style>
+ #downloadbox { 
+ padding: 6px; 
+ overflow: hidden;
+ white-space: nowrap;
+ text-overflow: ellipsis;
+ }
+ #downloadbox a {
+ margin: 0 0 0 0;
+ display: block;
+ padding-left: 0px;
+ }
+ #owners a, #members a { white-space: nowrap; }
+</style>
+
+<div style="float:right; width:25em; margin:0 0 1em 2em">
+
+ 
+ <div class=pmeta_bubble_bg>
+ <div class="round4"></div>
+ <div class="round2"></div>
+
+ <div class="round1"></div>
+ <div class="box-inner">
+ <table class="pmeta" cellpadding=5>
+ <tr><th>Previous:</th>
+ <td><ul>
+ 
+ <li>
+   <a href="communication.html" title="previous chapter">Inter Process Communication</a>
+ </li>
+ 
+
+ 
+ </ul></td>
+ </tr>
+ <tr><th>Next:</th>
+ <td><ul>
+ 
+ <li>
+   <a href="examples.html" title="next chapter">Examples</a>
+ </li>
+ 
+
+ 
+ </ul></td>
+ </tr>
+ 
+ 
+ 
+ </table>
+
+ </div>
+ <div class="round1"></div>
+ <div class="round2"></div>
+ <div class="round4"></div>
+ </div>
+ 
+ 
+ 
+ <div style="background:#ddf8cc; margin-bottom: 5px;table-layout:fixed">
+
+ <div class="round4"></div>
+
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <div id=downloadbox>
+  <b>Table of Contents</b><br/>
+  <table class="pmeta toc" cellpadding=5><tr><td>
+	<ul>
+<li><a class="reference external" href="">Tutorials</a><ul>
+<li><a class="reference external" href="#writing-functions-for-workers">Writing functions for Workers</a></li>
+<li><a class="reference external" href="#writing-functions-for-output-workers">Writing functions for output workers</a></li>
+<li><a class="reference external" href="#picklability">Picklability</a><ul>
+<li><a class="reference external" href="#worker-methods-are-impossible">Worker-methods are impossible</a></li>
+<li><a class="reference external" href="#file-handles-make-remotely-no-sense">File-handles make remotely no sense</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference external" href="#parallel-execution">Parallel execution</a><ul>
+<li><a class="reference external" href="#when-not-to-use-parallel-pipers">When not to use parallel pipers.</a></li>
+<li><a class="reference external" href="#optimizing-cpu-bound-pipers">Optimizing cpu-bound pipers.</a></li>
+<li><a class="reference external" href="#optimizing-waiting-pipers">Optimizing waiting pipers.</a></li>
+<li><a class="reference external" href="#optimizing-io-bound-pipers">Optimizing io-bound pipers.</a></li>
+<li><a class="reference external" href="#when-to-use-a-shared-pool">When to use a shared pool.</a></li>
+<li><a class="reference external" href="#when-to-use-unordered-pipers-parallel-2">When to use unordered pipers (parallel =2).</a></li>
+</ul>
+</li>
+</ul>
+
+  </td></tr></table>
+
+ 
+ </div>
+ </div>
+ <div class="round1"></div>
+ <div class="round2"></div>
+ <div class="round4"></div>
+ </div>
+ 
+ 
+
+
+ </div>
+</div>
+
+ <div style="padding:0 3em 1.2em 0">
+   
+     
+  <div class="section" id="tutorials">
+<h1>Tutorials<a class="headerlink" href="#tutorials" title="Permalink to this headline">¶</a></h1>
+<p>In this section practical aspects of <em>PaPy</em> usage are covered especially
+creating, running and monitoring a <em>PaPy</em> pipeline. The tutorials cover:</p>
+<blockquote>
+<ul class="simple">
+<li>writing functions for Workers</li>
+<li>working with input data</li>
+<li>writing functions for output Workers</li>
+<li>creating a pipeline skeleton</li>
+<li>optimizing parallelism</li>
+<li>logging</li>
+</ul>
+</blockquote>
+<div class="section" id="writing-functions-for-workers">
+<h2>Writing functions for Workers<a class="headerlink" href="#writing-functions-for-workers" title="Permalink to this headline">¶</a></h2>
+<p>A worker is an instance of the class Worker. Worker instaces are created by
+calling the Worker class with a function or several functions as the argument.
+optionally an argument set (for the function) or argument sets (for multiple
+functions) can be supplied i.e.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">worker_instance</span> <span class="o">=</span> <span class="n">Worker</span><span class="p">(</span><span class="n">function</span><span class="p">,</span> <span class="n">argument</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>or:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">worker_instance</span> <span class="o">=</span> <span class="n">Worker</span><span class="p">(</span><span class="n">list_of_functions</span><span class="p">,</span> <span class="n">list_of_arguments</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>A worker instance is therefore defined by two elements: the function or list of
+functions and the argument or list of arguments. This means that two different
+instances which have been initialized using the same functions <em>and</em> respecitve
+arguments are functionally equal. You should think of worker instances as nested
+curried functions (search for &#8220;partial application&#8221;).</p>
+<p>Writing functions suitable for workers is very easy and adapting existing
+functions should be the same. The idea is that any function is valid if it
+conforms to a defined input/output scheme. There are only few rules which need to
+be followed:</p>
+<blockquote>
+<ol class="arabic simple">
+<li>The first input argument: each function in a worker will be given a n-tuple
+of objects, where n is the number input iterators to the Worker. For example
+a function which sums two numbers should expect a tuple of lenght 2.
+Remember python uses 0-based counting. If the Worker has only one input
+stream the input to the function will still be a tuple i.e. a 1-tuple.</li>
+<li>The additional (and optional) input arguments: a function can
+be given additional arguments.</li>
+<li>The output: a function should return a single object _not_ enclosed in a
+wrapping 1-tuple. If a python function has no explicit return value it
+implicitly returns None.</li>
+</ol>
+</blockquote>
+<p>Examples:</p>
+<p>single input, single ouput:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">water_to_water</span><span class="p">(</span><span class="n">inp</span><span class="p">):</span>
+  <span class="n">result</span> <span class="o">=</span> <span class="n">inp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+  <span class="k">return</span> <span class="n">result</span>
+</pre></div>
+</div>
+<p>single input, no explicit output:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">water_to_null</span><span class="p">(</span><span class="n">inp</span><span class="p">):</span>
+  <span class="n">null</span> <span class="o">=</span> <span class="n">inp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>multiple input, single output:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">water_and_wine</span><span class="p">(</span><span class="n">inp</span><span class="p">):</span>
+  <span class="n">juice</span> <span class="o">=</span> <span class="n">inp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">inp</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+  <span class="k">return</span> <span class="n">juice</span>
+</pre></div>
+</div>
+<p>multiple input, single output, parameters:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">water_and_wine_dilute</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">dilute</span> <span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+  <span class="n">juice</span> <span class="o">=</span> <span class="n">inp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">dilute</span> <span class="o">+</span> <span class="n">inp</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+  <span class="k">return</span> <span class="n">juice</span>
+</pre></div>
+</div>
+<p>Note that in the last exemples inp is a 2-tuple i.e. the Piper based on such a
+worker/function will expect two input streams or in other words will have two
+incoming pipes. If on the other hand we would like to combine elements in the
+input/object from a single pipe we have to define a function like the
+following:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">sum2elements</span><span class="p">(</span><span class="n">inp</span><span class="p">):</span>
+    <span class="n">unwrapped_inp</span> <span class="o">=</span> <span class="n">inp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">unwrapped_inp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">unwrapped_inp</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">result</span>
+</pre></div>
+</div>
+<p>In other words the function receives a wrapped object but returns an unwrapped.
+All python objects can be used as results except Excptions. This is because
+Exceptions are not evaluated down-stream but are passively propagated.</p>
+</div>
+<div class="section" id="writing-functions-for-output-workers">
+<h2>Writing functions for output workers<a class="headerlink" href="#writing-functions-for-output-workers" title="Permalink to this headline">¶</a></h2>
+<p>An output worker is a worker, which is used in a piper instance at the end of
+a pipeline i.e. in the last piper.  Any valid worker function is also a valid
+output worker function, but it is recommended for the last piper to persistently
+safe the output of the pipeline. The output worker function should therefore
+store it&#8217;s input in a file, database or eventually print it on screen. The
+function should not return data. The reason for this recommendation are related
+to the implementation details of the IMap and Plumber objects.</p>
+<blockquote>
+<ol class="arabic simple">
+<li>The Plumber instance runs a pipeline by retrieving results from output
+pipers <em>without</em> saving or returning those results</li>
+<li>The IMap instance will retrieve results from the output pieprs <em>without</em>
+saving whenever it is told to stop <em>before</em> it consumed all input.</li>
+</ol>
+</blockquote>
+<p>The latter point requires some explanation. When the stop method of a running
+IMap instance is called the IMap does not stop immediately, but is schedeuled to
+stop after the current stride is finished for all tasks. To do this the output
+of the pipeline has to be &#8216;cleared&#8217; which means that results from output pipers
+are retrieved, but not stored. Therefore the &#8216;storage&#8217; should be a built-in
+function of the last piper. An output worker function might therefore require an
+argument which is a connection to some persistent storage e.g. a file-handle.</p>
+</div>
+<div class="section" id="picklability">
+<h2>Picklability<a class="headerlink" href="#picklability" title="Permalink to this headline">¶</a></h2>
+<p>Objects are submitted to the worker-threads by means of queues to
+worker-processes by pipes and to remote processes using sockets. This requires
+serialization, which is internally done by the cPickle module. Additionally RPyC
+uses it&#8217;s own &#8216;brine&#8217; for serialization. The submitted objects include the
+functions, data, arguments and keyworded arguments all of which need to be
+picklable!</p>
+<div class="section" id="worker-methods-are-impossible">
+<h3>Worker-methods are impossible<a class="headerlink" href="#worker-methods-are-impossible" title="Permalink to this headline">¶</a></h3>
+<p>Class instances (i.e. Worker instances) are picklable only if all of their
+attributes are.  On the other hand class instance methods are not picklable
+(because they are not top-level module functions) therefore class methods
+(either static, class, bound or unbound) will not work for a parallel piper.</p>
+</div>
+<div class="section" id="file-handles-make-remotely-no-sense">
+<h3>File-handles make remotely no sense<a class="headerlink" href="#file-handles-make-remotely-no-sense" title="Permalink to this headline">¶</a></h3>
+<p>Function arguments should be picklable, but file-handles are not. It is
+recommeded that output pipers store data persistently, therfore output workers
+should be run locally and not use a parallel IMap, circumventing the requirement
+for picklable attributes.</p>
+</div>
+</div>
+</div>
+<div class="section" id="parallel-execution">
+<h1>Parallel execution<a class="headerlink" href="#parallel-execution" title="Permalink to this headline">¶</a></h1>
+<p>The throughput of a pipeline will be most significantly limited by the slowest piper. A piper might be slow either because it does a CPU-intensive task (cpu-bound piper), IO-intensive task (io-bound piper) or it layzily waits for some data(waiting piper). Currently papy allows you to parallelize cpu-bound and waiting pipers easily. In general cpu-bound tasks should be split into a number of processes which is equal to the number of availble cpu-cores. Additional processes are likely to decrese the overall performance. Waiting tasks do not use the computers resources and therfore their parallelism is quite cheap and often can be solved using threads. IO-bound tasks like writing and reading from disk a</p>
+<div class="section" id="when-not-to-use-parallel-pipers">
+<h2>When not to use parallel pipers.<a class="headerlink" href="#when-not-to-use-parallel-pipers" title="Permalink to this headline">¶</a></h2>
+<p>By default a piper is not parallel i.e.</p>
+<p>linear_piper = Piper(some_worker)</p>
+<p>This has good reason as most of your pipers will not limit the throughput of the pipeline while the creation of process pools is quite expensive (more so on Windows). You should parallelize the bottleneck(s) only. If your pipeline has no obvious bottleneck it&#8217;s probably fast enough. If not you might be able to use a shared pool.</p>
+</div>
+<div class="section" id="optimizing-cpu-bound-pipers">
+<h2>Optimizing cpu-bound pipers.<a class="headerlink" href="#optimizing-cpu-bound-pipers" title="Permalink to this headline">¶</a></h2>
+<p>If the throughput of your pipeline is limited by a cpu-intensive tasks you should parallelise this piper. The recommended number of processes is the number of availble processors it rarely helps to have more (even +1)</p>
+<p>recommended (defaults to creating a new pool with cpu number of processes):
+parallel_piper = Piper(cpu_bound_worker, parallel =1)</p>
+</div>
+<div class="section" id="optimizing-waiting-pipers">
+<h2>Optimizing waiting pipers.<a class="headerlink" href="#optimizing-waiting-pipers" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="optimizing-io-bound-pipers">
+<h2>Optimizing io-bound pipers.<a class="headerlink" href="#optimizing-io-bound-pipers" title="Permalink to this headline">¶</a></h2>
+<p>You should probably know way more about python multiprocessing then I do.</p>
+</div>
+<div class="section" id="when-to-use-a-shared-pool">
+<h2>When to use a shared pool.<a class="headerlink" href="#when-to-use-a-shared-pool" title="Permalink to this headline">¶</a></h2>
+<p>First of all you <em>likely</em> should not use a shared pool.</p>
+</div>
+<div class="section" id="when-to-use-unordered-pipers-parallel-2">
+<h2>When to use unordered pipers (parallel =2).<a class="headerlink" href="#when-to-use-unordered-pipers-parallel-2" title="Permalink to this headline">¶</a></h2>
+<p>Unordered pipers return results in arbitrary order i.e. for the input iterator [3,2,1] a parallel unordered piper which doubles the input might return [9,2,4] or any other permutation of the results. In theory unordered pipers are quicker then simple parallel pipers if the computational (or waiting) time varies for different inputs simply the result which arrives first is returned first and the process can work on another input.</p>
+</div>
+</div>
+
+
+   
+ 
+ 
+ </div>
+<div id="footer" dir="ltr">
+ 
+ <div class="text">
+ 
+ &copy;2008 Google -
+ <a href="http://code.google.com/">Code Home</a> -
+ <a href="http://code.google.com/tos.html">Terms of Service</a> -
+ <a href="http://www.google.com/privacy.html">Privacy Policy</a> -
+  
+ </body>
+</html>

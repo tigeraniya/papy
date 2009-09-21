@@ -1,0 +1,536 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+ "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<head>
+ 
+ <title>papy - Google Code</title>
+ <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+ 
+ <link rel="shortcut icon" href="http://www.gstatic.com/codesite/ph/images/defaultlogo.png"/>
+ <link type="text/css" rel="stylesheet"
+       href="./_static/custom.css" />
+ <link type="text/css" rel="stylesheet"
+       href="http://www.gstatic.com/codesite/ph/3770121226765569314/css/ph_core.css" />
+ <link type="text/css" rel="stylesheet"
+       href="http://www.gstatic.com/codesite/ph/3770121226765569314/css/ph_detail.css" />
+ <link rel="stylesheet"  type="text/css"
+       href="./_static/pygments.css" /> 
+ 
+ <link type="application/atom+xml" rel="alternate"
+ href="/feeds/p/papy/svnchanges/basic?path=/wiki/" />
+ 
+ 
+<!--[if IE]>
+ <link type="text/css" rel="stylesheet"
+       href="http://code.google.com/hosting/css/d_ie.css" />
+<![endif]-->
+
+<script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+          URL_ROOT:    '',
+          VERSION:     '1.0b1',
+          COLLAPSE_MODINDEX: false,
+          FILE_SUFFIX: '.html'
+      };
+    </script>
+    <script type="text/javascript" src="./_static/jquery.js"></script>
+    <script type="text/javascript" src="./_static/interface.js"></script>
+    <script type="text/javascript" src="./_static/doctools.js"></script>
+    <link rel="contents" title="Global table of contents" href="contents.html" />
+    <link rel="index" title="Global index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="top" title="papy v1.0b1 documentation" href="" />
+    <link rel="next" title="Introduction" href="introduction.html" />
+</head>
+<body class="t6">
+ <div id=gaia>
+  <font size="-1">
+ 
+ <a href="http://code.google.com/p/support/wiki/WhatsNew" style="color:#a03">What's new?</a>
+ | <a href="http://code.google.com/p/support/">Help</a>
+ 
+ </font> 
+
+ </div>
+ <table style="padding:0px; margin: 0px 0px -6px 0; width:100%" cellpadding=0 cellspacing=0>
+ <tr>
+ <td><a href="/"><img src="http://www.gstatic.com/codesite/ph/images/defaultlogo.png" alt=papy/></a></td>
+ <td>
+ 
+ <div id="pname">
+ <a href="http://code.google.com/p/papy/" style="text-decoration:none; color:#000">papy</a>
+ 
+ </div>
+ <div id="psum">
+ <i><a href="http://code.google.com/p/papy/" style="text-decoration:none; color:#000">papy v1.0b1 documentation</a></i>
+ </div>
+ 
+ </td>
+ <td style="white-space:nowrap; text-align:right">
+ 
+ <form action="http://code.google.com/hosting/search">
+ <input size=30 name=q value=""/>
+ <input type=submit name=projectsearch value="Search Projects" />
+ <input type=submit name=websearch value="Search the Web" />
+ </form>
+ 
+ </tr>
+ </table>
+
+
+<table id="mt" cellspacing="0" cellpadding="0" width="100%" border="0">
+ <tr>
+ <th onclick="if (!cancelBubble) _go('http://code.google.com/p/papy/');">
+ <div class="tab inactive">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <a onclick="cancelBubble=true;" href="http://code.google.com/p/papy/">Project&nbsp;Home</a>
+ </div>
+ </div>
+ </th><td>&nbsp;&nbsp;</td>
+ 
+ 
+ 
+ 
+ <th onclick="if (!cancelBubble) _go('http://code.google.com/p/papy/downloads/list');">
+ <div class="tab inactive">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <a onclick="cancelBubble=true;" href="http://code.google.com/p/papy/downloads/list">Downloads</a>
+ </div>
+ </div>
+ </th><td>&nbsp;&nbsp;</td>
+ 
+ 
+ 
+ 
+ 
+ <th onclick="if (!cancelBubble) _go('http://code.google.com/p/papy/w/list');">
+ <div class="tab inactive">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <a onclick="cancelBubble=true;" href="http://code.google.com/p/papy/w/list">Wiki</a>
+ </div>
+ </div>
+ </th><td>&nbsp;&nbsp;</td>
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ <th onclick="if (!cancelBubble) _go('http://code.google.com/p/papy/issues/list');">
+ <div class="tab inactive">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <a onclick="cancelBubble=true;" href="http://code.google.com/p/papy/issues/list">Issues</a>
+ </div>
+ </div>
+ </th><td>&nbsp;&nbsp;</td>
+ 
+ 
+ 
+ 
+ 
+ 
+ <th onclick="if (!cancelBubble) _go('http://code.google.com/p/papy/source/list');">
+ <div class="tab inactive">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <a onclick="cancelBubble=true;" href="http://code.google.com/p/papy/source/list">Source</a>
+ </div>
+ </div>
+ </th><td>&nbsp;&nbsp;</td>
+ 
+ 
+ 
+ <td width="100%">&nbsp;</td>
+ </tr>
+</table>
+<table cellspacing="0" cellpadding="0" width="100%" align="center" border="0" class="st">
+ <tr>
+ 
+ 
+ 
+ <td>
+ <div class="issueList">
+<div class=isf>
+ 
+ 
+ 
+ <a href="">papy v1.0b1 documentation</a> |
+ <span>
+   <a href="genindex.html" title="General Index"
+      accesskey="I">index</a>
+ </span> |
+ <span>
+   <a href="modindex.html" title="Global Module Index"
+      accesskey="M">modules</a>
+ </span> |
+ <span>
+   <a href="introduction.html" title="Introduction"
+      accesskey="N">next</a>
+ </span> |
+ <span class="inIssueList">
+   <span>Search</span>
+    <form action="search.html" method="GET" style="display:inline">
+      <input size=30 name=q value=""/>
+      <input type=submit name=projectsearch value="Search Documentation" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+ </span>
+
+</div>
+</div>
+
+ </td>
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ <td height=4 align=right valign=top class="bevel-right">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ </td>
+ </tr>
+</table>
+<script>
+ var cancelBubble = false;
+ function _go(url) { document.location = url; }
+</script>
+
+<div id="maincol">
+<!-- IE -->
+
+
+
+<style>
+ #downloadbox { 
+ padding: 6px; 
+ overflow: hidden;
+ white-space: nowrap;
+ text-overflow: ellipsis;
+ }
+ #downloadbox a {
+ margin: 0 0 0 0;
+ display: block;
+ padding-left: 0px;
+ }
+ #owners a, #members a { white-space: nowrap; }
+</style>
+
+<div style="float:right; width:25em; margin:0 0 1em 2em">
+
+ 
+ <div class=pmeta_bubble_bg>
+ <div class="round4"></div>
+ <div class="round2"></div>
+
+ <div class="round1"></div>
+ <div class="box-inner">
+ <table class="pmeta" cellpadding=5>
+ <tr><th>Next:</th>
+ <td><ul>
+ 
+ <li>
+   <a href="introduction.html" title="next chapter">Introduction</a>
+ </li>
+ 
+
+ 
+ </ul></td>
+ </tr>
+ 
+ 
+ 
+ </table>
+
+ </div>
+ <div class="round1"></div>
+ <div class="round2"></div>
+ <div class="round4"></div>
+ </div>
+ 
+ 
+ 
+ <div style="background:#ddf8cc; margin-bottom: 5px;table-layout:fixed">
+
+ <div class="round4"></div>
+
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <div id=downloadbox>
+  <b>Table of Contents</b><br/>
+  <table class="pmeta toc" cellpadding=5><tr><td>
+	<ul>
+<li><a class="reference external" href=""><strong>PaPy</strong> - Parallel Pipelines in Python</a><ul>
+<li><a class="reference external" href="#manual">Manual</a><ul>
+</ul>
+</li>
+<li><a class="reference external" href="#papy-api">Papy API</a><ul>
+</ul>
+</li>
+<li><a class="reference external" href="#indices-and-tables">Indices and tables</a></li>
+</ul>
+</li>
+</ul>
+
+  </td></tr></table>
+
+ 
+ </div>
+ </div>
+ <div class="round1"></div>
+ <div class="round2"></div>
+ <div class="round4"></div>
+ </div>
+ 
+ 
+
+
+ </div>
+</div>
+
+ <div style="padding:0 3em 1.2em 0">
+   
+     
+  <div class="section" id="papy-parallel-pipelines-in-python">
+<h1><strong>PaPy</strong> - Parallel Pipelines in Python<a class="headerlink" href="#papy-parallel-pipelines-in-python" title="Permalink to this headline">¶</a></h1>
+<p>This documentation covers the implementation and usage of <em>PaPy</em>. It consists of
+a hand-written manual and an API-reference. Please refer also to the comments in
+the source code. You will find <em>PaPy</em> useful if you need to establish a  data
+processing pipeline using Python libraries or external tools.</p>
+<blockquote>
+<ul>
+<li><dl class="first docutils">
+<dt>project page:</dt>
+<dd><p class="first last"><a class="reference external" href="http://code.google.com/p/papy/">http://code.google.com/p/papy/</a></p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>repository lives at:</dt>
+<dd><p class="first last"><a class="reference external" href="http://papy.googlecode.com/svn/trunk/">http://papy.googlecode.com/svn/trunk/</a></p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>most recent documentation:</dt>
+<dd><p class="first last"><a class="reference external" href="http://papy.googlecode.com/svn/trunk/doc/sources/">http://papy.googlecode.com/svn/trunk/doc/sources/</a></p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>most recent html documentation:</dt>
+<dd><p class="first last"><a class="reference external" href="http://papy.googlecode.com/svn/trunk/html/index.html">http://papy.googlecode.com/svn/trunk/html/index.html</a></p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>author email:</dt>
+<dd><p class="first last"><a class="reference external" href="mailto:marcin&#46;cieslik&#37;&#52;&#48;gmail&#46;com">marcin<span>&#46;</span>cieslik<span>&#64;</span>gmail<span>&#46;</span>com</a></p>
+</dd>
+</dl>
+</li>
+</ul>
+</blockquote>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p><strong>parallel features of</strong> <em>PaPy</em> <strong>do not work in the interactive
+interpreter</strong></p>
+<p>Code snippets, examples and use cases are not meant to be typed into the
+interactive interpreter console. They should be run from the command line
+(this is a limitation of the <tt class="docutils literal"><span class="pre">multiprocessing</span></tt> module):</p>
+<div class="highlight-python"><pre>$ python example_file.py</pre>
+</div>
+<p>The relevant files are available in the doc directory of the source-code
+repository.</p>
+<p>Functions defined in the interactive interpreter will not work (and will
+hang Python) if used with <em>IMap</em> instances!  A python function can only be
+communicated to multiple processes if it can be serialized(i.e. pickled)
+this is not possible if the function is in the same namespace as a child
+process (created using the multiprocessing library).</p>
+<p><strong>The interpreter will hang on exit if a pipeline does not finish or is
+halted abnormaly</strong></p>
+<p class="last">The Python interpreter exits (returns) if all spawned threads or forked
+processes return. <em>PaPy</em> uses multiple threads to manage the pipeline and
+evaluates functions in seperate threads or processes. All of them need to be
+stopped before the parent python process can return. This is done
+automatically whenever a pipeline finishes or some expected exception
+occurs, in all other cases it is required that the user stops the pipeline
+manually.</p>
+</div>
+<div class="section" id="manual">
+<h2>Manual<a class="headerlink" href="#manual" title="Permalink to this headline">¶</a></h2>
+<p>Written documentation.</p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="introduction.html">Introduction</a><ul>
+<li class="toctree-l2"><a class="reference external" href="introduction.html#where-when-should-papy-be-used">Where/When should <em>PaPy</em> be used?</a></li>
+<li class="toctree-l2"><a class="reference external" href="introduction.html#where-when-should-papy-not-be-used">Where/When should <em>PaPy</em> <strong>not</strong> be used.</a></li>
+<li class="toctree-l2"><a class="reference external" href="introduction.html#what-is-a-pipeline">What is a pipeline?</a></li>
+<li class="toctree-l2"><a class="reference external" href="introduction.html#what-does-an-imap-do">What does an <em>IMap</em> do?</a></li>
+<li class="toctree-l2"><a class="reference external" href="introduction.html#feature-summary">Feature summary:</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference external" href="install.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference external" href="install.html#installing-papy-the-easy-way">Installing PaPy the easy way</a></li>
+<li class="toctree-l2"><a class="reference external" href="install.html#installing-papy-the-fancy-way">Installing PaPy the fancy way</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference external" href="architecture.html">Architecture</a><ul>
+<li class="toctree-l2"><a class="reference external" href="architecture.html#understanding-the-object-oriented-model">Understanding the object-oriented model</a></li>
+<li class="toctree-l2"><a class="reference external" href="architecture.html#the-core-components">The core components</a></li>
+<li class="toctree-l2"><a class="reference external" href="architecture.html#creating-a-pipeline">Creating a pipeline</a></li>
+<li class="toctree-l2"><a class="reference external" href="architecture.html#the-imap">The IMap</a></li>
+<li class="toctree-l2"><a class="reference external" href="architecture.html#the-worker">The Worker</a></li>
+<li class="toctree-l2"><a class="reference external" href="architecture.html#built-in-worker-functions">Built-in worker functions</a></li>
+<li class="toctree-l2"><a class="reference external" href="architecture.html#the-piper">The <em>Piper</em></a></li>
+<li class="toctree-l2"><a class="reference external" href="architecture.html#the-dagger">The <em>Dagger</em></a></li>
+<li class="toctree-l2"><a class="reference external" href="architecture.html#the-plumber">The <em>Plumber</em></a></li>
+<li class="toctree-l2"><a class="reference external" href="architecture.html#the-additional-components">The additional components</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference external" href="barebones.html">A barebones example</a><ul>
+<li class="toctree-l2"><a class="reference external" href="barebones.html#a-one-task-pipeline">A one task pipeline</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference external" href="parallel.html">Parallelism</a><ul>
+<li class="toctree-l2"><a class="reference external" href="parallel.html#map-basics">Map basics</a></li>
+<li class="toctree-l2"><a class="reference external" href="parallel.html#a-pipeline-is-a-nested-imap">A pipeline is a nested imap</a></li>
+<li class="toctree-l2"><a class="reference external" href="parallel.html#the-task-and-the-tasklet">The task and the tasklet</a></li>
+<li class="toctree-l2"><a class="reference external" href="parallel.html#imaps-parallelism-is-defined-by-a-stride">IMaps parallelism is defined by a stride</a></li>
+<li class="toctree-l2"><a class="reference external" href="parallel.html#imap-needs-tasks-in-the-right-order">IMap needs tasks in the right order</a></li>
+<li class="toctree-l2"><a class="reference external" href="parallel.html#imap-can-limit-the-memory-consumption">IMap can limit the memory consumption.</a></li>
+<li class="toctree-l2"><a class="reference external" href="parallel.html#parallel-local-vs-remote-and-threads-vs-processes">Parallel: local vs. remote and threads vs. processes</a></li>
+<li class="toctree-l2"><a class="reference external" href="parallel.html#if-the-order-of-the-results-is-not-important">If the order of the results is not important</a></li>
+<li class="toctree-l2"><a class="reference external" href="parallel.html#timeouts-and-skipping">Timeouts and skipping</a></li>
+<li class="toctree-l2"><a class="reference external" href="parallel.html#the-parallel-stride-revisited">The parallel stride revisited</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference external" href="communication.html">Communication</a><ul>
+<li class="toctree-l2"><a class="reference external" href="communication.html#the-unit-of-execution">The unit of execution</a></li>
+<li class="toctree-l2"><a class="reference external" href="communication.html#a-simple-example">A simple example</a></li>
+<li class="toctree-l2"><a class="reference external" href="communication.html#how-does-it-work">How does it work?</a></li>
+<li class="toctree-l2"><a class="reference external" href="communication.html#how-do-database-hooks-work">How do database &#8220;hooks&#8221; work?</a></li>
+<li class="toctree-l2"><a class="reference external" href="communication.html#which-method-should-i-choose">Which method should I choose?</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference external" href="tutorials.html">Tutorials</a><ul>
+<li class="toctree-l2"><a class="reference external" href="tutorials.html#writing-functions-for-workers">Writing functions for Workers</a></li>
+<li class="toctree-l2"><a class="reference external" href="tutorials.html#writing-functions-for-output-workers">Writing functions for output workers</a></li>
+<li class="toctree-l2"><a class="reference external" href="tutorials.html#picklability">Picklability</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference external" href="tutorials.html#parallel-execution">Parallel execution</a><ul>
+<li class="toctree-l2"><a class="reference external" href="tutorials.html#when-not-to-use-parallel-pipers">When not to use parallel pipers.</a></li>
+<li class="toctree-l2"><a class="reference external" href="tutorials.html#optimizing-cpu-bound-pipers">Optimizing cpu-bound pipers.</a></li>
+<li class="toctree-l2"><a class="reference external" href="tutorials.html#optimizing-waiting-pipers">Optimizing waiting pipers.</a></li>
+<li class="toctree-l2"><a class="reference external" href="tutorials.html#optimizing-io-bound-pipers">Optimizing io-bound pipers.</a></li>
+<li class="toctree-l2"><a class="reference external" href="tutorials.html#when-to-use-a-shared-pool">When to use a shared pool.</a></li>
+<li class="toctree-l2"><a class="reference external" href="tutorials.html#when-to-use-unordered-pipers-parallel-2">When to use unordered pipers (parallel =2).</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference external" href="examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference external" href="cases.html">Use cases</a></li>
+<li class="toctree-l1"><a class="reference external" href="benchmark.html">Benchmarks</a><ul>
+<li class="toctree-l2"><a class="reference external" href="benchmark.html#grepping-a-file">Grepping a file</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference external" href="dictionary.html">Terms and Definitions</a><ul>
+<li class="toctree-l2"><a class="reference external" href="dictionary.html#map">map</a></li>
+<li class="toctree-l2"><a class="reference external" href="dictionary.html#imap">imap</a></li>
+<li class="toctree-l2"><a class="reference external" href="dictionary.html#id1"><em>IMap</em></a></li>
+<li class="toctree-l2"><a class="reference external" href="dictionary.html#worker-function">worker-function</a></li>
+<li class="toctree-l2"><a class="reference external" href="dictionary.html#worker-process-thread">worker-process/thread</a></li>
+<li class="toctree-l2"><a class="reference external" href="dictionary.html#worker">Worker</a></li>
+<li class="toctree-l2"><a class="reference external" href="dictionary.html#piper">Piper</a></li>
+<li class="toctree-l2"><a class="reference external" href="dictionary.html#dagger">Dagger</a></li>
+<li class="toctree-l2"><a class="reference external" href="dictionary.html#plumber">Plumber</a></li>
+<li class="toctree-l2"><a class="reference external" href="dictionary.html#stream">stream</a></li>
+<li class="toctree-l2"><a class="reference external" href="dictionary.html#input-stream">input stream</a></li>
+<li class="toctree-l2"><a class="reference external" href="dictionary.html#output-stream">output stream</a></li>
+<li class="toctree-l2"><a class="reference external" href="dictionary.html#input-item">input item</a></li>
+<li class="toctree-l2"><a class="reference external" href="dictionary.html#output-item">output item</a></li>
+<li class="toctree-l2"><a class="reference external" href="dictionary.html#input-piper">input <em>Piper</em></a></li>
+<li class="toctree-l2"><a class="reference external" href="dictionary.html#input-worker">input <em>Worker</em></a></li>
+<li class="toctree-l2"><a class="reference external" href="dictionary.html#output-piper">output <em>Piper</em></a></li>
+<li class="toctree-l2"><a class="reference external" href="dictionary.html#output-worker">output <em>Worker</em></a></li>
+<li class="toctree-l2"><a class="reference external" href="dictionary.html#input-node">input node</a></li>
+<li class="toctree-l2"><a class="reference external" href="dictionary.html#output-node">output node</a></li>
+<li class="toctree-l2"><a class="reference external" href="dictionary.html#lazy-evaluation">lazy evaluation</a></li>
+<li class="toctree-l2"><a class="reference external" href="dictionary.html#task">task</a></li>
+<li class="toctree-l2"><a class="reference external" href="dictionary.html#tasklet">tasklet</a></li>
+<li class="toctree-l2"><a class="reference external" href="dictionary.html#inbox">inbox</a></li>
+<li class="toctree-l2"><a class="reference external" href="dictionary.html#inbox-element">inbox element</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference external" href="bugs.html">Known bugs</a></li>
+<li class="toctree-l1"><a class="reference external" href="todo.html">TODO</a><ul>
+<li class="toctree-l2"><a class="reference external" href="todo.html#fixme">FIXME</a></li>
+<li class="toctree-l2"><a class="reference external" href="todo.html#milestones">Milestones</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="papy-api">
+<h2>Papy API<a class="headerlink" href="#papy-api" title="Permalink to this headline">¶</a></h2>
+<p>This part of the documentation is generated automatically from the source code
+documentation strings. It should be the most up-to-date version. If there is a
+conflict between the hand-written and and generated documentation, please
+contact the author e.g. by adding an issue on the project page.</p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="papyapi.html"><tt class="docutils literal"><span class="pre">papy.papy</span></tt></a></li>
+<li class="toctree-l1"><a class="reference external" href="papyapi.html#papy-graph"><tt class="docutils literal"><span class="pre">papy.graph</span></tt></a></li>
+<li class="toctree-l1"><a class="reference external" href="papyapi.html#papy-utils"><tt class="docutils literal"><span class="pre">papy.utils</span></tt></a></li>
+<li class="toctree-l1"><a class="reference external" href="papyapi.html#papy-tkgui"><tt class="docutils literal"><span class="pre">papy.tkgui</span></tt></a></li>
+<li class="toctree-l1"><a class="reference external" href="papyapi.html#papy-workers"><tt class="docutils literal"><span class="pre">papy.workers</span></tt></a></li>
+<li class="toctree-l1"><a class="reference external" href="papyapi.html#papy-workers-core"><tt class="docutils literal"><span class="pre">papy.workers.core</span></tt></a></li>
+<li class="toctree-l1"><a class="reference external" href="papyapi.html#papy-workers-maths"><tt class="docutils literal"><span class="pre">papy.workers.maths</span></tt></a></li>
+<li class="toctree-l1"><a class="reference external" href="papyapi.html#papy-workers-io"><tt class="docutils literal"><span class="pre">papy.workers.io</span></tt></a></li>
+<li class="toctree-l1"><a class="reference external" href="papyapi.html#imap-imap"><tt class="docutils literal"><span class="pre">IMap.IMap</span></tt></a></li>
+</ul>
+</div>
+<div class="section" id="indices-and-tables">
+<h2>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference external" href="genindex.html"><em>Index</em></a></li>
+<li><a class="reference external" href="modindex.html"><em>Module Index</em></a></li>
+<li><a class="reference external" href="search.html"><em>Search Page</em></a></li>
+</ul>
+</div>
+</div>
+
+
+   
+ 
+ 
+ </div>
+<div id="footer" dir="ltr">
+ 
+ <div class="text">
+ 
+ &copy;2008 Google -
+ <a href="http://code.google.com/">Code Home</a> -
+ <a href="http://code.google.com/tos.html">Terms of Service</a> -
+ <a href="http://www.google.com/privacy.html">Privacy Policy</a> -
+  
+ </body>
+</html>
