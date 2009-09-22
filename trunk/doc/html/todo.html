@@ -1,0 +1,473 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+ "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<head>
+ 
+ <title>papy - Google Code</title>
+ <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+ 
+ <link rel="shortcut icon" href="http://www.gstatic.com/codesite/ph/images/defaultlogo.png"/>
+ <link type="text/css" rel="stylesheet"
+       href="./_static/custom.css" />
+ <link type="text/css" rel="stylesheet"
+       href="http://www.gstatic.com/codesite/ph/3770121226765569314/css/ph_core.css" />
+ <link type="text/css" rel="stylesheet"
+       href="http://www.gstatic.com/codesite/ph/3770121226765569314/css/ph_detail.css" />
+ <link rel="stylesheet"  type="text/css"
+       href="./_static/pygments.css" /> 
+ 
+ <link type="application/atom+xml" rel="alternate"
+ href="/feeds/p/papy/svnchanges/basic?path=/wiki/" />
+ 
+ 
+<!--[if IE]>
+ <link type="text/css" rel="stylesheet"
+       href="http://code.google.com/hosting/css/d_ie.css" />
+<![endif]-->
+
+<script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+          URL_ROOT:    '',
+          VERSION:     '1.0b1',
+          COLLAPSE_MODINDEX: false,
+          FILE_SUFFIX: '.html'
+      };
+    </script>
+    <script type="text/javascript" src="./_static/jquery.js"></script>
+    <script type="text/javascript" src="./_static/interface.js"></script>
+    <script type="text/javascript" src="./_static/doctools.js"></script>
+    <link rel="contents" title="Global table of contents" href="contents.html" />
+    <link rel="index" title="Global index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="top" title="papy v1.0b1 documentation" href="index.html" />
+    <link rel="next" title="papy.papy" href="papyapi.html" />
+    <link rel="prev" title="Known Bugs" href="bugs.html" />
+</head>
+<body class="t6">
+ <div id=gaia>
+  <font size="-1">
+ 
+ <a href="http://code.google.com/p/support/wiki/WhatsNew" style="color:#a03">What's new?</a>
+ | <a href="http://code.google.com/p/support/">Help</a>
+ 
+ </font> 
+
+ </div>
+ <table style="padding:0px; margin: 0px 0px -6px 0; width:100%" cellpadding=0 cellspacing=0>
+ <tr>
+ <td><a href="/"><img src="http://www.gstatic.com/codesite/ph/images/defaultlogo.png" alt=papy/></a></td>
+ <td>
+ 
+ <div id="pname">
+ <a href="http://code.google.com/p/papy/" style="text-decoration:none; color:#000">papy</a>
+ 
+ </div>
+ <div id="psum">
+ <i><a href="http://code.google.com/p/papy/" style="text-decoration:none; color:#000">papy v1.0b1 documentation</a></i>
+ </div>
+ 
+ </td>
+ <td style="white-space:nowrap; text-align:right">
+ 
+ <form action="http://code.google.com/hosting/search">
+ <input size=30 name=q value=""/>
+ <input type=submit name=projectsearch value="Search Projects" />
+ <input type=submit name=websearch value="Search the Web" />
+ </form>
+ 
+ </tr>
+ </table>
+
+
+<table id="mt" cellspacing="0" cellpadding="0" width="100%" border="0">
+ <tr>
+ <th onclick="if (!cancelBubble) _go('http://code.google.com/p/papy/');">
+ <div class="tab inactive">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <a onclick="cancelBubble=true;" href="http://code.google.com/p/papy/">Project&nbsp;Home</a>
+ </div>
+ </div>
+ </th><td>&nbsp;&nbsp;</td>
+ 
+ 
+ 
+ 
+ <th onclick="if (!cancelBubble) _go('http://code.google.com/p/papy/downloads/list');">
+ <div class="tab inactive">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <a onclick="cancelBubble=true;" href="http://code.google.com/p/papy/downloads/list">Downloads</a>
+ </div>
+ </div>
+ </th><td>&nbsp;&nbsp;</td>
+ 
+ 
+ 
+ 
+ 
+ <th onclick="if (!cancelBubble) _go('http://code.google.com/p/papy/w/list');">
+ <div class="tab inactive">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <a onclick="cancelBubble=true;" href="http://code.google.com/p/papy/w/list">Wiki</a>
+ </div>
+ </div>
+ </th><td>&nbsp;&nbsp;</td>
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ <th onclick="if (!cancelBubble) _go('http://code.google.com/p/papy/issues/list');">
+ <div class="tab inactive">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <a onclick="cancelBubble=true;" href="http://code.google.com/p/papy/issues/list">Issues</a>
+ </div>
+ </div>
+ </th><td>&nbsp;&nbsp;</td>
+ 
+ 
+ 
+ 
+ 
+ 
+ <th onclick="if (!cancelBubble) _go('http://code.google.com/p/papy/source/list');">
+ <div class="tab inactive">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <a onclick="cancelBubble=true;" href="http://code.google.com/p/papy/source/list">Source</a>
+ </div>
+ </div>
+ </th><td>&nbsp;&nbsp;</td>
+ 
+ 
+ 
+ <td width="100%">&nbsp;</td>
+ </tr>
+</table>
+<table cellspacing="0" cellpadding="0" width="100%" align="center" border="0" class="st">
+ <tr>
+ 
+ 
+ 
+ <td>
+ <div class="issueList">
+<div class=isf>
+ 
+ 
+ 
+ <a href="index.html">papy v1.0b1 documentation</a> |
+ <span>
+   <a href="genindex.html" title="General Index"
+      accesskey="I">index</a>
+ </span> |
+ <span>
+   <a href="modindex.html" title="Global Module Index"
+      accesskey="M">modules</a>
+ </span> |
+ <span>
+   <a href="papyapi.html" title="papy.papy"
+      accesskey="N">next</a>
+ </span> |
+ <span>
+   <a href="bugs.html" title="Known Bugs"
+      accesskey="P">previous</a>
+ </span> |
+ <span class="inIssueList">
+   <span>Search</span>
+    <form action="search.html" method="GET" style="display:inline">
+      <input size=30 name=q value=""/>
+      <input type=submit name=projectsearch value="Search Documentation" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+ </span>
+
+</div>
+</div>
+
+ </td>
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ <td height=4 align=right valign=top class="bevel-right">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ </td>
+ </tr>
+</table>
+<script>
+ var cancelBubble = false;
+ function _go(url) { document.location = url; }
+</script>
+
+<div id="maincol">
+<!-- IE -->
+
+
+
+<style>
+ #downloadbox { 
+ padding: 6px; 
+ overflow: hidden;
+ white-space: nowrap;
+ text-overflow: ellipsis;
+ }
+ #downloadbox a {
+ margin: 0 0 0 0;
+ display: block;
+ padding-left: 0px;
+ }
+ #owners a, #members a { white-space: nowrap; }
+</style>
+
+<div style="float:right; width:25em; margin:0 0 1em 2em">
+
+ 
+ <div class=pmeta_bubble_bg>
+ <div class="round4"></div>
+ <div class="round2"></div>
+
+ <div class="round1"></div>
+ <div class="box-inner">
+ <table class="pmeta" cellpadding=5>
+ <tr><th>Previous:</th>
+ <td><ul>
+ 
+ <li>
+   <a href="bugs.html" title="previous chapter">Known Bugs</a>
+ </li>
+ 
+
+ 
+ </ul></td>
+ </tr>
+ <tr><th>Next:</th>
+ <td><ul>
+ 
+ <li>
+   <a href="papyapi.html" title="next chapter"><tt class="docutils literal docutils literal"><span class="pre">papy.papy</span></tt></a>
+ </li>
+ 
+
+ 
+ </ul></td>
+ </tr>
+ 
+ 
+ 
+ </table>
+
+ </div>
+ <div class="round1"></div>
+ <div class="round2"></div>
+ <div class="round4"></div>
+ </div>
+ 
+ 
+ 
+ <div style="background:#ddf8cc; margin-bottom: 5px;table-layout:fixed">
+
+ <div class="round4"></div>
+
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <div id=downloadbox>
+  <b>Table of Contents</b><br/>
+  <table class="pmeta toc" cellpadding=5><tr><td>
+	<ul>
+<li><a class="reference external" href="">TODO</a><ul>
+<li><a class="reference external" href="#fixme">FIXME</a></li>
+<li><a class="reference external" href="#milestones">Milestones</a><ul>
+<li><a class="reference external" href="#id1">1.0</a><ul>
+<li><a class="reference external" href="#library-functionality">Library functionality</a></li>
+<li><a class="reference external" href="#gui-functionality">Gui functionality</a></li>
+<li><a class="reference external" href="#additional-functionality">Additional functionality</a></li>
+<li><a class="reference external" href="#documentation">Documentation</a></li>
+<li><a class="reference external" href="#unit-tests">Unit-tests</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </td></tr></table>
+
+ 
+ </div>
+ </div>
+ <div class="round1"></div>
+ <div class="round2"></div>
+ <div class="round4"></div>
+ </div>
+ 
+ 
+
+
+ </div>
+</div>
+
+ <div style="padding:0 3em 1.2em 0">
+   
+     
+  <div class="section" id="todo">
+<h1>TODO<a class="headerlink" href="#todo" title="Permalink to this headline">¶</a></h1>
+<p>This TODO is a roadmap for papy development. The Milestone 1.0 corresponds to
+the hopefully published manuscript. All known bugs should be fixed by 0.9. The
+transition form 0.9 -&gt; 1.0 will be based on the ability to get papy to run
+unmodified on the cross-product of the following::
+[Linux 2.6 (Fedora, Gentoo, Ubuntu), Mac OSX, Windows XP],
+[Python 2.6, Python 2.5 + multiprocessing], [32bit, 64bit]</p>
+<div class="section" id="fixme">
+<h2>FIXME<a class="headerlink" href="#fixme" title="Permalink to this headline">¶</a></h2>
+<p>These issues need to be addressed before any offcial release:</p>
+<blockquote>
+<ul class="simple">
+<li>The piper consume argument shoud affect the default and minimal buffer_size for
+the IMap instance</li>
+</ul>
+</blockquote>
+</div>
+<div class="section" id="milestones">
+<h2>Milestones<a class="headerlink" href="#milestones" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id1">
+<h3>1.0<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="library-functionality">
+<h4>Library functionality<a class="headerlink" href="#library-functionality" title="Permalink to this headline">¶</a></h4>
+<blockquote>
+<ul class="simple">
+<li>Implement a parallel, buffered, layzy implementation of the imap function.</li>
+<li>Implement a modular message passing framework from core classes<ul>
+<li>Worker<ul>
+<li>deal correctly with Exceptions</li>
+</ul>
+</li>
+<li>Piper<ul>
+<li>deal correctly with Timeouts</li>
+<li>deal correctly with produce/spawn/consume</li>
+<li>report status (frame/exception)</li>
+</ul>
+</li>
+<li>Dagger<ul>
+<li>validate topology</li>
+<li>report piper stats (frame/exception(s)/timeout(s))</li>
+</ul>
+</li>
+<li>Plumber<ul>
+<li>stop/restart pipeline</li>
+<li>run pipeline concurrently (non-blocking)</li>
+<li>load/save</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Implement functions for basic and common tasks in a pipeline:<ul>
+<li>wrap around operator and math from the Python stdlib</li>
+<li>serialize data:<ul>
+<li>pickle (done)</li>
+<li>JSON (simplejson no multiple objects per file)</li>
+<li>YAML (terrible performance, no multiple objects per file)</li>
+</ul>
+</li>
+<li>store data<ul>
+<li>file-handle (done)</li>
+</ul>
+</li>
+<li>print data (done)</li>
+</ul>
+</li>
+</ul>
+</blockquote>
+</div>
+<div class="section" id="gui-functionality">
+<h4>Gui functionality<a class="headerlink" href="#gui-functionality" title="Permalink to this headline">¶</a></h4>
+<blockquote>
+<ul class="simple">
+<li>load/save pipelines in code format</li>
+<li>automatically layout nodes/pipers on canvas using spring/kamada-kawai</li>
+<li>run and monitor pipelines</li>
+<li>benchmark pipelines</li>
+<li>interact with the pipleline via the built in interpreter.</li>
+</ul>
+</blockquote>
+</div>
+<div class="section" id="additional-functionality">
+<h4>Additional functionality<a class="headerlink" href="#additional-functionality" title="Permalink to this headline">¶</a></h4>
+<blockquote>
+<ul class="simple">
+<li>A module to benchmark a pipeline, indicate bottlenecks and recommend the strategy.</li>
+</ul>
+</blockquote>
+</div>
+<div class="section" id="documentation">
+<h4>Documentation<a class="headerlink" href="#documentation" title="Permalink to this headline">¶</a></h4>
+<blockquote>
+<ul class="simple">
+<li>The hand-written documentation should build automatically into several formats
+(Sphinx) and be inculded in the repository (tar-balls).</li>
+<li>the documentation should cover installation of dependancies</li>
+<li>A very simple 10-line example is needed!</li>
+<li>all API classes and functions should be documented using reStructuredText and Sphinx.</li>
+<li>documentation is: manual, examples, use-cases, faq and fuq</li>
+<li>use-cases, should be complete, non-trivial but concise and
+highlight the features of papy.<ol class="arabic">
+<li>DracUlysses: find two most similar lines in dracula and ulysses</li>
+<li>CrossRMSD: calculate all-vs-all RMSD distances</li>
+<li>deltaG Z-Score: calculate the empirical Z-score of the free enthalpy of
+binding for all transcripts of a small genome.</li>
+</ol>
+</li>
+</ul>
+</blockquote>
+</div>
+<div class="section" id="unit-tests">
+<h4>Unit-tests<a class="headerlink" href="#unit-tests" title="Permalink to this headline">¶</a></h4>
+<blockquote>
+<ul class="simple">
+<li>write a complete unit-test suite using unittest.</li>
+</ul>
+</blockquote>
+</div>
+</div>
+</div>
+</div>
+
+
+   
+ 
+ 
+ </div>
+<div id="footer" dir="ltr">
+ 
+ <div class="text">
+ 
+ &copy;2008 Google -
+ <a href="http://code.google.com/">Code Home</a> -
+ <a href="http://code.google.com/tos.html">Terms of Service</a> -
+ <a href="http://www.google.com/privacy.html">Privacy Policy</a> -
+  
+ </body>
+</html>
