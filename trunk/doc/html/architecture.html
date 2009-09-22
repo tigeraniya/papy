@@ -1,0 +1,995 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+ "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<head>
+ 
+ <title>papy - Google Code</title>
+ <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+ 
+ <link rel="shortcut icon" href="http://www.gstatic.com/codesite/ph/images/defaultlogo.png"/>
+ <link type="text/css" rel="stylesheet"
+       href="./_static/custom.css" />
+ <link type="text/css" rel="stylesheet"
+       href="http://www.gstatic.com/codesite/ph/3770121226765569314/css/ph_core.css" />
+ <link type="text/css" rel="stylesheet"
+       href="http://www.gstatic.com/codesite/ph/3770121226765569314/css/ph_detail.css" />
+ <link rel="stylesheet"  type="text/css"
+       href="./_static/pygments.css" /> 
+ 
+ <link type="application/atom+xml" rel="alternate"
+ href="/feeds/p/papy/svnchanges/basic?path=/wiki/" />
+ 
+ 
+<!--[if IE]>
+ <link type="text/css" rel="stylesheet"
+       href="http://code.google.com/hosting/css/d_ie.css" />
+<![endif]-->
+
+<script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+          URL_ROOT:    '',
+          VERSION:     '1.0b1',
+          COLLAPSE_MODINDEX: false,
+          FILE_SUFFIX: '.html'
+      };
+    </script>
+    <script type="text/javascript" src="./_static/jquery.js"></script>
+    <script type="text/javascript" src="./_static/interface.js"></script>
+    <script type="text/javascript" src="./_static/doctools.js"></script>
+    <link rel="contents" title="Global table of contents" href="contents.html" />
+    <link rel="index" title="Global index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="top" title="papy v1.0b1 documentation" href="index.html" />
+    <link rel="next" title="The most barebones parallel pipeline" href="barebones.html" />
+    <link rel="prev" title="Installation" href="install.html" />
+</head>
+<body class="t6">
+ <div id=gaia>
+  <font size="-1">
+ 
+ <a href="http://code.google.com/p/support/wiki/WhatsNew" style="color:#a03">What's new?</a>
+ | <a href="http://code.google.com/p/support/">Help</a>
+ 
+ </font> 
+
+ </div>
+ <table style="padding:0px; margin: 0px 0px -6px 0; width:100%" cellpadding=0 cellspacing=0>
+ <tr>
+ <td><a href="/"><img src="http://www.gstatic.com/codesite/ph/images/defaultlogo.png" alt=papy/></a></td>
+ <td>
+ 
+ <div id="pname">
+ <a href="http://code.google.com/p/papy/" style="text-decoration:none; color:#000">papy</a>
+ 
+ </div>
+ <div id="psum">
+ <i><a href="http://code.google.com/p/papy/" style="text-decoration:none; color:#000">papy v1.0b1 documentation</a></i>
+ </div>
+ 
+ </td>
+ <td style="white-space:nowrap; text-align:right">
+ 
+ <form action="http://code.google.com/hosting/search">
+ <input size=30 name=q value=""/>
+ <input type=submit name=projectsearch value="Search Projects" />
+ <input type=submit name=websearch value="Search the Web" />
+ </form>
+ 
+ </tr>
+ </table>
+
+
+<table id="mt" cellspacing="0" cellpadding="0" width="100%" border="0">
+ <tr>
+ <th onclick="if (!cancelBubble) _go('http://code.google.com/p/papy/');">
+ <div class="tab inactive">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <a onclick="cancelBubble=true;" href="http://code.google.com/p/papy/">Project&nbsp;Home</a>
+ </div>
+ </div>
+ </th><td>&nbsp;&nbsp;</td>
+ 
+ 
+ 
+ 
+ <th onclick="if (!cancelBubble) _go('http://code.google.com/p/papy/downloads/list');">
+ <div class="tab inactive">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <a onclick="cancelBubble=true;" href="http://code.google.com/p/papy/downloads/list">Downloads</a>
+ </div>
+ </div>
+ </th><td>&nbsp;&nbsp;</td>
+ 
+ 
+ 
+ 
+ 
+ <th onclick="if (!cancelBubble) _go('http://code.google.com/p/papy/w/list');">
+ <div class="tab inactive">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <a onclick="cancelBubble=true;" href="http://code.google.com/p/papy/w/list">Wiki</a>
+ </div>
+ </div>
+ </th><td>&nbsp;&nbsp;</td>
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ <th onclick="if (!cancelBubble) _go('http://code.google.com/p/papy/issues/list');">
+ <div class="tab inactive">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <a onclick="cancelBubble=true;" href="http://code.google.com/p/papy/issues/list">Issues</a>
+ </div>
+ </div>
+ </th><td>&nbsp;&nbsp;</td>
+ 
+ 
+ 
+ 
+ 
+ 
+ <th onclick="if (!cancelBubble) _go('http://code.google.com/p/papy/source/list');">
+ <div class="tab inactive">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <a onclick="cancelBubble=true;" href="http://code.google.com/p/papy/source/list">Source</a>
+ </div>
+ </div>
+ </th><td>&nbsp;&nbsp;</td>
+ 
+ 
+ 
+ <td width="100%">&nbsp;</td>
+ </tr>
+</table>
+<table cellspacing="0" cellpadding="0" width="100%" align="center" border="0" class="st">
+ <tr>
+ 
+ 
+ 
+ <td>
+ <div class="issueList">
+<div class=isf>
+ 
+ 
+ 
+ <a href="index.html">papy v1.0b1 documentation</a> |
+ <span>
+   <a href="genindex.html" title="General Index"
+      accesskey="I">index</a>
+ </span> |
+ <span>
+   <a href="modindex.html" title="Global Module Index"
+      accesskey="M">modules</a>
+ </span> |
+ <span>
+   <a href="barebones.html" title="The most barebones parallel pipeline"
+      accesskey="N">next</a>
+ </span> |
+ <span>
+   <a href="install.html" title="Installation"
+      accesskey="P">previous</a>
+ </span> |
+ <span class="inIssueList">
+   <span>Search</span>
+    <form action="search.html" method="GET" style="display:inline">
+      <input size=30 name=q value=""/>
+      <input type=submit name=projectsearch value="Search Documentation" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+ </span>
+
+</div>
+</div>
+
+ </td>
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ <td height=4 align=right valign=top class="bevel-right">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ </td>
+ </tr>
+</table>
+<script>
+ var cancelBubble = false;
+ function _go(url) { document.location = url; }
+</script>
+
+<div id="maincol">
+<!-- IE -->
+
+
+
+<style>
+ #downloadbox { 
+ padding: 6px; 
+ overflow: hidden;
+ white-space: nowrap;
+ text-overflow: ellipsis;
+ }
+ #downloadbox a {
+ margin: 0 0 0 0;
+ display: block;
+ padding-left: 0px;
+ }
+ #owners a, #members a { white-space: nowrap; }
+</style>
+
+<div style="float:right; width:25em; margin:0 0 1em 2em">
+
+ 
+ <div class=pmeta_bubble_bg>
+ <div class="round4"></div>
+ <div class="round2"></div>
+
+ <div class="round1"></div>
+ <div class="box-inner">
+ <table class="pmeta" cellpadding=5>
+ <tr><th>Previous:</th>
+ <td><ul>
+ 
+ <li>
+   <a href="install.html" title="previous chapter">Installation</a>
+ </li>
+ 
+
+ 
+ </ul></td>
+ </tr>
+ <tr><th>Next:</th>
+ <td><ul>
+ 
+ <li>
+   <a href="barebones.html" title="next chapter">The most barebones parallel pipeline</a>
+ </li>
+ 
+
+ 
+ </ul></td>
+ </tr>
+ 
+ 
+ 
+ </table>
+
+ </div>
+ <div class="round1"></div>
+ <div class="round2"></div>
+ <div class="round4"></div>
+ </div>
+ 
+ 
+ 
+ <div style="background:#ddf8cc; margin-bottom: 5px;table-layout:fixed">
+
+ <div class="round4"></div>
+
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <div id=downloadbox>
+  <b>Table of Contents</b><br/>
+  <table class="pmeta toc" cellpadding=5><tr><td>
+	<ul>
+<li><a class="reference external" href="">Architecture</a><ul>
+<li><a class="reference external" href="#understanding-the-object-oriented-model">Understanding the object-oriented model</a></li>
+<li><a class="reference external" href="#the-core-components">The core components</a></li>
+<li><a class="reference external" href="#creating-a-pipeline">Creating a pipeline</a></li>
+<li><a class="reference external" href="#the-imap">The IMap</a></li>
+<li><a class="reference external" href="#the-worker">The Worker</a></li>
+<li><a class="reference external" href="#built-in-worker-functions">Built-in worker functions</a></li>
+<li><a class="reference external" href="#the-piper">The <em>Piper</em></a></li>
+<li><a class="reference external" href="#the-dagger">The <em>Dagger</em></a><ul>
+<li><a class="reference external" href="#edges-vs-pipes">Edges vs. pipes</a></li>
+<li><a class="reference external" href="#working-with-the-dagger">Working with the <em>Dagger</em></a></li>
+<li><a class="reference external" href="#the-dagger-run-time">The <em>Dagger</em> run-time</a></li>
+</ul>
+</li>
+<li><a class="reference external" href="#the-plumber">The <em>Plumber</em></a></li>
+<li><a class="reference external" href="#the-additional-components">The additional components</a></li>
+</ul>
+</li>
+</ul>
+
+  </td></tr></table>
+
+ 
+ </div>
+ </div>
+ <div class="round1"></div>
+ <div class="round2"></div>
+ <div class="round4"></div>
+ </div>
+ 
+ 
+
+
+ </div>
+</div>
+
+ <div style="padding:0 3em 1.2em 0">
+   
+     
+  <div class="section" id="architecture">
+<h1>Architecture<a class="headerlink" href="#architecture" title="Permalink to this headline">¶</a></h1>
+<p>The architecture of <em>PaPy</em> is remarkably simple and intuitive yet flexible. It
+consists of only four core components (classes) to construct a data processing
+pipeline. Each component provides an isolated subset of the functionality, which
+includes: arbitrary directed pipeline topology, parallelism and distributed
+computing, user function wrapping, and run-time interactions (e.g. logging).
+<em>PaPy</em> is intrinsically modular, any function can be used in several places in a
+pipeline or re-used in another pipeline.</p>
+<p>In this chapter we first introduce object-otiented programming in the context
+of papy, explain briefly the core components (building blocks) and introduce a
+conceptual outline of pipeline creation. In later sections we revisit each
+component and explain the how and why.</p>
+<div class="section" id="understanding-the-object-oriented-model">
+<h2>Understanding the object-oriented model<a class="headerlink" href="#understanding-the-object-oriented-model" title="Permalink to this headline">¶</a></h2>
+<p>Papy is written in an object-oriented(OO) way. The main components: Plumber,
+Dagger, Pipers and Workers are in fact class objects. For the end-user it is
+important to distinguish between classes and class instances. In Python both
+classes and class instances are objects. When you import the module in your
+script:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">papy</span>
+</pre></div>
+</div>
+<p>A new object (a module) will be availble i.e. you will be able to access classes
+and functions provided by papy e.g.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">papy</span><span class="o">.</span><span class="n">some_function</span>
+<span class="n">papy</span><span class="o">.</span><span class="n">SomeClass</span>
+</pre></div>
+</div>
+<p>The name of the new object will be papy. This object has several attributes
+which correspond to the components and interface of papy e.g.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">papy</span><span class="o">.</span><span class="n">Plumber</span>
+<span class="n">papy</span><span class="o">.</span><span class="n">Dagger</span>
+<span class="n">papy</span><span class="o">.</span><span class="n">Piper</span>
+<span class="n">papy</span><span class="o">.</span><span class="n">Worker</span>
+</pre></div>
+</div>
+<p>Attributes are accessed in python using the object.attribute notation. These
+components are classes not class instances. They are used to construct class
+instances which correspond to the run-time of the program. A single class can in
+general have multiple instances. A class instance is constructed by &#8220;calling&#8221;
+(in fact initializing) the class.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">class_instance</span> <span class="o">=</span> <span class="n">Class</span><span class="p">(</span><span class="n">parameters</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The important part is that using papy involves constructing many classes.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">worker_instance</span> <span class="o">=</span> <span class="n">Worker</span><span class="p">(</span><span class="n">custom_function</span><span class="p">(</span><span class="n">s</span><span class="p">),</span> <span class="n">argument</span><span class="p">(</span><span class="n">s</span><span class="p">))</span>
+<span class="n">piper_instance</span> <span class="o">=</span> <span class="n">Piper</span><span class="p">(</span><span class="n">worker_instance</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+<span class="n">your_interface</span> <span class="o">=</span> <span class="n">Plumber</span><span class="p">(</span><span class="n">options</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="the-core-components">
+<h2>The core components<a class="headerlink" href="#the-core-components" title="Permalink to this headline">¶</a></h2>
+<p>The core components form the end-user interface i.e. the classes which the user
+is expected use directly.</p>
+<blockquote>
+<ul>
+<li><dl class="first docutils">
+<dt>The IMap - An implementation of an iterated map function which can &#8216;process&#8217;</dt>
+<dd><p class="first last">multiple tasks (function-sequence tuples) in parallel using
+either threads or processes on the local machine or on remote
+RPyC servers.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>The Pipers(Workers) - combined provide the functionality by wrapping</dt>
+<dd><p class="first last">user-defined functions handling exceptions and
+reporting.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>The Dagger - defines the topology of the pipeline in the form of a directed</dt>
+<dd><p class="first last">acyclic graph i.e. the connectivity of the flow (pipes).</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>The Plumber - provides the interface to set-up run and monitor a pipeline</dt>
+<dd><p class="first last">(run-time).</p>
+</dd>
+</dl>
+</li>
+</ul>
+</blockquote>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">These terms are also covered briefly in the dictionary section.</p>
+</div>
+</div>
+<div class="section" id="creating-a-pipeline">
+<h2>Creating a pipeline<a class="headerlink" href="#creating-a-pipeline" title="Permalink to this headline">¶</a></h2>
+<p>This documentation is all about creating a valid papy pipeline. In the process
+of design we tried to make papy as idiosyncrasy-free as possible, relying on
+familiar concepts of map functions and directed acyclic graphs. A pipeline has
+two very distinct states <em>before</em> and <em>after</em> it is started. Those states
+correspond to the &#8220;creation time&#8221; and &#8220;run-time&#8221;. At creation time functions are
+defined (written or imported) and the the data-flow is defined by connecting
+functions by directed pipes. At run time data is actually pumped through the
+pipeline. This can be summarized by the following outline:</p>
+<blockquote>
+<ol class="arabic simple">
+<li>Write worker functions (the functions in the nodes)</li>
+<li>Create Worker instances (specify worker function parameters)</li>
+<li>Create Piper instances (specify how/where to evaluate the functions)</li>
+<li>Create a Dagger (specify the connections pipeline)</li>
+<li>Connect the pipeline to the input</li>
+<li>Run the pipeline.</li>
+</ol>
+</blockquote>
+<p>The first 4 steps correspond to the &#8220;creation time&#8221; the last two to the &#8220;run
+time&#8221; of the pipeline. A pipeline can be stored and loaded as a python script.
+In the following sections the building blocks of a pipeline are explained. Papy
+imposes restrictions on the inputs and outputs of a worker function and on
+recommends a generic way to construct a pipeline:</p>
+<p>input_iterator -&gt; input_piper -&gt; ... processing pipers ... -&gt; output_piper</p>
+<p>The output piper should be used to store the output of the pipeline
+persistently i.e. it should return None. Papy provides useful functions to
+create output pipers.</p>
+</div>
+<div class="section" id="the-imap">
+<h2>The IMap<a class="headerlink" href="#the-imap" title="Permalink to this headline">¶</a></h2>
+<p>The IMap class is described extensively in the section about parallelism and in
+the API documentation. Here it suffices to say that it is an object which allows
+to execute <em>multiple</em> functions using a shared pool of worker processes. This
+class is independent of papy (in fact it is a seperate module) and can be used
+in any python code as an alternative to multiprocessing.Pool imap, map,
+unordered_imap or itertools.imap.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># doc/examples/imap_01.py</span>
+</pre></div>
+</div>
+<p>The next examples illustrates how IMap can be used to share a pool of worker
+processes among two tasks.</p>
+<blockquote>
+# doc/examples/imap_02.py</blockquote>
+</div>
+<div class="section" id="the-worker">
+<h2>The Worker<a class="headerlink" href="#the-worker" title="Permalink to this headline">¶</a></h2>
+<p>The Worker is a class which is created with a function or multiple functions
+(and the functions arguments) as arguments. It is therefore a function wrapper.
+If multiple functions are supplied they are assumed to be nested with the last
+function being the outer most i.e.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">(</span><span class="n">f</span><span class="p">,</span><span class="n">g</span><span class="p">,</span><span class="n">h</span><span class="p">)</span> <span class="ow">is</span> <span class="n">h</span><span class="p">(</span><span class="n">g</span><span class="p">(</span><span class="n">f</span><span class="p">()))</span>
+</pre></div>
+</div>
+<p>If a Worker instance is called this compsite function is evaluated on the
+supplied argument.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">papy</span> <span class="kn">import</span> <span class="n">Worker</span>
+<span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">radians</span><span class="p">,</span> <span class="n">degrees</span>
+<span class="k">def</span> <span class="nf">papy_radians</span><span class="p">(</span><span class="nb">input</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">radians</span><span class="p">(</span><span class="nb">input</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="k">def</span> <span class="nf">papy_degrees</span><span class="p">(</span><span class="nb">input</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">degrees</span><span class="p">(</span><span class="nb">input</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="n">worker_instance</span> <span class="o">=</span> <span class="n">Worker</span><span class="p">((</span><span class="n">papy_radians</span><span class="p">,</span> <span class="n">papy_degrees</span><span class="p">))</span>
+<span class="n">worker_instance</span><span class="p">([</span><span class="mf">90.</span><span class="p">])</span>
+<span class="mf">90.0</span>
+</pre></div>
+</div>
+<p>In this example we create a composite worker from two functions papy_radians and
+papy_degrees. The first function converts degrees to radians the second converts
+radians to degrees. Obviously if those two functions are nested their result is
+identical to their input. papy_radians is evaluated first and papy_degrees last
+so the result is in degrees.</p>
+<p>The Worker performs several functions:</p>
+<blockquote>
+<ul class="simple">
+<li>standarizes the inputs and outputs of nodes.</li>
+<li>allows to reuse and combine multiple functions into as single node</li>
+<li>catches and wraps exceptions raised within functions.</li>
+<li>allows functions to be evaluated on remote hosts.</li>
+</ul>
+</blockquote>
+<p>A Worker expects that the wrapped function has a defined input and output. The
+input is expected to be boxed in a tuple relative to the output, which should
+not be boxed. The worker instance expects [float], but returns just float. Any
+function which conforms to this is a valid Worker function. Most built-in
+functions need to be wrapped. Please refer to the documentation on how to write
+Worker functions.</p>
+<p>If an exception is raised within any of the user-supplied functions it is cought
+by the Worker, but is <em>not raised</em> instead it is wrapped as a WorkerError
+exception and returned i.e.:</p>
+<div class="highlight-python"><pre>worker = Worker(sqrt) # the math.sqrt function does not conform.
+# raises because exception outside sqrt
+worker(10.) # this is not a valid worker input
+Traceback (most recent call last):
+  File "&lt;stdin&gt;", line 1, in &lt;module&gt;
+  File "/home/marcin/projects/papy/src/papy/papy.py", line 814, in __call__
+    exceptions = [e for e in inbox if isinstance(e, PiperError)]
+TypeError: 'float' object is not iterable
+# does not raise exception inside sqrt
+worker([10.]) # this is a valid worker input
+WorkerError(TypeError('a float is required',), &lt;built-in function sqrt&gt;, [10.0])
+# the WorkerError is returned not raised.</pre>
+</div>
+<p>The functionality of a Worker instance is defined by the functions it is
+composed of and their arguments. Two workers which are composed of the same
+functions <em>and</em> called with the same arguments are functionally identical
+and a single worker instance can be used in multiple places of a pipeline or in
+other words in multiple pipers.</p>
+<p>The functions within a worker instance need not to be evaluated by the same
+process as the worker instance itself. This is accomplished by the
+open-source RPyC module. A worker knows how to inject its functions into a RPyC
+connection object, after this the worker method will run in the local process,
+but the functions wrapped functions on the remote host.</p>
+<blockquote>
+import rpyc # import the RPyC module
+from papy import Worker
+from papy.workers.maths import pow
+power = Worker(pow, (2,)) # power of two
+power([2]) # evaluated locally
+4
+conn = rpyc.classic.connect(&#8220;some_host&#8221;)
+power._incject(conn) # replace pow with remot pow
+power([3]) # evaluated remotely
+9</blockquote>
+<p>A function can run on the remote host i.e. remote python process/thread only if
+the modules on which this function depends are availble on that host and those
+modules are imported. IMap provides means to attach import statements to
+function definitions using the imports decorator. In this way code sent to the
+remote host will work if the imported module is availble remotely.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="nd">@imports</span><span class="p">([[</span><span class="s">&#39;re&#39;</span><span class="p">,</span> <span class="p">[]]])</span>
+<span class="k">def</span> <span class="nf">match_string</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">string</span><span class="p">):</span>
+    <span class="n">unboxed</span> <span class="o">=</span> <span class="nb">input</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">string</span><span class="p">,</span> <span class="n">unboxed</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The above example shows a valid worker function with the equivalent of the
+import statment attached.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">re</span>
+</pre></div>
+</div>
+<p>The re module will be availble remotely in the namespace of this
+function i.e. other injected functions might not have access to re.</p>
+</div>
+<div class="section" id="built-in-worker-functions">
+<h2>Built-in worker functions<a class="headerlink" href="#built-in-worker-functions" title="Permalink to this headline">¶</a></h2>
+<p>Several classes of worker functions are already part of papy. This collection is
+expected to grow, currently the following types of workers are included.</p>
+<blockquote>
+<ul class="simple">
+<li>core - basic data-flow</li>
+<li>maths - functions on numbers</li>
+<li>bool - boolean algebra</li>
+<li>io - serialisation, printing and file operations</li>
+</ul>
+</blockquote>
+<p>The core modules includes the family of passer functions. They do not alter the
+incoming data, but are used to pass only streams from certain imput pipes. For
+example a piper connected to 3 other pipers might propagate input from only one.</p>
+<blockquote>
+<ul class="simple">
+<li>ipasser - propagates the i&#8217;th input pipe</li>
+<li>npasser - propagates the n-first input pipes</li>
+<li>spasser - propagetes the pipes with numbers in s</li>
+</ul>
+</blockquote>
+<p>For example:</p>
+<div class="highlight-python"><pre>from papy.workers.core import *
+worker = Worker(ipasser, (0,)) # passes only the first pipe
+worker = Worker(ipasser, (1,)) # passes only the second pipe
+worker = Worker(npasser, (2,)) # passes the first two pipes
+worker = Worker(spasser, ((0,1),) # passes pipes 0 and 1
+worker = Worker(spasser, ((1,0),) # passes pipes 1 and 0</pre>
+</div>
+<p>The output of the passes is a <em>single</em> tuple of the passed pipes:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">input0</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">]</span>
+<span class="n">input1</span> <span class="o">=</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="mi">9</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">11</span><span class="p">]</span>
+
+<span class="n">worker</span> <span class="o">=</span> <span class="n">Worker</span><span class="p">(</span><span class="n">spasser</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">))</span>
+<span class="c"># will produce output</span>
+<span class="p">[(</span><span class="mi">6</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">7</span><span class="p">,</span><span class="mi">1</span><span class="p">),</span> <span class="o">...</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>The io sub-module contains functions dealing with input/output relations i.e.
+data storage and serialization. It currently supports serialization using the
+pickle and JSON protocols and file-based data storage. Generic data-base
+backends will be added in future.</p>
+<p>Data serialization is a way to conver objects (and in Python almost everything
+is an object) into a sequence, which can be stored or transmitted. Papy uses the
+pickle serialization format to transmit data between local processes and brine
+(an internal serialization protocol from RPyC) to transmit data between hosts.</p>
+<p>The user might however want to save and load</p>
+<dl class="docutils">
+<dt>Example::</dt>
+<dd># PH</dd>
+</dl>
+</div>
+<div class="section" id="the-piper">
+<h2>The <em>Piper</em><a class="headerlink" href="#the-piper" title="Permalink to this headline">¶</a></h2>
+<p>A <em>Piper</em> class instance represents a node in the directed graph of the
+pipeline. It defines what function(s) should at this place be evaluated
+(via the supplied <em>Worker</em> instance) and how it should be evaluated (via the
+optional <em>IMap</em> instance, which defines the uses computational resources).
+Besides that it performs additional functions which include:</p>
+<blockquote>
+<ul class="simple">
+<li>logging and reporting</li>
+<li>exception handling</li>
+<li>timeouts</li>
+<li>produce/spawn/consume schemes</li>
+</ul>
+</blockquote>
+<p>To use a <em>Piper</em> outside a pipeline three steps are required:</p>
+<blockquote>
+<ul class="simple">
+<li>creation - requires a <em>Worker</em> instance, optional arguments e.g. an <em>IMap</em>
+instance. (<tt class="docutils literal"><span class="pre">__init__</span></tt> method)</li>
+<li>connection - connects the <em>Piper</em> to the input. (<tt class="docutils literal"><span class="pre">connect</span></tt> method)</li>
+<li>start - allows the <em>Piper</em> to return results, starts the <em>IMap</em>. (<tt class="docutils literal"><span class="pre">start</span></tt> method)</li>
+</ul>
+</blockquote>
+<p>In the first step we define the <em>Worker</em> which will be evaluated by the <em>Piper</em>
+and the resources to do this computation. Computational resources are
+represented by <em>IMap</em> instances. An <em>IMap</em> instance can utilize local or remote
+threads or processes. If no <em>IMap</em> instance is given to the constructor the
+<tt class="docutils literal"><span class="pre">itertools.imap</span></tt> function will be used instead. This function will be called
+by the Python process used to construct and start the <em>PaPy</em> pipeline.</p>
+<p><em>PaPy</em> has been designed to log the execution of a workflow at multiple levels
+and with a level of detail which can be specified it uses built-in Python
+logging (the <tt class="docutils literal"><span class="pre">logging</span></tt> module). The <em>IMap</em> function, which should at this
+stage be bug free logs only debug statements. Exceptions within worker-functions
+are wrapped as <tt class="docutils literal"><span class="pre">WorkerError</span></tt> exceptions, these errors are logged by the
+<em>Piper</em> instance, which wraps this <em>Worker</em> (a single <em>Worker</em> instance can be
+used by multiple <em>Pipers</em>). By default the pipeline is robust to
+<tt class="docutils literal"><span class="pre">WorkerErrors</span></tt> and these exceptions are logged, but they do not stop the flow.
+In this mode if the called <em>Worker</em> instance returnes a <tt class="docutils literal"><span class="pre">WorkerError</span></tt> the
+calling <em>Piper</em> instance wraps this error as a <tt class="docutils literal"><span class="pre">PiperError</span></tt> and
+<strong>returns</strong> (not raises) it down-stream into the pipeline. On the other end if a
+<em>Worker</em> receives a <em>PiperError</em> as input it just propagates it further
+down-stream i.e. it does not try meaningless calculations on exceptions.
+In this way errors in the pipeline propagate down-stream as place-holder
+PiperErrors.</p>
+<p>A Piper instance evaluates the Worker either by the supplied IMap instance
+(described elswhere) or by the builtin itertools.imap function (default). In
+reality after a piper is connected to the input it creates a task i.e. function,
+data, arguments tuples which is added to the IMap instance used to call the imap
+function.</p>
+<p>IMap instances support timeouts via the optional timeout argument supplied to the
+next method. If the IMap is not able to return a result within the specified
+time it raises a TimeoutError. This exception is cought by the piper instance
+which expects the result, wrapped into a PiperError exception and propagated
+down-stream exactly like WorkerErrors. If the piper is used within a pipeline
+and a timeout argument given the skipping argument should be set to true
+otherwise the number of results from a piper will be bigger then the number of
+tasklets, which will hang the pipeline.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># valid with or without timeouts</span>
+<span class="n">universal_piper</span> <span class="o">=</span> <span class="n">Piper</span><span class="p">(</span><span class="n">worker_instance</span><span class="p">,</span> <span class="n">parallel</span> <span class="o">=</span><span class="n">imap_instance</span><span class="p">,</span> <span class="n">skipping</span> <span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="c"># valid only with timeouts</span>
+<span class="n">nontimeout_piper</span> <span class="o">=</span> <span class="n">Piper</span><span class="p">(</span><span class="n">worker_instance</span><span class="p">,</span> <span class="n">parallel</span> <span class="o">=</span><span class="n">imap_instance</span><span class="p">,</span> <span class="n">skipping</span> <span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Note that the timeouts specified here are &#8216;computation time&#8217; timeouts. If for
+example a worker function waits for a server response and the server response
+does not arrive within some timeout (which can be an argument for the Worker)
+then if this exception is raise within the function it will be wrapped into a
+WorkerError and raturned not raised as TimeoutErrors.</p>
+<p>A single Piper instance can only be used once within a pipeline (this is unlike
+Worker instances).</p>
+<p>Pipers are created first and connected to the input data later. The latter is
+accomplished by the connect method.</p>
+<blockquote>
+piper_instance.connect(input_data)</blockquote>
+<p>If the piper is used within a papy pipeline i.e. a Dagger or Plumber instance
+the user does not have to care about connecting individual pipers. After a piper
+has be either started or disconnected, obviously a piper can only be started if
+it has been connected before.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">piper_instance</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">input_data</span><span class="p">)</span>
+<span class="n">piper_instance</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+<span class="c"># or</span>
+<span class="n">piper_instance</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>After starting a piper tasks are submitted to the thread/process workers in
+the IMap instance and they are evaluated. This is a process which continues
+until either the buffer is filled or the input is consumed. Therefore a piper
+cannot be simply disconnected when it is &#8216;running&#8217;. A special method is needed
+to tell the IMap instance to stop input consumption. Because IMap instances
+are shared among pipers such a stop can only occur at stride boundaries. The
+piper stop method will eventually stop the IMap instance and put the piper in a
+stopped state which allows the piper to be disconnected.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">piper_instance</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+<span class="n">piper_instance</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+<span class="n">piper_instance</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span> <span class="c"># can be connected and started</span>
+</pre></div>
+</div>
+<p>Because the stop happens at stride boundary data is not lost during a stop. This
+can be illustraded as follows:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c">#           plus2            plus1</span>
+<span class="c"># [1,2,3,4] -----&gt; [3,4,5,6] -----&gt; [4,5,6,7]</span>
+<span class="c"># which is equivalent to the following:</span>
+<span class="c"># plus1(plus2([1,2,3,4])</span>
+</pre></div>
+</div>
+<p>If the pipers plus2 and plus1 share a single IMap and the stride is two then the
+order of evaluation can be (if the results are retrieved):</p>
+<div class="highlight-python"><pre>temp1 = plus2(1)
+temp2 = plus2(2)
+plus1(temp1)
+plus1(temp2)
+&lt;&lt;return&gt;&gt;
+&lt;&lt;return&gt;&gt;
+temp1 = plus2(3)
+temp2 = plus2(4)
+plus1(temp1)
+plus1(temp2)
+&lt;&lt;return&gt;&gt;
+&lt;&lt;return&gt;&gt;</pre>
+</div>
+<p>Now let&#8217;s assume the the stop method has been called just after plus2(1). We do
+not want to loose the temp1 result (as 1 has been already consumed from the
+input iterator and iterators cannot rewind), but we can achieve this only if
+plus1(temp1) is evaluated this in turn (due to the order of tasklet submission)
+can happen only after plus2(2) has been evaluated (i.e. 2 consumed from the
+input iterator). To not loose temp2 plus1(temp2) has to be evaluated and finally
+the evaluation can stop.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">temp1</span> <span class="o">=</span> <span class="n">plus2</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">temp2</span> <span class="o">=</span> <span class="n">plus2</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">plus1</span><span class="p">(</span><span class="n">temp1</span><span class="p">)</span>
+<span class="n">plus1</span><span class="p">(</span><span class="n">temp2</span><span class="p">)</span>
+<span class="p">(</span><span class="n">stopped</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>After the stop method returns all worker processes/threads and helper threads
+return and the user can close the python interpreter. It is <em>very</em> important to
+realise what happens with the two calculated results. As has been already
+mentioned a proper papy pipeline should have an output piper i.e. a piper which
+persistently stores the result.</p>
+</div>
+<div class="section" id="the-dagger">
+<h2>The <em>Dagger</em><a class="headerlink" href="#the-dagger" title="Permalink to this headline">¶</a></h2>
+<p>The <em>Dagger</em> is an object to connect <em>Piper</em> instances into a directed acyclic
+graph (DAG). It inherits most methods of the <em>Graph</em> object, which is a concise
+implementation of the <em>Graph</em> data-structure. The <em>Graph</em> instance is a
+dictionary of arbitary hashable objects &#8220;real nodes&#8221; e.g. a <em>Piper</em> (the keys of
+the dictionary) and instances of the Node class &#8220;topological nodes&#8221; (the values
+of the dictionary). A &#8220;topological node&#8221; instance is a also dictionary of
+&#8220;real nodes&#8221; and their corresponding &#8220;topological nodes&#8221;. A &#8220;real node&#8221;(A) of the
+<em>Graph</em> is contained in a &#8220;topological node&#8221; for another &#8220;real node&#8221;(B) if there
+exist an edge from (A) to (B). A and B might be the same &#8220;real node&#8221;.
+A &#8220;topological node&#8221; is therefore a sub-graph of the <em>Graph</em> object around a
+hashable object and the whole <em>Graph</em> is a recursively nested dictionary. The
+<em>Dagger</em> is designed to store <em>Piper</em> instances as &#8220;real nodes&#8221; and provides
+additional methods, whereas the  <em>Graph</em> makes no assumptions about the object
+type.</p>
+<div class="section" id="edges-vs-pipes">
+<h3>Edges vs. pipes<a class="headerlink" href="#edges-vs-pipes" title="Permalink to this headline">¶</a></h3>
+<p>A <em>Piper</em> instance is created by specifiying a <em>Worker</em> (and optionally <em>IMap</em>
+instance) and needs to be connected to an input. The input might be another
+<em>Piper</em> or any Python iterator. The output of a <em>Piper</em> (up-stream) can be
+consumed by several <em>Pipers</em> (down-stream), while a <em>Piper</em> (down-stream) might
+consume the results of multiple <em>Pipers</em> (up-stream). This allows <em>Pipers</em> to be
+used as any nodes in a directed acyclic graph the <em>Dagger</em></p>
+<p>As a result of the above it is much more natural to think of connections between
+<em>Pipers</em> in terms of data-flow up-stream &#8211;&gt; down-stream (data flows from
+up-stream to down-stream) then dependency down-stream &#8211;&gt; up-stream (down-stream
+depends on up-stream). The <em>Graph</em> represents dependancy information as directed
+edges (down-stream &#8211;&gt; up-stream), while the <em>Dagger</em> class introduces the
+concept of pipes to ease the understanding of <em>PaPy</em> and make mistakes less
+common. A pipe is nothing else then a reversed edge. To make this explicit:</p>
+<div class="highlight-python"><pre>input -&gt; piper0 -&gt; piper1 -&gt; output # -&gt; represents a pipe (data-flow)
+input &lt;- piper0 &lt;- piper1 &lt;- output # &lt;- represents an edge (dependancy)</pre>
+</div>
+<p>The data is stored internally as edges, but the interface uses pipes. Method
+names are explicit.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">dagger_instance</span><span class="o">.</span><span class="n">add_edge</span><span class="p">()</span> <span class="c"># (inherited from Graph) expects and edge as input</span>
+<span class="n">dagger_instance</span><span class="o">.</span><span class="n">add_pipe</span><span class="p">()</span> <span class="c"># expecs a pipe as input</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Although all <em>Graph</em> methods are availble from the <em>Dagger</em> the end-user
+should use <em>Dagger</em> specific methods only. For example the <em>Graph</em> method
+<tt class="docutils literal"><span class="pre">add_edge</span></tt> will allow to add any edge to the instance, whereas
+<tt class="docutils literal"><span class="pre">add_pipe</span></tt> method will not allow to introduce cycles.</p>
+</div>
+</div>
+<div class="section" id="working-with-the-dagger">
+<h3>Working with the <em>Dagger</em><a class="headerlink" href="#working-with-the-dagger" title="Permalink to this headline">¶</a></h3>
+<p>Creation of the a <em>Dagger</em> instance is very easy. An empty <em>Dagger</em> instance is
+created without any arguments to the constructor.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">dagger_instance</span> <span class="o">=</span> <span class="n">Dagger</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Optionally a set of <em>Pipers</em> and/or pipes can be given:</p>
+<div class="highlight-python"><pre>dagger_instance = Dagger(sequence_of_pipers, sequence_of_pipes)
+# which is equivalent to:
+dagger_instance.add_pipers(sequence_of_pipers)
+dagger_instance.add_pipes(sequence_of_pipes)
+# a sequence of pipers allows to easily add branches
+dagger_instance.add_pipers([1, 2a, 3a, 4])
+dagger_instance.add_pipers([1, 2b, 3b, 4])
+# in this example a Dagger will have 6 pipers (1, 2a, 2b, 3a, 3b, 4), one
+# branch point 1, one merge point 4, and two branches (2a, 3a) and (2b, 3b).</pre>
+</div>
+<p>The <em>Dagger</em> allows to add/delete <em>Pipers</em> and pipes:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">dagger_instance</span><span class="o">.</span><span class="n">add_piper</span><span class="p">(</span><span class="n">piper</span><span class="p">)</span>
+<span class="n">dagger_instance</span><span class="o">.</span><span class="n">del_piper</span><span class="p">(</span><span class="n">piper</span> <span class="ow">or</span> <span class="n">piper_id</span><span class="p">)</span>
+<span class="n">dagger_instance</span><span class="o">.</span><span class="n">add_pipers</span><span class="p">(</span><span class="n">pipers</span><span class="p">)</span>
+<span class="n">dagger_instance</span><span class="o">.</span><span class="n">del_pipers</span><span class="p">(</span><span class="n">pipers</span> <span class="ow">or</span> <span class="n">piper_ids</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The id of a <em>Piper</em> is a run-time specific number associated with a given
+<em>Piper</em> instance. This number can be obtained by calling the built-in function
+id:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="nb">id</span><span class="p">(</span><span class="n">piper</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This number is also shown when a <em>Piper</em> instance is printed.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">print</span> <span class="n">piper_instance</span>
+</pre></div>
+</div>
+<p>or represented:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="nb">repr</span><span class="p">(</span><span class="n">piper_instance</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The representation of a <em>Dagger</em> instance also shows the id of the <em>Pipers</em>
+which are contained in the pipeline.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">print</span> <span class="n">dagger_instance</span>
+</pre></div>
+</div>
+<p>The id of a <em>Piper</em> instance is define at run-time (it corresponds to the memory
+address of the object) therefore it should not be used in scripts or seved in
+any way. Note that the lenght of this number is platform-specific and that no
+guarantee is made that two <em>Pipers</em> with non-overlapping will not have the same
+id. The resolve method:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">dagger_instance</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">piper</span> <span class="ow">or</span> <span class="n">piper_id</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>returns a <em>Piper</em> instance if the supplied <em>Piper</em> or a <em>Piper</em> with the
+supplied id is contained in the dagger_instance. This method by default raises a
+<tt class="docutils literal"><span class="pre">DaggerError</span></tt> if the <em>Piper</em> is not found. If the argument forgive is <tt class="xref docutils literal"><span class="pre">True</span></tt>
+the method returns <tt class="xref docutils literal"><span class="pre">None</span></tt> instead:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">dagger_instance</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">missing_piper</span><span class="p">)</span> <span class="c"># raise DaggerError</span>
+<span class="n">dagger_instance</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">missing_piper</span><span class="p">,</span> <span class="n">forgive</span> <span class="o">=</span><span class="bp">True</span><span class="p">)</span> <span class="c"># returns None</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="the-dagger-run-time">
+<h3>The <em>Dagger</em> run-time<a class="headerlink" href="#the-dagger-run-time" title="Permalink to this headline">¶</a></h3>
+<p>The run-time of a <em>Dagger</em> instance begins when it&#8217;s start method is called.
+A <em>Dagger</em> can only be started if it is connected. Connecting a <em>Dagger</em> means
+to connect all <em>Pipers</em> which it contains as defined by the pipes in the
+<em>Dagger</em>. After the <em>Dagger</em> is connected it can be started, starting a <em>Dagger
+means to start all it&#8217;s *Pipers</em>. <em>Pipers</em> have to be started in the order of
+the data-flow i.e. a <em>Piper</em> can only be started after all it&#8217;s up-stream
+<em>Pipers</em> have been started. An ordering of nodes/<em>Pipers</em> of a graph/<em>Dagger</em>
+which has this property is called a postorder. There are possibly more then one
+postorder per graph/<em>Dagger</em>. The exact postorder used to connect the <em>Pipers</em>
+has some additional properties</p>
+<blockquote>
+<ul class="simple">
+<li>all down-stream <em>Pipers</em> for a <em>Piper</em> (A) come before the next <em>Piper</em>
+(B) for which no such relationship can be established. This can be thought
+as maintaining branch contiguity.</li>
+<li>such branches can additionally be sorted according to the branch argument
+passed to the <em>Piper</em> constructor.</li>
+</ul>
+</blockquote>
+<p>Another aspect of order of a <em>Dagger</em> is the sequence by which a down-stream
+<em>Piper</em> connects multiple up-stream <em>Pipers</em>. The inputs cannot be sorted
+based solely on their postorder because the down-stream <em>Piper</em> might be
+connected directly to a <em>Piper</em> to which one of it&#8217;s other inputs has been
+connected before. The inputs of a <em>Piper</em> are additionaly sorted so that all
+down-stream <em>Pipers</em> come before up-stream <em>Pipers</em>, while <em>Pipers</em> for which no
+such relation can be established are still sorted according to their index in
+the postorder. This can be thought of as sorting branches by their &#8220;generation&#8221;.</p>
+<p>A started <em>Dagger</em> is able to process input data. The simplest way to process
+all inputs is to zip it&#8217;s output <em>Pipers</em>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">output_pipers</span> <span class="o">=</span> <span class="n">dagger_instance</span><span class="o">.</span><span class="n">get_outputs</span><span class="p">()</span>
+<span class="n">final_results</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="n">output_pipers</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If any of the <em>Pipers</em> used within a <em>Dagger</em> uses an <em>IMap</em> instance and the
+<em>Dagger</em> is started. The Python process can only be exited cleanly if the
+<em>Dagger</em> instance is stopped by calling it&#8217;s <cite>stop</cite> method.</p>
+</div>
+</div>
+<div class="section" id="the-plumber">
+<h2>The <em>Plumber</em><a class="headerlink" href="#the-plumber" title="Permalink to this headline">¶</a></h2>
+<p>The <em>Plumber</em> is an easy to use interface to <em>PaPy</em>. It inherits from the
+<em>Dagger</em> object and can be used like a <em>Dagger</em>, but the <em>Plumber</em> class adds
+methods related to the &#8220;run time&#8221; of a pipeline. A <em>Plumber</em> can
+start/run/pause/stop a pipeline.</p>
+<blockquote>
+<ol class="arabic simple">
+<li>loading/saving a pipeline.</li>
+<li>starting/stopping a pipeline.</li>
+<li>running/pausing a pipeline.</li>
+</ol>
+</blockquote>
+<p>A <em>PaPy</em> pipeline is loaded and saved as executable Python code, which has the
+same priviliges as the Python process. Please keep this in mind starting when
+pipelines from untrusted sources!</p>
+</div>
+<div class="section" id="the-additional-components">
+<h2>The additional components<a class="headerlink" href="#the-additional-components" title="Permalink to this headline">¶</a></h2>
+<p>Those classes and functions are used by the core components, but are general and
+might find application in your code.</p>
+<blockquote>
+<ul>
+<li><dl class="first docutils">
+<dt><em>Graph*(*Node</em>) - Two classes which implement a graph data-structure using a</dt>
+<dd><p class="first">recursively nested dictionary. This allows for simplicity of
+algorithms/methods i.e. there are no edge objects because
+edges are the keys of the <em>Node</em> dictionary which in turn is
+the value in the dictionary for the arbitrary object in the
+<em>Graph</em> object i.e.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">papy</span> <span class="kn">import</span> <span class="n">Graph</span>
+<span class="n">graph</span> <span class="o">=</span> <span class="n">Graph</span><span class="p">()</span>
+<span class="n">object1</span> <span class="o">=</span> <span class="s">&#39;1&#39;</span>
+<span class="n">object2</span> <span class="o">=</span> <span class="s">&#39;2&#39;</span>
+<span class="n">graph</span><span class="o">.</span><span class="n">add_edge</span><span class="p">((</span><span class="n">object1</span><span class="p">,</span> <span class="n">object2</span><span class="p">))</span>
+<span class="n">node_for_object1</span> <span class="o">=</span> <span class="n">graph</span><span class="p">[</span><span class="n">object1</span><span class="p">]</span>
+<span class="n">node_for_object2</span> <span class="o">=</span> <span class="n">graph</span><span class="p">[</span><span class="n">object2</span><span class="p">]</span>
+</pre></div>
+</div>
+<p class="last">The <em>Dagger</em> is a <em>Graph</em> object with directed edges only and
+no cycles.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>imports    - a function-wrapper, which allows to inject import statments to</dt>
+<dd><p class="first last">a functions local namespace at creation (code execution)
+e.g. on a remote Python process.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>inject     - injects a function(builtin or user) into a <em>RPyC</em> remote</dt>
+<dd><p class="first last">connection namespace.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</blockquote>
+</div>
+</div>
+
+
+   
+ 
+ 
+ </div>
+<div id="footer" dir="ltr">
+ 
+ <div class="text">
+ 
+ &copy;2008 Google -
+ <a href="http://code.google.com/">Code Home</a> -
+ <a href="http://code.google.com/tos.html">Terms of Service</a> -
+ <a href="http://www.google.com/privacy.html">Privacy Policy</a> -
+  
+ </body>
+</html>

@@ -1,0 +1,767 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+ "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<head>
+ 
+ <title>papy - Google Code</title>
+ <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+ 
+ <link rel="shortcut icon" href="http://www.gstatic.com/codesite/ph/images/defaultlogo.png"/>
+ <link type="text/css" rel="stylesheet"
+       href="./_static/custom.css" />
+ <link type="text/css" rel="stylesheet"
+       href="http://www.gstatic.com/codesite/ph/3770121226765569314/css/ph_core.css" />
+ <link type="text/css" rel="stylesheet"
+       href="http://www.gstatic.com/codesite/ph/3770121226765569314/css/ph_detail.css" />
+ <link rel="stylesheet"  type="text/css"
+       href="./_static/pygments.css" /> 
+ 
+ <link type="application/atom+xml" rel="alternate"
+ href="/feeds/p/papy/svnchanges/basic?path=/wiki/" />
+ 
+ 
+<!--[if IE]>
+ <link type="text/css" rel="stylesheet"
+       href="http://code.google.com/hosting/css/d_ie.css" />
+<![endif]-->
+
+<script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+          URL_ROOT:    '',
+          VERSION:     '1.0b1',
+          COLLAPSE_MODINDEX: false,
+          FILE_SUFFIX: '.html'
+      };
+    </script>
+    <script type="text/javascript" src="./_static/jquery.js"></script>
+    <script type="text/javascript" src="./_static/interface.js"></script>
+    <script type="text/javascript" src="./_static/doctools.js"></script>
+    <link rel="contents" title="Global table of contents" href="contents.html" />
+    <link rel="index" title="Global index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="top" title="papy v1.0b1 documentation" href="index.html" />
+    <link rel="next" title="Architecture" href="architecture.html" />
+    <link rel="prev" title="Introduction" href="introduction.html" />
+</head>
+<body class="t6">
+ <div id=gaia>
+  <font size="-1">
+ 
+ <a href="http://code.google.com/p/support/wiki/WhatsNew" style="color:#a03">What's new?</a>
+ | <a href="http://code.google.com/p/support/">Help</a>
+ 
+ </font> 
+
+ </div>
+ <table style="padding:0px; margin: 0px 0px -6px 0; width:100%" cellpadding=0 cellspacing=0>
+ <tr>
+ <td><a href="/"><img src="http://www.gstatic.com/codesite/ph/images/defaultlogo.png" alt=papy/></a></td>
+ <td>
+ 
+ <div id="pname">
+ <a href="http://code.google.com/p/papy/" style="text-decoration:none; color:#000">papy</a>
+ 
+ </div>
+ <div id="psum">
+ <i><a href="http://code.google.com/p/papy/" style="text-decoration:none; color:#000">papy v1.0b1 documentation</a></i>
+ </div>
+ 
+ </td>
+ <td style="white-space:nowrap; text-align:right">
+ 
+ <form action="http://code.google.com/hosting/search">
+ <input size=30 name=q value=""/>
+ <input type=submit name=projectsearch value="Search Projects" />
+ <input type=submit name=websearch value="Search the Web" />
+ </form>
+ 
+ </tr>
+ </table>
+
+
+<table id="mt" cellspacing="0" cellpadding="0" width="100%" border="0">
+ <tr>
+ <th onclick="if (!cancelBubble) _go('http://code.google.com/p/papy/');">
+ <div class="tab inactive">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <a onclick="cancelBubble=true;" href="http://code.google.com/p/papy/">Project&nbsp;Home</a>
+ </div>
+ </div>
+ </th><td>&nbsp;&nbsp;</td>
+ 
+ 
+ 
+ 
+ <th onclick="if (!cancelBubble) _go('http://code.google.com/p/papy/downloads/list');">
+ <div class="tab inactive">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <a onclick="cancelBubble=true;" href="http://code.google.com/p/papy/downloads/list">Downloads</a>
+ </div>
+ </div>
+ </th><td>&nbsp;&nbsp;</td>
+ 
+ 
+ 
+ 
+ 
+ <th onclick="if (!cancelBubble) _go('http://code.google.com/p/papy/w/list');">
+ <div class="tab inactive">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <a onclick="cancelBubble=true;" href="http://code.google.com/p/papy/w/list">Wiki</a>
+ </div>
+ </div>
+ </th><td>&nbsp;&nbsp;</td>
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ <th onclick="if (!cancelBubble) _go('http://code.google.com/p/papy/issues/list');">
+ <div class="tab inactive">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <a onclick="cancelBubble=true;" href="http://code.google.com/p/papy/issues/list">Issues</a>
+ </div>
+ </div>
+ </th><td>&nbsp;&nbsp;</td>
+ 
+ 
+ 
+ 
+ 
+ 
+ <th onclick="if (!cancelBubble) _go('http://code.google.com/p/papy/source/list');">
+ <div class="tab inactive">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <a onclick="cancelBubble=true;" href="http://code.google.com/p/papy/source/list">Source</a>
+ </div>
+ </div>
+ </th><td>&nbsp;&nbsp;</td>
+ 
+ 
+ 
+ <td width="100%">&nbsp;</td>
+ </tr>
+</table>
+<table cellspacing="0" cellpadding="0" width="100%" align="center" border="0" class="st">
+ <tr>
+ 
+ 
+ 
+ <td>
+ <div class="issueList">
+<div class=isf>
+ 
+ 
+ 
+ <a href="index.html">papy v1.0b1 documentation</a> |
+ <span>
+   <a href="genindex.html" title="General Index"
+      accesskey="I">index</a>
+ </span> |
+ <span>
+   <a href="modindex.html" title="Global Module Index"
+      accesskey="M">modules</a>
+ </span> |
+ <span>
+   <a href="architecture.html" title="Architecture"
+      accesskey="N">next</a>
+ </span> |
+ <span>
+   <a href="introduction.html" title="Introduction"
+      accesskey="P">previous</a>
+ </span> |
+ <span class="inIssueList">
+   <span>Search</span>
+    <form action="search.html" method="GET" style="display:inline">
+      <input size=30 name=q value=""/>
+      <input type=submit name=projectsearch value="Search Documentation" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+ </span>
+
+</div>
+</div>
+
+ </td>
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ <td height=4 align=right valign=top class="bevel-right">
+ <div class="round4"></div>
+ <div class="round2"></div>
+ <div class="round1"></div>
+ </td>
+ </tr>
+</table>
+<script>
+ var cancelBubble = false;
+ function _go(url) { document.location = url; }
+</script>
+
+<div id="maincol">
+<!-- IE -->
+
+
+
+<style>
+ #downloadbox { 
+ padding: 6px; 
+ overflow: hidden;
+ white-space: nowrap;
+ text-overflow: ellipsis;
+ }
+ #downloadbox a {
+ margin: 0 0 0 0;
+ display: block;
+ padding-left: 0px;
+ }
+ #owners a, #members a { white-space: nowrap; }
+</style>
+
+<div style="float:right; width:25em; margin:0 0 1em 2em">
+
+ 
+ <div class=pmeta_bubble_bg>
+ <div class="round4"></div>
+ <div class="round2"></div>
+
+ <div class="round1"></div>
+ <div class="box-inner">
+ <table class="pmeta" cellpadding=5>
+ <tr><th>Previous:</th>
+ <td><ul>
+ 
+ <li>
+   <a href="introduction.html" title="previous chapter">Introduction</a>
+ </li>
+ 
+
+ 
+ </ul></td>
+ </tr>
+ <tr><th>Next:</th>
+ <td><ul>
+ 
+ <li>
+   <a href="architecture.html" title="next chapter">Architecture</a>
+ </li>
+ 
+
+ 
+ </ul></td>
+ </tr>
+ 
+ 
+ 
+ </table>
+
+ </div>
+ <div class="round1"></div>
+ <div class="round2"></div>
+ <div class="round4"></div>
+ </div>
+ 
+ 
+ 
+ <div style="background:#ddf8cc; margin-bottom: 5px;table-layout:fixed">
+
+ <div class="round4"></div>
+
+ <div class="round2"></div>
+ <div class="round1"></div>
+ <div class="box-inner">
+ <div id=downloadbox>
+  <b>Table of Contents</b><br/>
+  <table class="pmeta toc" cellpadding=5><tr><td>
+	<ul>
+<li><a class="reference external" href="">Installation</a><ul>
+<li><a class="reference external" href="#installing-papy-the-easy-way">Installing PaPy the easy way</a></li>
+<li><a class="reference external" href="#installing-papy-the-fancy-way">Installing PaPy the fancy way</a><ul>
+<li><a class="reference external" href="#getting-python">Getting Python</a></li>
+<li><a class="reference external" href="#getting-setuptools">Getting <tt class="docutils literal"><span class="pre">setuptools</span></tt></a></li>
+<li><a class="reference external" href="#creating-a-virtual-environment">Creating a virtual environment</a></li>
+<li><a class="reference external" href="#installing-papy-dependencies-and-tools">Installing PaPy dependencies and tools</a></li>
+<li><a class="reference external" href="#get-papy-sources">Get PaPy sources</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </td></tr></table>
+
+ 
+ </div>
+ </div>
+ <div class="round1"></div>
+ <div class="round2"></div>
+ <div class="round4"></div>
+ </div>
+ 
+ 
+
+
+ </div>
+</div>
+
+ <div style="padding:0 3em 1.2em 0">
+   
+     
+  <div class="section" id="installation">
+<h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
+<p>This guide will go through the steps required to install a bleeding-edge
+version of <em>PaPy</em> on a UNIX machine using the <tt class="docutils literal"><span class="pre">bash</span></tt> shell.</p>
+<div class="section" id="installing-papy-the-easy-way">
+<h2>Installing PaPy the easy way<a class="headerlink" href="#installing-papy-the-easy-way" title="Permalink to this headline">¶</a></h2>
+<p><em>PaPy</em> is indexed on the <em>PyPI</em> (Python Package Index). And can be installed
+simply via:</p>
+<div class="highlight-python"><pre>$ su -c "easy_install papy"</pre>
+</div>
+<p>If this did not work please try to use the source snapshot.</p>
+<blockquote>
+<ul>
+<li><p class="first">download a snapshot from the project page</p>
+</li>
+<li><p class="first">install it via easy_install:</p>
+<div class="highlight-python"><pre>su -c "easy_install papy-1.0.tar.gz"</pre>
+</div>
+</li>
+</ul>
+</blockquote>
+<p>The optional run-time dependencies of <em>PaPy</em> are:</p>
+<blockquote>
+<ul class="simple">
+<li><em>RPyC</em>            (<tt class="docutils literal"><span class="pre">rpyc</span></tt>)</li>
+<li><em>Pmw</em>             (<tt class="docutils literal"><span class="pre">Pmw</span></tt>)</li>
+<li><tt class="docutils literal"><span class="pre">posix_ipc</span></tt></li>
+<li><em>MySQL-python</em>    (<tt class="docutils literal"><span class="pre">MySQLdb</span></tt>)</li>
+</ul>
+</blockquote>
+<p>Optional dependencies to install/build/deploy <em>PaPy</em> are:</p>
+<blockquote>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">easy_install</span></tt>  (<tt class="docutils literal"><span class="pre">setuptools</span></tt>)</li>
+<li><em>Sphinx</em>          (<tt class="docutils literal"><span class="pre">sphinx</span></tt>)</li>
+<li><em>Paver</em>           (<tt class="docutils literal"><span class="pre">paver</span></tt>)</li>
+</ul>
+</blockquote>
+<p><em>PaPy</em> and Python development is much easier using the following tools:</p>
+<blockquote>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">virtualenv</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">virtualevnwrapper</span></tt></li>
+</ul>
+</blockquote>
+<p>An easy install assumes that you default interpreter is Python2.6 (in future
+Python2.5 will also be supported), you have <tt class="docutils literal"><span class="pre">setuptools</span></tt> installed and you
+want to install <em>PaPy</em> into system-wide site-packages (the location where Python
+looks for installed libraries). If the default Python interpreter for your
+operating system is different from Python2.6 or you do not want to put <em>PaPy</em> or
+its optional dependencies into the system directories or finally you&#8217;d like the
+latest source-code revision of <em>PaPy</em> read further.</p>
+</div>
+<div class="section" id="installing-papy-the-fancy-way">
+<h2>Installing PaPy the fancy way<a class="headerlink" href="#installing-papy-the-fancy-way" title="Permalink to this headline">¶</a></h2>
+<p>The fancy (and cleaner) way of using PaPy is to create a virtual environment and
+use PaPy sources checked out from the <tt class="docutils literal"><span class="pre">subversion</span></tt> repository. The general
+stream  of action is to install a system-wide Python2.6 (if required) install
+<tt class="docutils literal"><span class="pre">setuptools</span></tt> for Python2.6 (if required). Providing virtual environment
+support by installing <tt class="docutils literal"><span class="pre">virtualenv</span></tt> and <tt class="docutils literal"><span class="pre">virtualenvwrapper</span></tt> for the Python2.6
+interpreter. Installing PaPy optional dependencies and build-tools and finally
+checking out PaPy from the source-code repository and providing the library in
+the virtual environment. This guide assumes you are using <tt class="docutils literal"><span class="pre">bash</span></tt> and a recent
+version of something UNIX-like.</p>
+<div class="section" id="getting-python">
+<h3>Getting Python<a class="headerlink" href="#getting-python" title="Permalink to this headline">¶</a></h3>
+<p>Most distributions will ship a recent version of Python. You can and should skip
+this step if you have Python 2.6 and it is the default Python interpreter.
+To check this open a shell and type:</p>
+<div class="highlight-python"><pre>$ python</pre>
+</div>
+<p>This should return something similar to this:</p>
+<div class="highlight-python"><pre>Python 2.6.2 (r262:71600, Jun 12 2009, 10:38:05)
+[GCC 4.1.2 (Gentoo 4.1.2 p1.1)] on linux2
+Type "help", "copyright", "credits" or "license" for more information.</pre>
+</div>
+<p>If this is correct you can go to the next step. Otherwise if the Python version
+is not 2.6.x it is possible that your operating system still provides Python2.6
+but it is not the default interpreter try:</p>
+<div class="highlight-python"><pre>$ python2.6</pre>
+</div>
+<p>If, and only if, this fails with <tt class="docutils literal"><span class="pre">bash:</span> <span class="pre">python2.6:</span> <span class="pre">command</span> <span class="pre">not</span> <span class="pre">found</span></tt> or
+something similar proceed with the manual system-wide installation of Python2.6
+below. This installation will not change the default Python interpreter for your
+distribution. A compiled version of Python 2.6 for your distribution might be
+available from third-party repositories.</p>
+<blockquote>
+<ol class="arabic">
+<li><p class="first">Download Python2.6 from <a class="reference external" href="http://www.python.org/download/">http://www.python.org/download/</a> you want a
+source tarball and the highest 2.6.x version available. You do not want
+to install Python 3.0.x or 3.1.x</p>
+</li>
+<li><p class="first">Unpack the compressed tarball intp any directory e.g.:</p>
+<div class="highlight-python"><pre>tar xfv Python-2.6.2.tgz</pre>
+</div>
+</li>
+<li><p class="first">go to the root of the unpacked directory and compile Python2.6:</p>
+<blockquote>
+<p>cd
+./configure &#8211;prefix=/usr
+make
+su -c &#8220;make altinstall&#8221;</p>
+</blockquote>
+<p>this will install an executable <tt class="docutils literal"><span class="pre">python2.6</span></tt> into <tt class="docutils literal"><span class="pre">/usr/bin</span></tt></p>
+</li>
+<li><p class="first">try if it worked:</p>
+<div class="highlight-python"><pre>$ python2.6</pre>
+</div>
+</li>
+</ol>
+</blockquote>
+<p>Be careful! Some of the following steps are different depending on whether you
+build your own Python2.6 distribution or your system is using Python2.6 by
+default. Make shure yout type <tt class="docutils literal"><span class="pre">python2.6</span></tt> not <tt class="docutils literal"><span class="pre">python</span></tt> to be on the safe
+side.</p>
+</div>
+<div class="section" id="getting-setuptools">
+<h3>Getting <tt class="docutils literal"><span class="pre">setuptools</span></tt><a class="headerlink" href="#getting-setuptools" title="Permalink to this headline">¶</a></h3>
+<p>We will use setuptools to install PaPy, tools to create a virtual environment
+and PaPy&#8217;s dependencies. This is a very common package and is most likely
+already installed. But we need it for Python2.6 To test it try:</p>
+<div class="highlight-python"><pre>$ easy_install2.6</pre>
+</div>
+<p>If you encounter an error, and you did <em>not</em> build Python2.6 manually you should
+try to install it from your distribution&#8217;s repository. On Gentoo the package
+is called &#8220;dev-python/setuptools&#8221; on Fedora it is &#8220;python-setuptools&#8221; and
+&#8220;python-setuptools-devel&#8221; for Ubuntu the package is called &#8220;python-setuptools&#8221;
+You can install them by e.g.:</p>
+<div class="highlight-python"><pre># Gentoo
+$ su -c "emerge setuptools"
+# Ubuntu
+$ sudo apt-get install python-setuptools
+# Fedora
+$ su -c "yum install python-setuptools"</pre>
+</div>
+<p>If you had to manually compile Python2.6 the standard distribution setuptools
+package  are most likely installed but only for the default system-wide Python
+e.g.  Python2.5. We will have to install setuptools manually for the just build
+Python2.6 interpreter.</p>
+<blockquote>
+<ol class="arabic">
+<li><p class="first">Download setuptools from <a class="reference external" href="http://pypi.python.org/pypi/setuptools">http://pypi.python.org/pypi/setuptools</a> you will
+want the latest source version at the time of writing it is
+setuptools-0.6c9.tar.gz.</p>
+</li>
+<li><p class="first">Unpack the compressed tarball into any directory:</p>
+<div class="highlight-python"><pre>$ tar xvf setuptools-0.6c9.tar.gz</pre>
+</div>
+</li>
+<li><p class="first">Go to the root of the extracted directory:</p>
+<div class="highlight-python"><pre>$ cd setuptools-0.6c9</pre>
+</div>
+</li>
+<li><p class="first">Now we install setuptools using the python2.6 executable, but first we
+have to make shure that we don&#8217;t override <tt class="docutils literal"><span class="pre">/usr/bin/easy_install</span></tt>. If
+setuptools is by default installed for a different Python interpreter.
+If there is no other Python interpreter or you do not care you can skip
+the following and just issue:</p>
+<blockquote>
+<p># python2.6 setup.py install</p>
+</blockquote>
+<p>To prevent overriding <tt class="docutils literal"><span class="pre">/usr/bin/easy_install</span></tt> we edit the <tt class="docutils literal"><span class="pre">setupy.py</span></tt>
+file:</p>
+<div class="highlight-python"><pre>&lt;snip&gt;
+"console_scripts": [
+    "easy_install = setuptools.command.easy_install:main",
+    "easy_install-%s = setuptools.command.easy_install:main"
+    % sys.version[:3]],
+&lt;snip&gt;</pre>
+</div>
+<p>by commenting out the second line i.e.:</p>
+<div class="highlight-python"><pre>&lt;snip&gt;
+"console_scripts": [
+#   "easy_install = setuptools.command.easy_install:main",
+    "easy_install-%s = setuptools.command.easy_install:main"
+    % sys.version[:3]],
+&lt;snip&gt;</pre>
+</div>
+</li>
+<li><p class="first">now we can safely run the installation:</p>
+<div class="highlight-python"><pre>$ python2.6 setup.py install</pre>
+</div>
+</li>
+<li><p class="first">and verify that we have <tt class="docutils literal"><span class="pre">easy_install-2.6</span></tt>:</p>
+<div class="highlight-python"><pre># CORRECT
+$ easy_install-2.6
+error: No urls, filenames, or requirements specified (see --help)
+# NOT CORRECT
+-bash: easy_install-2.6: command not found</pre>
+</div>
+</li>
+</ol>
+</blockquote>
+</div>
+<div class="section" id="creating-a-virtual-environment">
+<h3>Creating a virtual environment<a class="headerlink" href="#creating-a-virtual-environment" title="Permalink to this headline">¶</a></h3>
+<p>Generally we do not want to pollute the system-wide distribution with PaPy
+and its dependencies, but we can and this step is optional, although maintanence
+of PaPy might be easier in a virtual environment. We will create a virtual
+environment just for PaPy. We will install virtualenv and virtualenvwrapper into
+the newly created Python installation or standard Python2.6 using
+easy_install-2.6.:</p>
+<div class="highlight-python"><pre>$ su -c "easy_install-2.6 virtualenv"
+$ su -c "easy_install-2.6 virtualenvwrapper"</pre>
+</div>
+<p>Note that these packages are installed system-wide. Now we have to configure
+virtualenvwrapper on a per-user basis. We have to edit  the <tt class="docutils literal"><span class="pre">.bashrc</span></tt> file.</p>
+<blockquote>
+<ol class="arabic">
+<li><p class="first">determine where the wrapper got installed:</p>
+<div class="highlight-python"><pre>$ which virtualenvwrapper_bashrc</pre>
+</div>
+</li>
+<li><p class="first">create a directory where you will hold the virtual enviroment(s):</p>
+<div class="highlight-python"><pre>$ mkdir $HOME/.virtualenvs</pre>
+</div>
+</li>
+<li><p class="first">add the following two lines to <tt class="docutils literal"><span class="pre">~/.bashrc</span></tt> replace __REPLACE_ME__ with
+whatever the output from the first command was.:</p>
+<div class="highlight-python"><pre>export WORKON_HOME=$HOME/.virtualenvs
+source __REPLACE_ME__</pre>
+</div>
+</li>
+</ol>
+</blockquote>
+<p>Now we have to source the edited <tt class="docutils literal"><span class="pre">.bashrc</span></tt> file:</p>
+<div class="highlight-python"><pre>$ source ~/.bashrc</pre>
+</div>
+<p>This should not generate any errors. We are finally ready to create a virtual
+Python2.6 environment for PaPy.:</p>
+<div class="highlight-python"><pre>$ mkvirtualenv -p python2.6 --no-site-packages papy26</pre>
+</div>
+<p>This will install a clean virtual environment called papy26 and activate it.
+Working with virtual environments is easy. To use it type <tt class="docutils literal"><span class="pre">workon</span> <span class="pre">papy26</span></tt>
+to leave it type <tt class="docutils literal"><span class="pre">deactivate</span></tt>.</p>
+</div>
+<div class="section" id="installing-papy-dependencies-and-tools">
+<h3>Installing PaPy dependencies and tools<a class="headerlink" href="#installing-papy-dependencies-and-tools" title="Permalink to this headline">¶</a></h3>
+<p>All PaPy dependencies are optional in the sense that the core-functionality does
+not depend on them. However using the gui, databases, posix-style shared memory
+and grid functionality will require a few packages to be installed.</p>
+<blockquote>
+<ul>
+<li><p class="first">(optional) switch to the virtual environement:</p>
+<div class="highlight-python"><pre>$ workon papy26</pre>
+</div>
+</li>
+</ul>
+</blockquote>
+<p>If you are not using a virtual environment and you did not build Python2.6
+manually you can try to install those packages from the operating system
+repository if availble. If some of them are not availble for your operating
+system or the default Python interpreter is different from Python2.6 you will
+have to install them system-wide as root:</p>
+<blockquote>
+$ su -c &#8220;easy_install-2.6 PACKAGE_NAME&#8221;</blockquote>
+<p>or:</p>
+<div class="highlight-python"><pre>$ sudo easy_install-2.6 PACKAGE_NAME</pre>
+</div>
+<p>You do not have to be root to install the packages into the virtual
+environement:</p>
+<blockquote>
+<ol class="arabic">
+<li><p class="first">install Paver to build/deploy PaPy:</p>
+<div class="highlight-python"><pre>$ easy_install-2.6 paver</pre>
+</div>
+</li>
+<li><p class="first">install Sphinx to build PaPy documentation:</p>
+<div class="highlight-python"><pre>$ easy_install-2.6 sphinx</pre>
+</div>
+</li>
+<li><p class="first">installing RPyC to use PaPy on a grid:</p>
+<div class="highlight-python"><pre>$ easy_install-2.6 rpyc</pre>
+</div>
+<p>if the above did not work because the tarfile could not be downloaded
+we have to do it manually from:
+<a class="reference external" href="http://sourceforge.net/projects/rpyc/files/">http://sourceforge.net/projects/rpyc/files/</a>
+be sure to download the source distribution e.g.: rpyc-3.0.6.tar.gz
+and from the directory to which the file has been downloaded:</p>
+<div class="highlight-python"><pre>$ easy_install rpyc-3.0.6.tar.gz</pre>
+</div>
+</li>
+<li><p class="first">installing posix_ipc for shared memory:</p>
+<div class="highlight-python"><pre>$ easy_install-2.6 posix_ipc</pre>
+</div>
+</li>
+<li><p class="first">installing Pmw (Python Mega Widgets) for the gui. Pmw is not availble
+from PyPI.</p>
+<blockquote>
+<ol class="arabic">
+<li><p class="first">Go to: <a class="reference external" href="http://sourceforge.net/projects/pmw/files/">http://sourceforge.net/projects/pmw/files/</a> and download the
+latest source tarball e.g. Pmw.1.3.2.tar.gz</p>
+</li>
+<li><p class="first">Unpack the tarball and go to the src directory:</p>
+<div class="highlight-python"><pre>$ tar xfv Pmw.1.3.2.tar.gz
+$ cd  Pmw.1.3.2/src</pre>
+</div>
+</li>
+<li><p class="first">install Pmw:</p>
+<div class="highlight-python"><pre>$ python2.6 setup.py install</pre>
+</div>
+</li>
+</ol>
+</blockquote>
+</li>
+<li><p class="first">Installing mysql-python to use a MySQL database from PaPy. The package
+mysql-python is availble from PyPI, but currently the package does not
+install cleanly.  You can try this first:</p>
+<div class="highlight-python"><pre>$ easy_install-2.6 mysql-python</pre>
+</div>
+<p>If you build Python2.6 or if your distribution does not provide
+mysql-python you have to build it yourself. To do this you will need gcc,
+MySQL and MySQL header files. The respective packages are called mysql
+and mysql-devel on Fedora, mysql and libmysql++-dev on Ubuntu and
+just mysql on Gentoo. Make shure that you can find mysql_config and
+mysql.h e.g.:</p>
+<div class="highlight-python"><pre>$ which mysql_config
+/usr/bin/mysql_config
+$ ls /usr/include/mysql/mysql.h
+/usr/include/mysql/mysql.h</pre>
+</div>
+<p>Now download and install MySQL-python.</p>
+<blockquote>
+<ol class="arabic">
+<li><dl class="first docutils">
+<dt>Go to: <a class="reference external" href="http://sourceforge.net/projects/mysql-python/files/">http://sourceforge.net/projects/mysql-python/files/</a></dt>
+<dd><p class="first last">and download: MySQL-python-1.2.3c1.tar.gz or a newer source
+distribution.</p>
+</dd>
+</dl>
+</li>
+<li><p class="first">Unpack it:</p>
+<div class="highlight-python"><pre>$ tar xvf MySQL-python-1.2.3c1.tar.gz</pre>
+</div>
+</li>
+<li><p class="first">Go to the unpacked directory:</p>
+<div class="highlight-python"><pre>$ cd MySQL-python-1.2.3c1</pre>
+</div>
+</li>
+<li><p class="first">determine the location of mysql_config:</p>
+<div class="highlight-python"><pre>$ which mysql_config</pre>
+</div>
+</li>
+<li><p class="first">make sure the <tt class="docutils literal"><span class="pre">site.cfg</span></tt> file has the correct location for the
+mysql_config binary:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># change if neccessary</span>
+<span class="n">mysql_config</span> <span class="o">=</span> <span class="n">__REPLACE_ME__</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">build and install install:</p>
+<div class="highlight-python"><pre>$ python2.6 setup.py install</pre>
+</div>
+<p>If it failed make sure gcc can find the mysql.h file.</p>
+</li>
+<li><p class="first">verify it worked:</p>
+<div class="highlight-python"><pre>$ python2.6
+&gt;&gt;&gt; import MySQLdb</pre>
+</div>
+<p>This should not generate any errors.</p>
+</li>
+</ol>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+</div>
+<div class="section" id="get-papy-sources">
+<h3>Get PaPy sources<a class="headerlink" href="#get-papy-sources" title="Permalink to this headline">¶</a></h3>
+<p>In this step we will use the latest revision of PaPy source code to either
+and provide it within the virtual environment or per-user python path.</p>
+<blockquote>
+<ol class="arabic">
+<li><p class="first">make sure you have subversion:</p>
+<div class="highlight-python"><pre>$ svn
+Type 'svn help' for usage.</pre>
+</div>
+<p>If this returns an error you have to install the <tt class="docutils literal"><span class="pre">subversion</span></tt> package:</p>
+<div class="highlight-python"><pre># on Gentoo
+$ su -c "emerge subversion"
+# on Fedora
+$ su -c "yum install subversion"
+# On Ubuntu
+$ sudo apt-get install subversion</pre>
+</div>
+</li>
+<li><p class="first">check-out the sources:</p>
+<div class="highlight-python"><pre>$ svn checkout http://papy.googlecode.com/svn/trunk/ papy</pre>
+</div>
+</li>
+<li><p class="first">We have to know where the PaPy source got copied to update add them to
+the virtual environment or Python path.:</p>
+<div class="highlight-python"><pre>$ cd papy/src</pre>
+</div>
+<p>If you decided to use a virtual environment:</p>
+<div class="highlight-python"><pre>$ add2virtualenv .</pre>
+</div>
+<p>If not we update the <tt class="docutils literal"><span class="pre">$PYTHONPATH</span></tt> variable with this path in
+<tt class="docutils literal"><span class="pre">.bashrc</span></tt>:</p>
+<div class="highlight-python"><pre>$ pwd
+SOME_PATH</pre>
+</div>
+<p>And add this line to <tt class="docutils literal"><span class="pre">.bashrc</span></tt>. Remember to replace SOME_PATH with the
+output from <tt class="docutils literal"><span class="pre">pwd</span></tt>:</p>
+<div class="highlight-python"><pre>export PYTHONPATH=SOME_PATH:$PYTHONPATH</pre>
+</div>
+</li>
+<li><p class="first">Verify it worked.:</p>
+<div class="highlight-python"><pre>$ python2.6
+&gt;&gt;&gt; import papy
+&gt;&gt;&gt; import IMap</pre>
+</div>
+</li>
+</ol>
+</blockquote>
+</div>
+</div>
+</div>
+
+
+   
+ 
+ 
+ </div>
+<div id="footer" dir="ltr">
+ 
+ <div class="text">
+ 
+ &copy;2008 Google -
+ <a href="http://code.google.com/">Code Home</a> -
+ <a href="http://code.google.com/tos.html">Terms of Service</a> -
+ <a href="http://www.google.com/privacy.html">Privacy Policy</a> -
+  
+ </body>
+</html>
